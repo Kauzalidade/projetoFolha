@@ -1,12 +1,14 @@
-# Sistema de RH e Folha de Pagamento
+# projetoFolha | Sistema de RH e Folha de Pagamento
 
-Sistema web de RH e folha de pagamento para uma empresa **correspondente bancária** (15 colaboradores, 1 matriz + 2 filiais). Calcula **INSS** e **IRRF** de 2026, explica cada valor (memória de cálculo) e controla férias, 13º, documentos e alertas.
+Sistema web acadêmico de RH e folha de pagamento para uma empresa **correspondente bancária** (15 colaboradores, 1 matriz + 2 filiais). O escopo prevê cálculos de **INSS** e **IRRF**, memória de cálculo por verba e controle de férias, 13º salário, documentos, alertas e relatórios.
 
-> **Atividade da disciplina:** Spec-Driven Development com IA · Prof. Dr. Juan Apolinario
-> **Especificação seguida:** **v1.3** (21/10/2026), elaborada pelo GTI 4º período e implementada pelo GTI 2º período.
+> **Disciplina:** Spec-Driven Development com IA · Prof. Dr. Juan Apolinario
+> **Especificação de referência:** v1.3 (21/10/2026), elaborada pelo GTI 4º período.
+> **Equipe de desenvolvimento:** GTI 2º período.
 > **Repositório:** [github.com/Kauzalidade/projetoFolha](https://github.com/Kauzalidade/projetoFolha)
-> **Stack:** Node.js · TypeScript · MySQL
-> **Regra de ouro:** se faltar informação, **não invente a regra**. Anote a dúvida e pergunte ao GTI 4º período.
+> **Status geral:** em desenvolvimento acadêmico. Este README descreve o escopo e os requisitos; não significa que todas as funcionalidades já estejam implementadas.
+> **Stack definida:** Node.js e TypeScript. **Banco de dados:** pendente de confirmação da equipe, pois o README anterior cita MySQL e o CHANGELOG registra PostgreSQL.
+> **Regra de ouro:** se faltar informação, **não invente a regra**. Registre a dúvida e consulte o GTI 4º período.
 
 ---
 
@@ -16,6 +18,7 @@ Sistema web de RH e folha de pagamento para uma empresa **correspondente bancár
 - [Objetivos](#objetivos)
 - [Escopo da 1ª versão](#escopo-da-1ª-versão)
 - [Etapas de construção](#etapas-de-construção)
+- [Status de implementação verificado](#status-de-implementação-verificado)
 - [Regras de negócio em destaque](#regras-de-negócio-em-destaque)
 - [Parâmetros legais de 2026](#parâmetros-legais-de-2026)
 - [Exemplos de cálculo para os testes](#exemplos-de-cálculo-para-os-testes)
@@ -75,6 +78,19 @@ Implementar **uma etapa por vez, nesta ordem**. Testes primeiro: a etapa só est
 
 > A Etapa 3 só começa com a Etapa 2 **completa**, incluindo verbas avulsas.
 
+## Status de implementação verificado
+
+As etapas abaixo representam o plano da especificação. Na revisão documental da branch `main` em 26/10/2026, não foi possível confirmar, com evidências suficientes de código e testes, que essas etapas estejam concluídas. Por isso, o status é registrado como **não verificado na `main`**, e não como “não implementado”.
+
+| Etapa | Escopo | Status na `main` |
+|-------|--------|------------------|
+| 1 | Login, perfis, filiais, colaboradores, parâmetros legais e feriados | Não verificado |
+| 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | Não verificado |
+| 3 | Cálculo da folha, memória de cálculo e fechamento | Não verificado |
+| 4 | Férias, 13º, documentos, contracheque e relatórios | Não verificado |
+
+O status deve ser atualizado somente quando houver evidência verificável na branch de referência, como código, testes automatizados ou documentação de execução. A existência de código em outra branch não comprova, por si só, que a funcionalidade esteja integrada à `main`.
+
 ## Regras de negócio em destaque
 
 A lista completa (RN-01 a RN-58) está na especificação v1.3. Estas são as mais importantes para a implementação:
@@ -99,7 +115,14 @@ A lista completa (RN-01 a RN-58) está na especificação v1.3. Estas são as ma
 
 ## Parâmetros legais de 2026
 
-Todos entram no sistema como **parâmetros com vigência** (nunca fixos no código). Valores conferidos em 13/10/2026 em fontes públicas; **o contador do cliente deve confirmar antes do uso real.**
+Todos entram no sistema como **parâmetros com vigência** (nunca fixos no código). Os valores abaixo foram comparados com fontes oficiais consultadas em 26/10/2026; **o contador do cliente deve confirmar os parâmetros e a lógica de cálculo antes de qualquer uso real.** A conferência das tabelas não valida automaticamente todos os exemplos numéricos desta especificação.
+
+**Fontes oficiais consultadas:**
+
+- [Tabela de contribuição mensal do INSS](https://www.gov.br/inss/pt-br/direitos-e-deveres/inscricao-e-contribuicao/tabela-de-contribuicao-mensal)
+- [Tabelas do Imposto de Renda 2026, Receita Federal](https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026)
+- [Decreto nº 12.797/2025, salário mínimo de 2026](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm)
+- [Lei nº 15.270/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15270.htm)
 
 | Parâmetro | Valor |
 |-----------|-------|
@@ -185,20 +208,21 @@ Login · Lista de colaboradores · Ficha do colaborador · Lançamento de evento
 
 ## Stack e decisões técnicas
 
-A especificação define **o que** o sistema faz. As decisões abaixo cabem ao GTI 2º período e devem ser informadas à IA em todo prompt:
+A especificação define **o que** o sistema deve fazer. As decisões técnicas registradas no README e no CHANGELOG foram conciliadas abaixo. Quando há conflito explícito, a decisão fica pendente em vez de escolher uma opção sem aprovação.
 
-| Decisão | Situação |
-|---------|----------|
+| Decisão | Situação atual |
+|---------|----------------|
 | Linguagem e plataforma | **Node.js** com **TypeScript** |
-| Framework (back-end e front-end) | _A definir pela equipe_ |
-| Banco de dados | **MySQL** |
-| Estrutura técnica (camadas, API, tabelas) | _Proposta pela IA (prompt 3) e aprovada pela equipe antes de gerar código_ |
-| Visual das telas | Livre, respeitando a seção 12 da especificação |
-| Testes automatizados | **Node.js** com **TypeScript** (framework de testes a definir pela equipe) |
+| Framework (back-end e front-end) | A definir pela equipe |
+| Banco de dados | **Pendente de confirmação:** README anterior indica MySQL; CHANGELOG de 23/10/2026 registra PostgreSQL com `DECIMAL(12,2)` |
+| Estrutura técnica | CHANGELOG registra arquitetura em camadas (Controllers/Rotas, Services/Casos de Uso e Repositories/Modelagem) e APIs REST |
+| Visual das telas | Interface web com prioridade para desktop, conforme a especificação |
+| Testes automatizados | Node.js com TypeScript; framework ainda a definir; abordagem de testes antes do código (TDD) registrada no CHANGELOG |
+| Gerenciador de pacotes, ORM e comandos | A definir pela equipe |
 
-**Obrigatório:** dinheiro sempre em tipo **`DECIMAL`** no MySQL (e sem `number` de ponto flutuante nos cálculos em TypeScript), nunca ponto flutuante. Parâmetros legais em tabela do banco, com data de início e fim de vigência.
+**Obrigatório:** valores monetários devem usar representação decimal exata, sem cálculos financeiros com `number` de ponto flutuante em TypeScript. O tipo e a sintaxe definitivos no banco dependem da confirmação entre MySQL e PostgreSQL. Parâmetros legais devem ficar em tabelas com datas de início e fim de vigência.
 
-> **Instalação e execução:** esta seção será adicionada quando a equipe definir gerenciador de pacotes, framework, ORM e comandos.
+> **Instalação e execução:** os comandos serão documentados quando a equipe confirmar o gerenciador de pacotes, framework, ORM e estrutura executável do projeto.
 
 ## Como trabalhar neste repositório
 
@@ -245,7 +269,7 @@ Cole a especificação antes de cada prompt e use a regra comum: *"Não crie reg
 
 ## Avisos importantes
 
-- Os valores legais (INSS, IRRF, FGTS etc.) foram conferidos em fontes públicas em 13/10/2026, mas **precisam da confirmação de um contador antes do uso real**.
+- Os parâmetros legais de 2026 foram comparados com fontes oficiais em 26/10/2026, mas **precisam da validação de um contador antes do uso real**; essa conferência não garante, por si só, a correção de todos os exemplos de cálculo.
 - Itens marcados como `[ADOTADO]` na especificação são decisões provisórias do grupo, configuráveis até o RH ou o contador pedir mudança.
 - A convenção coletiva do cliente não foi informada: valem os padrões da CLT e a convenção entra como parâmetro cadastrável.
 - Os dados de exemplo da especificação (seção 11) são **fictícios**.
@@ -253,4 +277,4 @@ Cole a especificação antes de cada prompt e use a regra comum: *"Não crie reg
 
 ---
 
-<sub>Baseado na Especificação de Requisitos v1.3 (21/10/2026) · Prof. Dr. Juan Apolinario · GTI 4º período → GTI 2º período</sub>
+<sub>Baseado na Especificação de Requisitos v1.3 (21/10/2026) · Prof. Dr. Juan Apolinario · GTI 4º período → GTI 2º período. Documento consolidado para revisão em 26/10/2026.</sub>
