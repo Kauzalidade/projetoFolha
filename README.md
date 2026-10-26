@@ -114,6 +114,12 @@ A lista completa (RN-01 a RN-58) está na especificação v1.3. Estas são as ma
 - **RN-40 a RN-49 Férias e 13º:** período aquisitivo/concessivo, 1/3 constitucional, fracionamento em até 3 períodos (um de no mínimo 14 dias, os demais de no mínimo 5), abono pecuniário, redução por faltas, 13º em duas parcelas (até 30/11 e 20/12), regras de início e pagamento das férias.
 - **RN-54 / RNF-03 Saúde e auditoria:** atestados e exames têm acesso restrito e log de cada consulta; logs são imutáveis.
 
+Detalhamento operacional, fórmulas e critérios de aceite para essas três regras: [`docs/regras-beneficios-medias.md`](./docs/regras-beneficios-medias.md).
+
+- **RN-48 — Fórmula das médias:** somar as horas extras pagas e o DSR pago correspondente no período aquisitivo (férias) ou no ano (13º), dividir por 12 e incluir a média na base de férias, do 1/3 e do 13º. Ver o exemplo K e os testes documentados.
+- **RN-50 — Vale-transporte:** apenas para optantes; desconto = menor entre 6% do salário-base e o custo mensal informado pelo RH. Exemplos: salário de R$ 2.000,00 com custo de R$ 180,00 gera R$ 120,00; custo de R$ 90,00 gera R$ 90,00.
+- **RN-51 — Vale-alimentação:** valor mensal fixo por colaborador via parâmetro; coparticipação padrão de 0%, configurável. A especificação não define a fórmula/base para coparticipação diferente de zero; essa lacuna não deve ser preenchida por suposição. O VA fornecido pela empresa não incide em INSS, IRRF ou FGTS conforme a tabela 7.4.
+
 ## Parâmetros legais de 2026
 
 Todos entram no sistema como **parâmetros com vigência** (nunca fixos no código). Os valores abaixo foram comparados com fontes oficiais consultadas em 26/10/2026; **o contador do cliente deve confirmar os parâmetros e a lógica de cálculo antes de qualquer uso real.** A conferência das tabelas não valida automaticamente todos os exemplos numéricos desta especificação.
