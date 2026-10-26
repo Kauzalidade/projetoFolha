@@ -35,6 +35,15 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 
 ---
 
+
+
+### [26/10/2026] - Documentação operacional das regras RN-48, RN-50 e RN-51
+- **Categoria:** Estrutura técnica (documentação e critérios de teste)
+- **O que foi adicionado/alterado:** criado `docs/regras-beneficios-medias.md` com fórmulas, memória de cálculo, exemplos e testes de aceitação para média de horas extras/DSR (RN-48), vale-transporte (RN-50) e vale-alimentação (RN-51); README atualizado com resumo e link.
+- **Por quê (Justificativa):** tornar os requisitos do PDF v1.3 rastreáveis para implementação e testes sem inventar comportamentos não especificados. A coparticipação do VA acima de 0% continua explicitamente pendente de definição quanto à base e forma de cálculo.
+- **Aprovado por:** solicitação do usuário nesta conversa
+- **Limite da entrega:** documentação e critérios de teste; não declara que o cálculo já esteja implementado nem que testes tenham sido executados.
+
 ## 📋 Modelo para Futuros Registros
 
 Para cada nova adição ou atualização aprovada pelo usuário, registre uma nova entrada seguindo o formato:
