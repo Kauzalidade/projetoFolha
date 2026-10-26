@@ -26,6 +26,7 @@ Sistema web acadêmico de RH e folha de pagamento para uma empresa **corresponde
 - [Telas da 1ª versão](#telas-da-1ª-versão)
 - [Requisitos não funcionais](#requisitos-não-funcionais)
 - [Stack e decisões técnicas](#stack-e-decisões-técnicas)
+- [Back-end](#back-end)
 - [Como trabalhar neste repositório](#como-trabalhar-neste-repositório)
 - [Equipe](#equipe)
 - [Avisos importantes](#avisos-importantes)
@@ -223,6 +224,50 @@ A especificação define **o que** o sistema deve fazer. As decisões técnicas 
 **Obrigatório:** valores monetários devem usar representação decimal exata, sem cálculos financeiros com `number` de ponto flutuante em TypeScript. O tipo e a sintaxe definitivos no banco dependem da confirmação entre MySQL e PostgreSQL. Parâmetros legais devem ficar em tabelas com datas de início e fim de vigência.
 
 > **Instalação e execução:** os comandos serão documentados quando a equipe confirmar o gerenciador de pacotes, framework, ORM e estrutura executável do projeto.
+
+## Back-end
+
+O diretório [`back-end/`](./back-end/) contém uma implementação documentada em **Node.js, TypeScript e SQLite**, sem framework web. Para detalhes técnicos e instruções atualizadas, consulte o [README do back-end](./back-end/README.md). As informações abaixo refletem esse documento; a lista de funcionalidades não substitui a execução dos testes nem comprova que todas as etapas do sistema estejam concluídas.
+
+### Como instalar e executar
+
+Execute os comandos a partir da pasta `back-end/`:
+
+```bash
+npm install
+npm run init-db
+npm run criar-usuario -- --nome "Maria" --email maria@empresa.com --perfil RH --senha minhasenha123
+npm run seed-demo       # opcional: filiais e colaboradores de exemplo
+npm start               # inicia o servidor; health: http://localhost:5000/api/health
+npm test                # o README do back-end declara 44 testes
+npm run typecheck
+npm run build
+npm run start:prod      # inicia a versão compilada
+```
+
+O README do back-end também lista as variáveis opcionais `SECRET_KEY`, `DATABASE`, `TOKEN_HORAS`, `CORS_ORIGIN` e `PORT`. Consulte aquele documento para os requisitos específicos de ambiente e execução.
+
+### Perfis e API
+
+A API usa autenticação `Bearer` nos endpoints protegidos. Conforme documentado no README do back-end, os perfis são: **RH** (cadastros e simulações/cálculos), **DIRETORIA** (consultas e logs) e **ADMIN** (gestão de usuários e logs).
+
+| Área | Endpoints principais | Acesso documentado |
+|------|----------------------|--------------------|
+| Autenticação | `POST /api/auth/login`, `GET /api/auth/me` | Login público; dados da sessão para usuário autenticado |
+| Usuários | `GET/POST/PATCH /api/usuarios` | ADMIN |
+| Filiais | `GET/POST /api/filiais`, `PUT /api/filiais/:id` | Consulta: RH e DIRETORIA; alteração: RH |
+| Colaboradores | `GET/POST /api/colaboradores`, `GET/PUT/DELETE /api/colaboradores/:id`, `POST /api/colaboradores/:id/reativar` | Consulta: RH e DIRETORIA; alterações: RH |
+| Histórico e pendências | `GET /api/colaboradores/:id/historico`, `GET /api/colaboradores/:id/pendencias` | RH e DIRETORIA |
+| Logs | `GET /api/logs` | DIRETORIA e ADMIN |
+| Parâmetros | `GET /api/parametros?competencia=AAAA-MM` | RH e DIRETORIA |
+| Simulações | `POST /api/simulacao/folha`, `POST /api/simulacao/ferias` | RH |
+| Saúde da API | `GET /api/health` | Público |
+
+### Escopo descrito no README do back-end
+
+O documento do back-end declara funcionalidades para login e perfis, filiais e colaboradores, histórico e logs, parâmetros com vigência e um motor de cálculo que contempla INSS, IRRF, horas extras, DSR, faltas, VT, VA, FGTS e férias. Também registra uso de `BigInt` na classe `Dec` para representar valores monetários com precisão decimal.
+
+O mesmo documento aponta como pendentes partes das etapas 2 a 4, incluindo lançamento de eventos, folha persistida com fechamento/reabertura, saldo e alertas de férias, documentos e exames, contracheques e relatórios em PDF/Excel, cifragem de dados de saúde, backup e retenção. Algumas regras ainda aparecem como dúvidas ou não implementadas; veja a seção **“Dúvidas para o GTI 4º período”** no [README do back-end](./back-end/README.md).
 
 ## Como trabalhar neste repositório
 
