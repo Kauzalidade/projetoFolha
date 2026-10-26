@@ -227,7 +227,7 @@ A especificação define **o que** o sistema deve fazer. As decisões técnicas 
 
 ## Back-end
 
-O diretório [`back-end/`](./back-end/) contém uma implementação documentada em **Node.js, TypeScript e SQLite**, sem framework web. Para detalhes técnicos e instruções atualizadas, consulte o [README do back-end](./back-end/README.md). As informações abaixo refletem esse documento; a lista de funcionalidades não substitui a execução dos testes nem comprova que todas as etapas do sistema estejam concluídas.
+O diretório [`back-end/`](./back-end/) contém uma implementação documentada em **Node.js, TypeScript e SQLite**, sem framework web. As informações abaixo refletem esse documento; a lista de funcionalidades não substitui a execução dos testes nem comprova que todas as etapas do sistema estejam concluídas.
 
 ### Como instalar e executar
 
@@ -244,8 +244,6 @@ npm run typecheck
 npm run build
 npm run start:prod      # inicia a versão compilada
 ```
-
-O README do back-end também lista as variáveis opcionais `SECRET_KEY`, `DATABASE`, `TOKEN_HORAS`, `CORS_ORIGIN` e `PORT`. Consulte aquele documento para os requisitos específicos de ambiente e execução.
 
 ### Perfis e API
 
@@ -267,7 +265,7 @@ A API usa autenticação `Bearer` nos endpoints protegidos. Conforme documentado
 
 O documento do back-end declara funcionalidades para login e perfis, filiais e colaboradores, histórico e logs, parâmetros com vigência e um motor de cálculo que contempla INSS, IRRF, horas extras, DSR, faltas, VT, VA, FGTS e férias. Também registra uso de `BigInt` na classe `Dec` para representar valores monetários com precisão decimal.
 
-O mesmo documento aponta como pendentes partes das etapas 2 a 4, incluindo lançamento de eventos, folha persistida com fechamento/reabertura, saldo e alertas de férias, documentos e exames, contracheques e relatórios em PDF/Excel, cifragem de dados de saúde, backup e retenção. Algumas regras ainda aparecem como dúvidas ou não implementadas; veja a seção **“Dúvidas para o GTI 4º período”** no [README do back-end](./back-end/README.md).
+O mesmo documento aponta como pendentes partes das etapas 2 a 4, incluindo lançamento de eventos, folha persistida com fechamento/reabertura, saldo e alertas de férias, documentos e exames, contracheques e relatórios em PDF/Excel, cifragem de dados de saúde, backup e retenção. Algumas regras ainda aparecem como dúvidas ou não implementadas.
 
 ## Como trabalhar neste repositório
 
