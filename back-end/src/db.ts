@@ -91,6 +91,83 @@ CREATE TABLE IF NOT EXISTS feriados (
   tipo TEXT NOT NULL DEFAULT 'NACIONAL' CHECK(tipo IN ('NACIONAL', 'ESTADUAL', 'MUNICIPAL'))
 );
 
+-- Competências da Folha (RN-04, RN-08, Tabela 7.5)
+CREATE TABLE IF NOT EXISTS competencias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mes_ano TEXT NOT NULL UNIQUE, -- Formato 'AAAA-MM'
+  situacao TEXT NOT NULL DEFAULT 'ABERTA' CHECK(situacao IN ('ABERTA', 'CALCULADA', 'FECHADA')),
+  fechado_em TEXT NULL,
+  justificativa_reabertura TEXT NULL,
+  criado_em TEXT NOT NULL
+);
+
+-- Lançamento de Eventos (Horas Extras, Faltas, Atestados, VT, VA, Verbas Avulsas - Etapa 2)
+CREATE TABLE IF NOT EXISTS eventos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  competencia_id INTEGER NOT NULL REFERENCES competencias(id),
+  tipo TEXT NOT NULL CHECK(tipo IN (
+    'HORA_EXTRA_UTIL', 'HORA_EXTRA_DOMINGO',
+    'FALTA_INJUSTIFICADA', 'ATESTADO',
+    'VALE_TRANSPORTE', 'VALE_ALIMENTACAO',
+    'VERBA_AVULSA_PROVENTO', 'VERBA_AVULSA_DESCONTO'
+  )),
+  quantidade REAL NULL, -- horas (HE) ou dias (faltas/atestado)
+  valor_centavos INTEGER NULL, -- Dec centavos
+  descricao TEXT NULL,
+  incide_inss INTEGER NOT NULL DEFAULT 0,
+  incide_irrf INTEGER NOT NULL DEFAULT 0,
+  incide_fgts INTEGER NOT NULL DEFAULT 0,
+  data_inicio TEXT NULL,
+  data_fim TEXT NULL,
+  anexo_nome TEXT NULL,
+  anexo_tipo TEXT NULL,
+  observacao TEXT NULL,
+  criado_por_usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  criado_em TEXT NOT NULL
+);
+
+-- Folha de Pagamento por Colaborador e Competência (RN-20 a RN-24, Etapa 3)
+CREATE TABLE IF NOT EXISTS folhas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  competencia_id INTEGER NOT NULL REFERENCES competencias(id),
+  total_proventos_centavos INTEGER NOT NULL,
+  total_descontos_centavos INTEGER NOT NULL,
+  liquido_centavos INTEGER NOT NULL,
+  fgts_centavos INTEGER NOT NULL,
+  saldo_a_descontar_centavos INTEGER NOT NULL DEFAULT 0,
+  justificativa_saldo TEXT NULL,
+  status TEXT NOT NULL DEFAULT 'CALCULADA' CHECK(status IN ('CALCULADA', 'FECHADA')),
+  calculado_em TEXT NOT NULL,
+  UNIQUE(colaborador_id, competencia_id)
+);
+
+-- Memória de Cálculo detalhada por Verba (RN-02)
+CREATE TABLE IF NOT EXISTS folha_verbas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  folha_id INTEGER NOT NULL REFERENCES folhas(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL,
+  descricao TEXT NOT NULL,
+  natureza TEXT NOT NULL CHECK(natureza IN ('PROVENTO', 'DESCONTO', 'ENCARGO')),
+  valor_centavos INTEGER NOT NULL,
+  base_calculo_centavos INTEGER NOT NULL,
+  regra_aplicada TEXT NOT NULL,
+  parametro_utilizado TEXT NULL,
+  arredondamento TEXT NOT NULL DEFAULT 'HALF_UP_2_CASAS'
+);
+
+-- Saldo a Descontar em Competências Seguintes (RN-06, Tabela 7.1)
+CREATE TABLE IF NOT EXISTS saldos_a_descontar (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  competencia_origem_id INTEGER NOT NULL REFERENCES competencias(id),
+  valor_original_centavos INTEGER NOT NULL,
+  valor_restante_centavos INTEGER NOT NULL,
+  situacao TEXT NOT NULL DEFAULT 'PENDENTE' CHECK(situacao IN ('PENDENTE', 'QUITADO')),
+  criado_em TEXT NOT NULL
+);
+
 -- Log de Auditoria Imutável (RNF-03)
 CREATE TABLE IF NOT EXISTS logs_auditoria (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

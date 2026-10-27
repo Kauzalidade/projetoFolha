@@ -44,6 +44,49 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 - **Aprovado por:** solicitação do usuário nesta conversa
 - **Limite da entrega:** documentação e critérios de teste; não declara que o cálculo já esteja implementado nem que testes tenham sido executados.
 
+---
+
+### [27/10/2026] - Implementação e Validação Automatizada da Etapa 1 (TDD)
+- **Categoria:** Testes automatizados / Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Configuração do runtime Node.js LTS v24 e TypeScript com test runner nativo (`node:test`, `tsx`).
+  - Implementação de `src/dec.ts` (operações monetárias exatas em centavos com `BigInt`, sem ponto flutuante, RN-03).
+  - Implementação de `src/cpf.ts` (validação com dígitos verificadores da Receita Federal e formatação, RN-11 e RN-15).
+  - Implementação de `src/security.ts` (hash `scrypt` com salt, senha forte com 10+ caracteres, bloqueio de 15 min após 5 erros - RNF-19 e controle de sessão - RNF-01).
+  - Implementação de `src/db.ts` (schema SQLite completo e triggers de imutabilidade de logs de auditoria - RNF-03).
+  - Implementação dos serviços de domínio: `usuarioService.ts`, `filialService.ts`, `colaboradorService.ts` (regras RN-10 a RN-16, inativação lógica RN-12, histórico RN-07, LGPD RN-14) e `parametroFeriadoService.ts` (carga dos 10 feriados nacionais de 2026 - RN-35 e parâmetros legais com vigência - RN-01).
+  - Implementação de `src/manage.ts` (comandos CLI `init-db`, `criar-usuario` e `seed-demo`).
+  - Criação da suíte de testes `tests/etapa1.test.ts` com 17 testes automatizados cobrindo os cenários Gherkin da Seção 10.
+- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 1 da especificação v1.3 (*"Cadastra, edita, consulta e inativa; CPF duplicado é rejeitado; todos os testes passam"*).
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
+
+---
+
+### [27/10/2026] - Implementação e Validação Automatizada da Etapa 2 (TDD)
+- **Categoria:** Testes automatizados / Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Adição das tabelas `competencias` e `eventos` no SQLite em `src/db.ts`.
+  - Implementação de `src/services/competenciaService.ts` com ciclo de vida da competência (*Aberta → Calculada → Fechada*), controle de permissões por perfil (Diretoria não fecha nem reabre folha) e reabertura com justificativa obrigatória homologada na hora com evento em destaque no log (RN-04, RN-08).
+  - Implementação de `src/services/eventoService.ts` para horas extras (50%, 100% e adicionais de convenção como 120%, RN-30), faltas com desconto e perda de DSR (RN-33), atestados com anexo/período e controle estrito de dados de saúde (RN-33, RN-54, RNF-21), vale-transporte com teto de 6% (RN-50) e verbas avulsas com 3 incidências booleanas (RN-25).
+  - Criação da suíte `tests/etapa2.test.ts` com 16 testes automatizados cobrindo os cenários Gherkin da Seção 10. Suíte completa acumula 33 testes aprovados.
+- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 2 da especificação v1.3 (*"Cenários de horas extras e descontos passam. A estrutura de lançamentos, com o campo de verbas avulsas (RN-25), precisa estar pronta antes do cálculo da Etapa 3"*).
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
+
+---
+
+### [27/10/2026] - Implementação e Validação Automatizada da Etapa 3 (TDD)
+- **Categoria:** Testes automatizados / Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Adição das tabelas `folhas`, `folha_verbas` (memória de cálculo detalhada) e `saldos_a_descontar` no SQLite em `src/db.ts`.
+  - Implementação de `src/calculo.ts` com cálculo progressivo por faixas do INSS 2026, IRRF comparativo (Base Tradicional vs Simplificada com redução da Lei 15.270/2025) e fórmula do DSR sobre horas extras (RN-31).
+  - Implementação de `src/services/folhaService.ts` com cálculo completo da remuneração, FGTS (8% encargo patronal), memória explicativa por verba (RN-02), proteção ao líquido (líquido nunca negativo com geração de saldo a descontar limitado a 30% no mês seguinte - RN-06) e fechamento seguro bloqueado por dados pendentes ou saldo sem justificativa (Tabela 7.1).
+  - Criação da suíte `tests/etapa3.test.ts` com 10 testes cobrindo os exemplos numéricos da Seção 8 (A, B, C, G, H, I, M) e cenários Gherkin da Seção 10. Suíte completa acumula **43 testes aprovados com 100% de sucesso**.
+- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 3 da especificação v1.3 (*"Folha calculada com memória; fechamento bloqueado nos casos da tabela 7.1; tolerância de cálculo de até R$ 0,01"*).
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
+
+
+
+
 ## 📋 Modelo para Futuros Registros
 
 Para cada nova adição ou atualização aprovada pelo usuário, registre uma nova entrada seguindo o formato:

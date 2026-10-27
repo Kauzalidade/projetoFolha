@@ -81,16 +81,16 @@ Implementar **uma etapa por vez, nesta ordem**. Testes primeiro: a etapa só est
 
 ## Status de implementação verificado
 
-As etapas abaixo representam o plano da especificação. Na revisão documental da branch `main` em 26/10/2026, não foi possível confirmar, com evidências suficientes de código e testes, que essas etapas estejam concluídas. Por isso, o status é registrado como **não verificado na `main`**, e não como “não implementado”.
+As etapas abaixo representam o plano da especificação oficial v1.3. O status reflete evidências verificáveis de código executável e testes automatizados na branch `main`:
 
-| Etapa | Escopo | Status na `main` |
-|-------|--------|------------------|
-| 1 | Login, perfis, filiais, colaboradores, parâmetros legais e feriados | Não verificado |
-| 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | Não verificado |
-| 3 | Cálculo da folha, memória de cálculo e fechamento | Não verificado |
-| 4 | Férias, 13º, documentos, contracheque e relatórios | Não verificado |
+| Etapa | Escopo | Status na `main` | Evidência / Testes |
+|-------|--------|------------------|-------------------|
+| 1 | Login, perfis, filiais, colaboradores, parâmetros legais e feriados | **Concluída** | 17 testes automatizados aprovados em [`back-end/tests/etapa1.test.ts`](./back-end/tests/etapa1.test.ts) |
+| 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | **Concluída** | 16 testes automatizados aprovados em [`back-end/tests/etapa2.test.ts`](./back-end/tests/etapa2.test.ts) |
+| 3 | Cálculo da folha, memória de cálculo e fechamento | **Concluída** | 10 testes automatizados aprovados em [`back-end/tests/etapa3.test.ts`](./back-end/tests/etapa3.test.ts) |
+| 4 | Férias, 13º, documentos, contracheque e relatórios | **Próxima etapa** | Em planejamento |
 
-O status deve ser atualizado somente quando houver evidência verificável na branch de referência, como código, testes automatizados ou documentação de execução. A existência de código em outra branch não comprova, por si só, que a funcionalidade esteja integrada à `main`.
+As Etapas 1, 2 e 3 foram implementadas e validadas em 27/10/2026 utilizando Node.js LTS (v24.22.1), TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **43 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00 e saldo a descontar limitado a 30% no mês seguinte (RN-06).
 
 ## Regras de negócio em destaque
 
@@ -220,16 +220,16 @@ A especificação define **o que** o sistema deve fazer. As decisões técnicas 
 | Decisão | Situação atual |
 |---------|----------------|
 | Linguagem e plataforma | **Node.js** com **TypeScript** |
-| Framework (back-end e front-end) | A definir pela equipe |
-| Banco de dados | **Pendente de confirmação:** README anterior indica MySQL; CHANGELOG de 23/10/2026 registra PostgreSQL com `DECIMAL(12,2)` |
-| Estrutura técnica | CHANGELOG registra arquitetura em camadas (Controllers/Rotas, Services/Casos de Uso e Repositories/Modelagem) e APIs REST |
+| Framework (back-end e front-end) | Módulos nativos (`node:sqlite`, `node:crypto`, `node:test`) sem dependências pesadas |
+| Banco de dados | **SQLite local nativo (`node:sqlite`):** adotado para desenvolvimento acadêmico, com valores monetários em inteiros de centavos (`BigInt`) via classe `Dec` (RN-03) |
+| Estrutura técnica | Arquitetura em camadas (Services/Casos de Uso, Repositories/Modelagem, Segurança e CLI) |
 | Visual das telas | Interface web com prioridade para desktop, conforme a especificação |
-| Testes automatizados | Node.js com TypeScript; framework ainda a definir; abordagem de testes antes do código (TDD) registrada no CHANGELOG |
-| Gerenciador de pacotes, ORM e comandos | A definir pela equipe |
+| Testes automatizados | **Node.js test runner nativo (`node:test`) com TypeScript e `tsx`:** abordagem TDD, com 17 testes automatizados passando na Etapa 1 |
+| Gerenciador de pacotes e comandos | **npm:** scripts configurados para `init-db`, `criar-usuario`, `seed-demo`, `test`, `typecheck` e `build` |
 
-**Obrigatório:** valores monetários devem usar representação decimal exata, sem cálculos financeiros com `number` de ponto flutuante em TypeScript. O tipo e a sintaxe definitivos no banco dependem da confirmação entre MySQL e PostgreSQL. Parâmetros legais devem ficar em tabelas com datas de início e fim de vigência.
+**Obrigatório:** valores monetários devem usar representação decimal exata, sem cálculos financeiros com `number` de ponto flutuante em TypeScript. A classe `Dec` (`src/dec.ts`) garante arredondamento *half-up* por verba (RN-03). Parâmetros legais vivem na tabela `parametros` com datas de início e fim de vigência (RN-01).
 
-> **Instalação e execução:** os comandos serão documentados quando a equipe confirmar o gerenciador de pacotes, framework, ORM e estrutura executável do projeto.
+> **Instalação e execução:** comandos validados e operacionais na pasta `back-end/` via npm e Node.js v24 LTS.
 
 ## Back-end
 
