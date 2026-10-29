@@ -48,16 +48,104 @@ export function calcularFolhaColaborador(
   const comp = db.prepare('SELECT id, mes_ano FROM competencias WHERE id = ?').get(dados.competenciaId) as any;
   const verbasMemoria: ItemMemoriaVerba[] = [];
 
-  // 1. Salário-base
+  // 1. Salário-base e Proporcionalidade de Férias / Admissão (RN-20, RN-49)
   const salarioBaseDec = new Dec(BigInt(colab.salario_base_centavos));
+  let salarioEfetivoDec = salarioBaseDec;
+  let regraSalario = 'Salário contratual integral (RN-20 / RN-30)';
+  let feriasGozadasDec = Dec.zero();
+  let tercoFeriasDec = Dec.zero();
+
+  // Verifica se há férias cadastradas que afetam esta competência (RN-49)
+  const temTabelaFerias = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='ferias'").get();
+  if (temTabelaFerias) {
+    const feriasAprovadas = db.prepare(`
+      SELECT * FROM ferias
+      WHERE colaborador_id = ? AND situacao = 'APROVADA'
+    `).all(dados.colaboradorId) as any[];
+
+    for (const f of feriasAprovadas) {
+      const mesComp = comp.mes_ano; // 'AAAA-MM'
+      const mesInicio = f.data_inicio.slice(0, 7);
+      const mesFim = f.data_fim.slice(0, 7);
+
+      if (mesComp === mesInicio) {
+        // Mês em que as férias iniciam: paga os dias trabalhados antes do início (RN-49)
+        const diaInicio = parseInt(f.data_inicio.slice(8, 10), 10);
+        const diasTrabalhados = diaInicio - 1; // Ex: Início no dia 20 -> 19 dias trabalhados
+        const valorDia = salarioBaseDec.toNumber() / 30;
+        salarioEfetivoDec = Dec.fromMoeda(valorDia * diasTrabalhados);
+        regraSalario = `Salário proporcional aos dias não gozados (${diasTrabalhados} dias trabalhados, RN-49)`;
+
+        // Na competência do início do gozo, as férias (valor e 1/3) são calculadas (RN-49)
+        feriasGozadasDec = feriasGozadasDec.add(new Dec(BigInt(f.valor_ferias_centavos)));
+        tercoFeriasDec = tercoFeriasDec.add(new Dec(BigInt(f.valor_terco_centavos)));
+      } else if (mesComp === mesFim && mesInicio !== mesFim) {
+        // Mês seguinte onde as férias terminam
+        const diaFim = parseInt(f.data_fim.slice(8, 10), 10);
+        const diasTrabalhados = 30 - diaFim; // Ex: fim dia 19 -> 30 - 19 = 11 dias trabalhados
+        const valorDia = salarioBaseDec.toNumber() / 30;
+        salarioEfetivoDec = Dec.fromMoeda(valorDia * diasTrabalhados);
+        regraSalario = `Salário proporcional aos dias não gozados (${diasTrabalhados} dias trabalhados, RN-49)`;
+      }
+    }
+  }
+
+  // Se não houve férias alterando o salário, avalia admissão/desligamento no mês (RN-20)
+  if (salarioEfetivoDec.centavos === salarioBaseDec.centavos) {
+    const admMes = colab.admissao ? colab.admissao.slice(0, 7) : null;
+    const deslMes = colab.desligamento ? colab.desligamento.slice(0, 7) : null;
+
+    if (admMes === comp.mes_ano && deslMes === comp.mes_ano) {
+      const diaAdm = parseInt(colab.admissao.slice(8, 10), 10);
+      const diaDesl = parseInt(colab.desligamento.slice(8, 10), 10);
+      const diasTrabalhados = diaDesl - diaAdm + 1;
+      const valorDia = salarioBaseDec.toNumber() / 30;
+      salarioEfetivoDec = Dec.fromMoeda(valorDia * diasTrabalhados);
+      regraSalario = `Salário proporcional: admissão e desligamento no mês (${diasTrabalhados} dias, RN-20)`;
+    } else if (admMes === comp.mes_ano) {
+      const diaAdm = parseInt(colab.admissao.slice(8, 10), 10);
+      if (diaAdm > 1) {
+        const diasTrabalhados = 30 - diaAdm + 1;
+        const valorDia = salarioBaseDec.toNumber() / 30;
+        salarioEfetivoDec = Dec.fromMoeda(valorDia * diasTrabalhados);
+        regraSalario = `Salário proporcional à admissão no mês (${diasTrabalhados} dias, RN-20)`;
+      }
+    } else if (deslMes === comp.mes_ano) {
+      const diaDesl = parseInt(colab.desligamento.slice(8, 10), 10);
+      const diasTrabalhados = diaDesl;
+      const valorDia = salarioBaseDec.toNumber() / 30;
+      salarioEfetivoDec = Dec.fromMoeda(valorDia * diasTrabalhados);
+      regraSalario = `Salário proporcional ao desligamento no mês (${diasTrabalhados} dias, RN-20)`;
+    }
+  }
+
   verbasMemoria.push({
     tipo: 'SALARIO_BASE',
-    descricao: 'Salário Base Mensal',
+    descricao: salarioEfetivoDec.centavos !== salarioBaseDec.centavos ? 'Salário Proporcional' : 'Salário Base Mensal',
     natureza: 'PROVENTO',
-    valor: salarioBaseDec,
+    valor: salarioEfetivoDec,
     baseCalculo: salarioBaseDec,
-    regraAplicada: 'Salário contratual integral (RN-20 / RN-30)',
+    regraAplicada: regraSalario,
   });
+
+  if (feriasGozadasDec.isPositive()) {
+    verbasMemoria.push({
+      tipo: 'FERIAS_GOZADAS',
+      descricao: 'Férias Gozadas',
+      natureza: 'PROVENTO',
+      valor: feriasGozadasDec,
+      baseCalculo: feriasGozadasDec,
+      regraAplicada: 'Férias gozadas no mês (RN-41, RN-49)',
+    });
+    verbasMemoria.push({
+      tipo: 'TERCO_CONSTITUCIONAL_FERIAS',
+      descricao: '1/3 Constitucional de Férias',
+      natureza: 'PROVENTO',
+      valor: tercoFeriasDec,
+      baseCalculo: feriasGozadasDec,
+      regraAplicada: '1/3 constitucional sobre férias (RN-41, RN-49)',
+    });
+  }
 
   // 2. Busca eventos lançados na competência
   const eventos = db.prepare('SELECT * FROM eventos WHERE colaborador_id = ? AND competencia_id = ?')
@@ -131,8 +219,10 @@ export function calcularFolhaColaborador(
   }
 
   // 4. Base do INSS e Cálculo Progressivo (RN-22)
-  // Base INSS = Salário + HE + DSR + Proventos Tributáveis - Faltas
-  const baseINSS = salarioBaseDec
+  // Base INSS = Salário + Férias Gozadas/1/3 + HE + DSR + Proventos Tributáveis - Faltas
+  const baseINSS = salarioEfetivoDec
+    .add(feriasGozadasDec)
+    .add(tercoFeriasDec)
     .add(horasExtrasDec)
     .add(dsrExtrasDec)
     .add(proventosAvulsosTributaveisDec)
@@ -229,7 +319,9 @@ export function calcularFolhaColaborador(
   }
 
   // 9. Totalização e Regra de Proteção ao Líquido (RN-06)
-  const totalProventos = salarioBaseDec
+  const totalProventos = salarioEfetivoDec
+    .add(feriasGozadasDec)
+    .add(tercoFeriasDec)
     .add(horasExtrasDec)
     .add(dsrExtrasDec)
     .add(proventosAvulsosTributaveisDec)

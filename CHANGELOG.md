@@ -74,6 +74,21 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 
 ---
 
+### [29/10/2026] - Implementação e Validação Automatizada da Etapa 4 (TDD)
+- **Categoria:** Testes automatizados / Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Adição das tabelas `ferias`, `decimo_terceiro`, `documentos_colaborador` e `exames_ocupacionais` no schema SQLite (`src/db.ts`).
+  - Implementação de `src/services/feriasService.ts` com controle de período aquisitivo e concessivo, fracionamento em até 3 períodos (RN-42), abono pecuniário isento de INSS/IRRF (RN-43), redução por faltas (RN-44), impedimento de início em véspera de feriado/descanso e data limite de pagamento (RN-47), cálculo de INSS e IRRF sobre férias gozadas + 1/3 (Exemplo J) e reflexo de médias de horas extras (RN-48, Exemplo K), além de exigência de justificativa para concessivo vencido (Tabela 7.2).
+  - Atualização de `src/services/folhaService.ts` para tratar férias que cruzam dois meses (RN-49), com remuneração proporcional aos dias não gozados e lançamento das férias e 1/3 na competência de início de gozo, além de proporcionalidade de admissão/desligamento (RN-20).
+  - Implementação de `src/services/decimoTerceiroService.ts` calculando 1ª parcela (50% sem descontos até 30/11) e 2ª parcela (integral deduzindo 1ª parcela e calculando INSS/IRRF exclusivos na fonte) conforme RN-46, proporcionalidade de meses com >= 15 dias trabalhados e reflexo de variáveis (RN-48).
+  - Implementação de `src/services/documentosAlertasService.ts` com alertas centralizados de documentos a vencer em 30 dias (RN-52), exames ocupacionais periódicos (RN-53), prazo limite de pagamento da folha (RN-58), férias com concessivo a vencer em 60 dias (RN-45) e sinalização LGPD de dados fora do prazo de guarda de 5 anos (RN-56).
+  - Implementação de `src/services/relatoriosService.ts` com geração e exportação de Contracheque em PDF (RN-55, US-09), Relatório da Folha do Mês (US-08), Relatório de Férias, Horas Extras, Colaboradores Ativos, Documentos/Exames a Vencer, Dados de Pagamento (RN-57) e Logs de Auditoria (restrito à Diretoria e Admin - RNF-03), suportando exportação em formato nativo Microsoft Excel (XML Spreadsheet 2003 e CSV UTF-8) e documentos PDF-1.4 padronizados.
+  - Criação da suíte `tests/etapa4.test.ts` com 24 testes automatizados cobrindo integralmente todos os cenários Gherkin e numéricos da Etapa 4. A suíte completa do repositório acumula **67 testes automatizados aprovados com 100% de sucesso**.
+- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 4 da especificação v1.3 (*"Cenários de férias passam; relatórios exportam em PDF e Excel; todos os testes passam"*).
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
+
+---
+
 ### [27/10/2026] - Implementação e Validação Automatizada da Etapa 3 (TDD)
 - **Categoria:** Testes automatizados / Estrutura técnica
 - **O que foi adicionado/alterado:**

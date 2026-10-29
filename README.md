@@ -88,9 +88,9 @@ As etapas abaixo representam o plano da especificação oficial v1.3. O status r
 | 1 | Login, perfis, filiais, colaboradores, parâmetros legais e feriados | **Concluída** | 17 testes automatizados aprovados em [`back-end/tests/etapa1.test.ts`](./back-end/tests/etapa1.test.ts) |
 | 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | **Concluída** | 16 testes automatizados aprovados em [`back-end/tests/etapa2.test.ts`](./back-end/tests/etapa2.test.ts) |
 | 3 | Cálculo da folha, memória de cálculo e fechamento | **Concluída** | 10 testes automatizados aprovados em [`back-end/tests/etapa3.test.ts`](./back-end/tests/etapa3.test.ts) |
-| 4 | Férias, 13º, documentos, contracheque e relatórios | **Próxima etapa** | Em planejamento |
+| 4 | Férias, 13º, documentos, contracheque e relatórios | **Concluída** | 24 testes automatizados aprovados em [`back-end/tests/etapa4.test.ts`](./back-end/tests/etapa4.test.ts) |
 
-As Etapas 1, 2 e 3 foram implementadas e validadas em 27/10/2026 utilizando Node.js LTS (v24.22.1), TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **43 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00 e saldo a descontar limitado a 30% no mês seguinte (RN-06).
+As Etapas 1, 2, 3 e 4 foram implementadas e validadas utilizando Node.js LTS (v24.22.1), TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **67 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00, saldo a descontar limitado a 30% no mês seguinte (RN-06), controle de férias com 1/3, faltas, abono sem incidências, fracionamento, média de variáveis (RN-48), férias que cruzam meses (RN-49), 13º salário em duas parcelas e proporcional (RN-46), alertas de documentos (RN-52), exames ocupacionais (RN-53), concessivo de férias (RN-45), prazo de pagamento (RN-58), retenção LGPD (RN-56), contracheque em PDF e relatórios completos exportáveis em Excel e PDF.
 
 ## Regras de negócio em destaque
 

@@ -168,6 +168,69 @@ CREATE TABLE IF NOT EXISTS saldos_a_descontar (
   criado_em TEXT NOT NULL
 );
 
+-- Férias e Controle de Períodos (RN-40 a RN-49, Etapa 4)
+CREATE TABLE IF NOT EXISTS ferias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  periodo_aquisitivo_inicio TEXT NOT NULL,
+  periodo_aquisitivo_fim TEXT NOT NULL,
+  periodo_concessivo_fim TEXT NOT NULL,
+  dias_direito INTEGER NOT NULL DEFAULT 30,
+  dias_gozo INTEGER NOT NULL,
+  dias_abono INTEGER NOT NULL DEFAULT 0,
+  data_inicio TEXT NOT NULL,
+  data_fim TEXT NOT NULL,
+  data_limite_pagamento TEXT NOT NULL,
+  valor_ferias_centavos INTEGER NOT NULL,
+  valor_terco_centavos INTEGER NOT NULL,
+  valor_abono_centavos INTEGER NOT NULL DEFAULT 0,
+  valor_terco_abono_centavos INTEGER NOT NULL DEFAULT 0,
+  inss_centavos INTEGER NOT NULL DEFAULT 0,
+  irrf_centavos INTEGER NOT NULL DEFAULT 0,
+  liquido_centavos INTEGER NOT NULL,
+  situacao TEXT NOT NULL DEFAULT 'PENDENTE' CHECK(situacao IN ('PENDENTE', 'APROVADA', 'RECUSADA')),
+  justificativa TEXT NULL,
+  criado_em TEXT NOT NULL
+);
+
+-- 13º Salário (RN-46, RN-48, Etapa 4)
+CREATE TABLE IF NOT EXISTS decimo_terceiro (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  ano INTEGER NOT NULL,
+  meses_trabalhados INTEGER NOT NULL,
+  parcela INTEGER NOT NULL CHECK(parcela IN (1, 2)),
+  valor_bruto_centavos INTEGER NOT NULL,
+  inss_centavos INTEGER NOT NULL DEFAULT 0,
+  irrf_centavos INTEGER NOT NULL DEFAULT 0,
+  desconto_primeira_parcela_centavos INTEGER NOT NULL DEFAULT 0,
+  liquido_centavos INTEGER NOT NULL,
+  calculado_em TEXT NOT NULL,
+  UNIQUE(colaborador_id, ano, parcela)
+);
+
+-- Documentos e Anexos com Validade (RN-52, Etapa 4)
+CREATE TABLE IF NOT EXISTS documentos_colaborador (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  tipo TEXT NOT NULL,
+  nome_arquivo TEXT NOT NULL,
+  data_validade TEXT NULL,
+  anexado_por_usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  criado_em TEXT NOT NULL
+);
+
+-- Exames Ocupacionais Periódicos (RN-53, Etapa 4)
+CREATE TABLE IF NOT EXISTS exames_ocupacionais (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
+  tipo TEXT NOT NULL,
+  data_ultimo_exame TEXT NOT NULL,
+  periodicidade_meses INTEGER NOT NULL DEFAULT 12,
+  data_proximo_vencimento TEXT NOT NULL,
+  criado_em TEXT NOT NULL
+);
+
 -- Log de Auditoria Imutável (RNF-03)
 CREATE TABLE IF NOT EXISTS logs_auditoria (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
