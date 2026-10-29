@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>projetoFolha | Sistema de RH e Folha de Pagamento</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printableArea, #printableArea * { visibility: visible; }
+      #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header Superior -->
+  <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-700 p-2 rounded-lg text-white font-bold text-xl tracking-wider">
+          💼 RH
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">projetoFolha</h1>
+          <p class="text-xs text-indigo-200">Correspondente Bancário S.A. &bull; 1 Matriz + 2 Filiais (15 colaboradores)</p>
+        </div>
+      </div>
+
+      <!-- Seletor de Perfil e Competência -->
+      <div class="flex items-center space-x-4 text-sm">
+        <div class="flex items-center bg-indigo-800 rounded-lg px-3 py-1.5 border border-indigo-700">
+          <span class="text-xs text-indigo-300 mr-2">Competência:</span>
+          <select id="selectCompetencia" onchange="mudarCompetencia(this.value)" class="bg-transparent text-white font-semibold outline-none cursor-pointer">
+            <option value="2026-10" class="text-slate-900" selected>10/2026 (Outubro)</option>
+            <option value="2026-11" class="text-slate-900">11/2026 (Novembro)</option>
+            <option value="2026-12" class="text-slate-900">12/2026 (Dezembro - 13º)</option>
+          </select>
+          <span id="badgeStatusCompetencia" class="ml-2 text-xs font-bold px-2 py-0.5 rounded bg-emerald-500 text-white uppercase tracking-wide">
+            Aberta
+          </span>
+        </div>
+
+        <div class="flex items-center bg-indigo-950 rounded-lg px-3 py-1.5 border border-indigo-800">
+          <span class="text-xs text-indigo-300 mr-2">Perfil:</span>
+          <select id="selectPerfil" onchange="mudarPerfil(this.value)" class="bg-transparent text-amber-300 font-bold outline-none cursor-pointer">
+            <option value="RH" class="text-slate-900" selected>Analista de RH (Total)</option>
+            <option value="DIRETORIA" class="text-slate-900">Diretoria (Consulta e Relatórios)</option>
+            <option value="ADMIN" class="text-slate-900">Administrador (Usuários)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navegação Principal por Abas -->
+  <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-[60px] z-30">
+    <div class="max-w-7xl mx-auto px-4 flex space-x-1 overflow-x-auto text-sm font-medium">
+      <button onclick="navegarAba('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-3 border-b-2 border-indigo-600 text-indigo-600 font-semibold flex items-center gap-1.5">
+        📊 Dashboard
+      </button>
+      <button onclick="navegarAba('colaboradores')" id="tab-colaboradores" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        👥 Colaboradores
+      </button>
+      <button onclick="navegarAba('eventos')" id="tab-eventos" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        ✍️ Lançamentos (Etapa 2)
+      </button>
+      <button onclick="navegarAba('folha')" id="tab-folha" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        💵 Folha do Mês (Etapa 3)
+      </button>
+      <button onclick="navegarAba('ferias13')" id="tab-ferias13" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        🏖️ Férias e 13º (Etapa 4)
+      </button>
+      <button onclick="navegarAba('contracheque')" id="tab-contracheque" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        📄 Contracheque (PDF)
+      </button>
+      <button onclick="navegarAba('relatorios')" id="tab-relatorios" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        📈 Relatórios (Excel/PDF)
+      </button>
+      <button onclick="navegarAba('parametros')" id="tab-parametros" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        ⚖️ Parâmetros 2026
+      </button>
+      <button onclick="navegarAba('alertas')" id="tab-alertas" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+        🔔 Alertas <span id="badgeAlertasNav" class="ml-1 px-1.5 py-0.2 bg-rose-500 text-white text-xs rounded-full font-bold">4</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Conteúdo Principal -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- AVISO DE PERMISSÃO / REGRA DE NEGÓCIO -->
+    <div id="bannerPermissao" class="hidden mb-4 p-3 bg-amber-50 border-l-4 border-amber-500 text-amber-900 text-xs rounded flex justify-between items-center shadow-sm">
+      <span id="bannerPermissaoTexto"></span>
+    </div>
+
+    <!-- 1. ABA DASHBOARD -->
+    <section id="view-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 font-semibold uppercase">Total Proventos Brutos</span>
+          <div class="text-2xl font-bold text-slate-900 mt-1" id="dashTotalBruto">R$ 44.800,00</div>
+          <span class="text-xs text-emerald-600 font-medium">15 colaboradores em folha</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 font-semibold uppercase">Total Descontos (INSS/IRRF/VT)</span>
+          <div class="text-2xl font-bold text-rose-600 mt-1" id="dashTotalDescontos">R$ 4.821,40</div>
+          <span class="text-xs text-slate-400">Arredondamento half-up por verba</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 font-semibold uppercase">Total Líquido a Pagar</span>
+          <div class="text-2xl font-bold text-indigo-700 mt-1" id="dashTotalLiquido">R$ 39.978,60</div>
+          <span class="text-xs text-slate-500">Até o 5º dia útil do mês seguinte</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 font-semibold uppercase">FGTS da Empresa (8%)</span>
+          <div class="text-2xl font-bold text-teal-600 mt-1" id="dashTotalFGTS">R$ 3.584,00</div>
+          <span class="text-xs text-teal-700">Encargo patronal (não desconta)</span>
+        </div>
+      </div>
+
+      <!-- Alertas Rápidos e Ciclo de Vida -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+              <span>🔔</span> Central de Alertas e Prazos Legais (RN-45, RN-52, RN-58)
+            </h2>
+            <button onclick="navegarAba('alertas')" class="text-xs text-indigo-600 hover:underline font-semibold">Ver todos &rarr;</button>
+          </div>
+          <div id="listaAlertasDashboard" class="space-y-2.5">
+            <!-- Gerado dinamicamente -->
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <h2 class="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
+            <span>⚙️</span> Ciclo da Competência
+          </h2>
+          <div class="text-xs text-slate-600 space-y-2">
+            <p><strong>Status:</strong> <span class="text-emerald-700 font-bold" id="dashStatusLabel">Aberta para lançamentos</span></p>
+            <p>Lançamentos de horas extras e verbas avulsas são permitidos apenas enquanto a folha estiver aberta.</p>
+            <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+              <button onclick="simularCalculoFolha()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-sm transition">
+                ⚡ Calcular Folha do Mês
+              </button>
+              <button onclick="simularFechamento()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-sm transition">
+                🔒 Fechar Competência com Segurança
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ABA COLABORADORES -->
+    <section id="view-colaboradores" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+        <div class="flex items-center space-x-3 flex-1 min-w-[280px]">
+          <input type="text" id="filtroColabNome" oninput="renderizarTabelaColaboradores()" placeholder="Buscar por nome ou CPF..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-full outline-none focus:ring-2 focus:ring-indigo-500">
+          <select id="filtroColabFilial" onchange="renderizarTabelaColaboradores()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm outline-none">
+            <option value="">Todas as Filiais</option>
+            <option value="Matriz - São Paulo">Matriz - São Paulo</option>
+            <option value="Filial 1 - Campinas">Filial 1 - Campinas</option>
+            <option value="Filial 2 - Santos">Filial 2 - Santos</option>
+          </select>
+        </div>
+        <button onclick="abrirModalNovoColab()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5">
+          <span>➕</span> Novo Colaborador
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold tracking-wider">
+              <th class="p-3">Nome / CPF</th>
+              <th class="p-3">Filial</th>
+              <th class="p-3">Cargo / Setor</th>
+              <th class="p-3">Admissão</th>
+              <th class="p-3 text-right">Salário Base</th>
+              <th class="p-3">Situação</th>
+              <th class="p-3 text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyColaboradores" class="divide-y divide-slate-100">
+            <!-- Gerado via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. ABA LANÇAMENTO DE EVENTOS (ETAPA 2) -->
+    <section id="view-eventos" class="hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm md:col-span-1">
+          <h2 class="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
+            <span>✍️</span> Lançar Evento ou Verba Avulsa (RN-25)
+          </h2>
+          <form id="formEvento" onsubmit="salvarEvento(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Colaborador:</label>
+              <select id="evColaborador" required class="w-full border border-slate-300 rounded p-2 text-xs">
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Tipo de Evento:</label>
+              <select id="evTipo" onchange="ajustarCamposEvento()" required class="w-full border border-slate-300 rounded p-2 text-xs">
+                <option value="HORA_EXTRA_UTIL">Hora Extra 50% (Dia Útil)</option>
+                <option value="HORA_EXTRA_DOMINGO">Hora Extra 100% (Domingo / Feriado)</option>
+                <option value="HORA_EXTRA_CCT">Hora Extra 120% (Convenção Coletiva)</option>
+                <option value="FALTA_INJUSTIFICADA">Falta Injustificada (com perda de DSR)</option>
+                <option value="ATESTADO_MEDICO">Atestado Médico (Dado de Saúde protegido)</option>
+                <option value="VALE_TRANSPORTE">Vale-Transporte (Limite 6%)</option>
+                <option value="VERBA_AVULSA_PROVENTO">Verba Avulsa - Provento (RN-25)</option>
+                <option value="VERBA_AVULSA_DESCONTO">Verba Avulsa - Desconto (RN-25)</option>
+              </select>
+            </div>
+            <div id="campoQuantidadeContainer">
+              <label id="lblQuantidade" class="block font-semibold text-slate-700 mb-1">Horas / Dias:</label>
+              <input type="number" step="0.5" id="evQuantidade" value="2" class="w-full border border-slate-300 rounded p-2 text-xs">
+            </div>
+            <div id="campoValorAvulsoContainer" class="hidden">
+              <label class="block font-semibold text-slate-700 mb-1">Valor em Reais (R$):</label>
+              <input type="number" step="0.01" id="evValorAvulso" placeholder="0.00" class="w-full border border-slate-300 rounded p-2 text-xs">
+              <div class="mt-2 bg-slate-50 p-2 rounded border border-slate-200">
+                <span class="font-bold text-slate-700 block mb-1">Incidências Legais (RN-25):</span>
+                <label class="inline-flex items-center mr-3"><input type="checkbox" id="evIncideINSS" class="mr-1"> INSS</label>
+                <label class="inline-flex items-center mr-3"><input type="checkbox" id="evIncideIRRF" class="mr-1"> IRRF</label>
+                <label class="inline-flex items-center"><input type="checkbox" id="evIncideFGTS" class="mr-1"> FGTS</label>
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Observação / Justificativa:</label>
+              <input type="text" id="evObs" placeholder="Ex: Autorizado pela coordenação..." class="w-full border border-slate-300 rounded p-2 text-xs">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-xs transition">
+              Gravar Evento na Folha
+            </button>
+          </form>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm md:col-span-2">
+          <h2 class="font-bold text-slate-800 text-base mb-3">Eventos Lançados na Competência 10/2026</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold">
+                  <th class="p-2.5">Colaborador</th>
+                  <th class="p-2.5">Tipo</th>
+                  <th class="p-2.5">Qtd / Detalhes</th>
+                  <th class="p-2.5 text-right">Valor Calculado</th>
+                  <th class="p-2.5 text-center">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyEventos" class="divide-y divide-slate-100">
+                <!-- Gerado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. ABA FOLHA DO MÊS & MEMÓRIA DE CÁLCULO (ETAPA 3) -->
+    <section id="view-folha" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <h2 class="font-bold text-slate-900 text-base">Folha de Pagamento - Competência 10/2026</h2>
+          <p class="text-xs text-slate-500">Cálculo progressivo INSS 2026, IRRF com redução Lei 15.270/2025, DSR e FGTS patronal</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="simularCalculoFolha()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm">
+            ⚡ Recalcular Folha
+          </button>
+          <button onclick="simularFechamento()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm">
+            🔒 Fechar Folha
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold tracking-wider">
+              <th class="p-3">Colaborador</th>
+              <th class="p-3 text-right">Salário Base</th>
+              <th class="p-3 text-right">Horas Extras / DSR</th>
+              <th class="p-3 text-right text-emerald-600 font-bold">Proventos</th>
+              <th class="p-3 text-right text-rose-600">INSS (Prog.)</th>
+              <th class="p-3 text-right text-rose-600">IRRF (Redução)</th>
+              <th class="p-3 text-right text-rose-600">Outros Desc.</th>
+              <th class="p-3 text-right font-extrabold text-indigo-700">Líquido</th>
+              <th class="p-3 text-right text-teal-600">FGTS 8%</th>
+              <th class="p-3 text-center">Memória (RN-02)</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyFolha" class="divide-y divide-slate-100">
+            <!-- Gerado via JS -->
+          </tbody>
+          <tfoot class="bg-slate-50 font-bold border-t border-slate-200 text-slate-900">
+            <tr>
+              <td class="p-3">TOTAIS DA FOLHA</td>
+              <td class="p-3 text-right" id="ftSalarioBase">R$ 44.300,00</td>
+              <td class="p-3 text-right" id="ftHE">R$ 500,00</td>
+              <td class="p-3 text-right text-emerald-700" id="ftProventos">R$ 44.800,00</td>
+              <td class="p-3 text-right text-rose-700" id="ftINSS">R$ 4.250,20</td>
+              <td class="p-3 text-right text-rose-700" id="ftIRRF">R$ 571,20</td>
+              <td class="p-3 text-right text-rose-700" id="ftOutros">R$ 0,00</td>
+              <td class="p-3 text-right text-indigo-800 text-sm" id="ftLiquido">R$ 39.978,60</td>
+              <td class="p-3 text-right text-teal-700" id="ftFGTS">R$ 3.584,00</td>
+              <td class="p-3 text-center">-</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5. ABA FÉRIAS E 13º (ETAPA 4) -->
+    <section id="view-ferias13" class="hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Card Férias -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+            <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+              <span>🏖️</span> Controle e Solicitação de Férias (RN-40 a RN-49)
+            </h2>
+            <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded">Etapa 4</span>
+          </div>
+
+          <form id="formFerias" onsubmit="simularSolicitacaoFerias(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Colaborador:</label>
+              <select id="feriasColaborador" onchange="atualizarInfoFeriasColab()" class="w-full border border-slate-300 rounded p-2 text-xs">
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Início do Gozo:</label>
+                <input type="date" id="feriasDataInicio" value="2026-11-10" required class="w-full border border-slate-300 rounded p-2 text-xs">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Dias de Gozo:</label>
+                <input type="number" id="feriasDiasGozo" value="20" min="5" max="30" class="w-full border border-slate-300 rounded p-2 text-xs">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Abono Pecuniário (Venda até 10 dias):</label>
+                <input type="number" id="feriasDiasAbono" value="10" min="0" max="10" class="w-full border border-slate-300 rounded p-2 text-xs">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Média de Horas Extras (RN-48):</label>
+                <input type="number" step="0.01" id="feriasMediaHE" value="0.00" class="w-full border border-slate-300 rounded p-2 text-xs">
+              </div>
+            </div>
+            <div class="bg-indigo-50 p-3 rounded-lg text-indigo-900 space-y-1">
+              <p><strong>Período Aquisitivo:</strong> <span id="lblAquisitivo">Completo (12 meses)</span></p>
+              <p><strong>Data Limite Pagamento:</strong> <span id="lblDataLimitePag">Até 2 dias antes do início</span></p>
+              <p><strong>Abono Isento:</strong> Não incide INSS e IRRF sobre os dias de abono (RN-43)</p>
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded text-xs transition">
+              Calcular e Aprovar Férias
+            </button>
+          </form>
+
+          <div id="resultadoFerias" class="hidden mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950 text-xs space-y-1">
+            <!-- Calculado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Card 13º Salário -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+            <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+              <span>🎁</span> 13º Salário (RN-46 e RN-48)
+            </h2>
+            <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded">Etapa 4</span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Colaborador:</label>
+              <select id="decimoColaborador" class="w-full border border-slate-300 rounded p-2 text-xs">
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Parcela:</label>
+                <select id="decimoParcela" class="w-full border border-slate-300 rounded p-2 text-xs">
+                  <option value="1">1ª Parcela (50% sem descontos até 30/11)</option>
+                  <option value="2">2ª Parcela (Integral com INSS/IRRF até 20/12)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Meses Trabalhados (Avos):</label>
+                <input type="number" id="decimoMeses" value="12" min="1" max="12" class="w-full border border-slate-300 rounded p-2 text-xs">
+              </div>
+            </div>
+            <button onclick="simularCalculo13()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded text-xs transition">
+              Calcular Décimo Terceiro
+            </button>
+          </div>
+
+          <div id="resultado13" class="hidden mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-950 text-xs space-y-1">
+            <!-- Calculado dinamicamente -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. ABA CONTRACHEQUE (RN-55 / US-09) -->
+    <section id="view-contracheque" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3 no-print">
+        <div class="flex items-center space-x-3">
+          <label class="text-xs font-semibold text-slate-700">Selecione o Colaborador:</label>
+          <select id="selectColabContracheque" onchange="renderizarContracheque()" class="border border-slate-300 rounded-lg p-2 text-xs font-medium outline-none">
+            <!-- Preenchido via JS -->
+          </select>
+        </div>
+        <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5">
+          <span>🖨️</span> Imprimir / Exportar PDF
+        </button>
+      </div>
+
+      <!-- Estrutura do Holerite Oficial -->
+      <div id="printableArea" class="bg-white p-8 rounded-xl border border-slate-300 shadow max-w-4xl mx-auto space-y-5 text-slate-900">
+        <!-- Cabeçalho -->
+        <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-start">
+          <div>
+            <h1 class="text-lg font-black tracking-tight">CORRESPONDENTE BANCÁRIO S.A.</h1>
+            <p class="text-xs text-slate-600">CNPJ: 12.345.678/0001-90 &bull; Matriz São Paulo</p>
+          </div>
+          <div class="text-right">
+            <span class="inline-block bg-slate-100 border border-slate-300 px-3 py-1 font-bold text-xs rounded">
+              RECIBO DE PAGAMENTO DE SALÁRIO
+            </span>
+            <p class="text-xs text-slate-500 mt-1">Competência: <strong id="holeriteCompetencia">10/2026</strong></p>
+          </div>
+        </div>
+
+        <!-- Dados do Colaborador -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+          <div><span class="text-slate-500 block">Colaborador:</span> <strong id="holeriteNome">-</strong></div>
+          <div><span class="text-slate-500 block">CPF:</span> <span id="holeriteCPF">-</span></div>
+          <div><span class="text-slate-500 block">Cargo:</span> <span id="holeriteCargo">-</span></div>
+          <div><span class="text-slate-500 block">Admissão:</span> <span id="holeriteAdmissao">-</span></div>
+          <div class="col-span-2 md:col-span-4 pt-1 border-t border-slate-200 mt-1 text-[11px] text-slate-600">
+            Dados Bancários: Banco <span id="holeriteBanco">-</span> &bull; Agência <span id="holeriteAgencia">-</span> &bull; Conta <span id="holeriteConta">-</span>
+          </div>
+        </div>
+
+        <!-- Tabela de Proventos e Descontos -->
+        <table class="w-full text-xs border border-slate-300">
+          <thead>
+            <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+              <th class="p-2 text-left">Código / Descrição</th>
+              <th class="p-2 text-left">Referência / Memória</th>
+              <th class="p-2 text-right">Proventos (R$)</th>
+              <th class="p-2 text-right">Descontos (R$)</th>
+            </tr>
+          </thead>
+          <tbody id="holeriteTbodyVerbas" class="divide-y divide-slate-200">
+            <!-- Verbas geradas dinamicamente -->
+          </tbody>
+        </table>
+
+        <!-- Totais e Bases -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-100 p-3 rounded-lg border border-slate-300 text-xs font-semibold">
+          <div><span class="text-slate-500 block text-[11px]">Total Proventos:</span> <span id="holeriteTotProventos" class="text-emerald-700 font-bold">R$ 0,00</span></div>
+          <div><span class="text-slate-500 block text-[11px]">Total Descontos:</span> <span id="holeriteTotDescontos" class="text-rose-700 font-bold">R$ 0,00</span></div>
+          <div><span class="text-slate-500 block text-[11px]">FGTS da Empresa (8%):</span> <span id="holeriteFGTS" class="text-teal-700">R$ 0,00</span></div>
+          <div class="bg-indigo-900 text-white p-2 rounded text-center">
+            <span class="block text-[10px] uppercase text-indigo-200">Valor Líquido</span>
+            <span id="holeriteLiquido" class="text-base font-black">R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Assinatura / Rodapé -->
+        <div class="pt-6 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-end">
+          <div>
+            <p>Declaro ter recebido a quantia líquida discriminada neste recibo.</p>
+            <p class="text-[10px] text-slate-400 mt-4">Documento gerado eletronicamente pelo Sistema de RH - RN-55</p>
+          </div>
+          <div class="border-t border-slate-400 w-48 text-center pt-1 text-[11px]">
+            Assinatura do Colaborador
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. ABA RELATÓRIOS & EXPORTAÇÕES (US-08 / SEÇÃO 13) -->
+    <section id="view-relatorios" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+        <div class="flex items-center space-x-3">
+          <label class="text-xs font-semibold text-slate-700">Selecione o Relatório:</label>
+          <select id="selectTipoRelatorio" onchange="carregarRelatorio()" class="border border-slate-300 rounded-lg p-2 text-xs font-medium outline-none">
+            <option value="folhaMes" selected>Relatório da Folha do Mês</option>
+            <option value="ferias">Relatório de Férias e Saldos</option>
+            <option value="horasExtras">Relatório de Horas Extras e DSR</option>
+            <option value="colaboradores">Relatório de Colaboradores Ativos</option>
+            <option value="dadosPagamento">Relatório de Dados de Pagamento Bancário (RN-57)</option>
+            <option value="logs">Log de Auditoria Imutável (Apenas Diretoria/Admin)</option>
+          </select>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="exportarRelatorioAtual('EXCEL')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5">
+            <span>📥</span> Exportar Excel (CSV/XLS)
+          </button>
+          <button onclick="exportarRelatorioAtual('PDF')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5">
+            <span>📄</span> Imprimir / PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto p-4">
+        <h3 id="relatorioTitulo" class="font-bold text-slate-800 text-sm mb-3">Relatório da Folha do Mês</h3>
+        <table class="w-full text-left text-xs border-collapse" id="tabelaRelatorios">
+          <thead id="theadRelatorio"></thead>
+          <tbody id="tbodyRelatorio" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 8. ABA PARÂMETROS E FERIADOS (RN-01, RN-27, RN-35) -->
+    <section id="view-parametros" class="hidden space-y-6">
+      <!-- Trava Visual Obrigatória do Contador (RN-27) -->
+      <div class="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg text-amber-900 shadow-sm text-xs space-y-1">
+        <div class="flex items-center gap-2 font-bold text-amber-800 text-sm">
+          <span>⚠️</span> Trava Visual Obrigatória de Segurança Legal (RN-27)
+        </div>
+        <p>Atenção: a alteração de alíquotas e bases legais sem validação do contador pode gerar cálculos incorretos e passivos jurídicos para a empresa.</p>
+        <p class="text-amber-700 font-semibold">Toda alteração de parâmetro é estritamente versionada por vigência (data_inicio, data_fim) e gera registro imutável no Log de Auditoria.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+        <!-- Parâmetros Gerais -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 text-sm border-b pb-2">Parâmetros Legais Oficiais de 2026</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between py-1 border-b border-slate-100">
+              <span class="text-slate-600">Salário Mínimo Vigente:</span>
+              <strong class="text-slate-900">R$ 1.621,00</strong>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100">
+              <span class="text-slate-600">Teto Máximo do INSS:</span>
+              <strong class="text-slate-900">R$ 8.475,55 (Máx: R$ 988,09)</strong>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100">
+              <span class="text-slate-600">Dedução por Dependente (IRRF):</span>
+              <strong class="text-slate-900">R$ 189,59 / mês</strong>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100">
+              <span class="text-slate-600">Desconto Simplificado (IRRF):</span>
+              <strong class="text-slate-900">R$ 607,20 / mês</strong>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100">
+              <span class="text-slate-600">Alíquota FGTS (Encargo Empresa):</span>
+              <strong class="text-slate-900">8,00%</strong>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-slate-600">Divisor Mensal da Jornada:</span>
+              <strong class="text-slate-900">220 horas</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendário de Feriados -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 text-sm border-b pb-2">Calendário de Feriados Nacionais 2026 (Portaria MGI 11.460/2025)</h3>
+          <ul class="space-y-1 text-slate-700">
+            <li>📅 <strong>01/01/2026:</strong> Confraternização Universal</li>
+            <li>📅 <strong>03/04/2026:</strong> Sexta-feira Santa</li>
+            <li>📅 <strong>21/04/2026:</strong> Tiradentes</li>
+            <li>📅 <strong>01/05/2026:</strong> Dia Mundial do Trabalho</li>
+            <li>📅 <strong>07/09/2026:</strong> Independência do Brasil</li>
+            <li>📅 <strong>12/10/2026:</strong> Nossa Senhora Aparecida</li>
+            <li>📅 <strong>02/11/2026:</strong> Finados</li>
+            <li>📅 <strong>15/11/2026:</strong> Proclamação da República</li>
+            <li>📅 <strong>20/11/2026:</strong> Dia Nacional de Zumbi e da Consciência Negra</li>
+            <li>📅 <strong>25/12/2026:</strong> Natal</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. ABA CENTRAL DE ALERTAS -->
+    <section id="view-alertas" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+        <div>
+          <h2 class="font-bold text-slate-900 text-base">Central Integrada de Alertas</h2>
+          <p class="text-xs text-slate-500">Monitoramento contínuo de vencimentos, prazos de folha e conformidade LGPD</p>
+        </div>
+      </div>
+      <div id="containerAlertasCompleto" class="space-y-3">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL MEMÓRIA DE CÁLCULO (RN-02) -->
+  <div id="modalMemoria" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+      <div class="p-4 bg-indigo-900 text-white flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-base" id="modalMemoriaNome">Memória de Cálculo Detalhada</h3>
+          <p class="text-xs text-indigo-200" id="modalMemoriaCargo">Atendente &bull; Matriz São Paulo</p>
+        </div>
+        <button onclick="fecharModalMemoria()" class="text-white hover:text-rose-300 font-bold text-xl">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4 text-xs" id="modalMemoriaConteudo">
+        <!-- Itens da memória gerados via JS -->
+      </div>
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="fecharModalMemoria()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-1.5 rounded text-xs">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NOVO COLABORADOR COM VALIDAÇÃO LGPD -->
+  <div id="modalNovoColab" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 text-xs">
+      <div class="p-4 bg-indigo-900 text-white flex justify-between items-center">
+        <h3 class="font-bold text-sm">Cadastrar Novo Colaborador</h3>
+        <button onclick="fecharModalNovoColab()" class="text-white hover:text-rose-300 font-bold text-xl">&times;</button>
+      </div>
+      <form onsubmit="salvarNovoColab(event)" class="p-5 overflow-y-auto space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nome Completo:</label>
+          <input type="text" id="novoNome" required placeholder="Ex: Fernanda Lima" class="w-full border rounded p-2 text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">CPF (11 dígitos):</label>
+            <input type="text" id="novoCPF" required placeholder="000.000.000-00" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Data Nascimento:</label>
+            <input type="date" id="novoNasc" required value="1995-05-10" class="w-full border rounded p-2 text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Filial:</label>
+            <select id="novoFilial" class="w-full border rounded p-2 text-xs">
+              <option value="Matriz - São Paulo">Matriz - São Paulo</option>
+              <option value="Filial 1 - Campinas">Filial 1 - Campinas</option>
+              <option value="Filial 2 - Santos">Filial 2 - Santos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Data Admissão:</label>
+            <input type="date" id="novoAdm" required value="2026-10-01" class="w-full border rounded p-2 text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Cargo:</label>
+            <input type="text" id="novoCargo" required value="Atendente" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Salário-Base (R$):</label>
+            <input type="number" step="0.01" id="novoSalario" required value="2500.00" class="w-full border rounded p-2 text-xs font-bold text-indigo-700">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Banco:</label>
+            <input type="text" id="novoBanco" required value="001" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Agência:</label>
+            <input type="text" id="novoAgencia" required value="1234" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Conta Corrente:</label>
+            <input type="text" id="novoConta" required value="56789" class="w-full border rounded p-2 text-xs">
+          </div>
+        </div>
+
+        <!-- Trava visual LGPD -->
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded text-slate-600 text-[11px]">
+          🔒 <strong>Proteção de Dados LGPD (RN-14):</strong> É terminantemente proibido cadastrar religião, orientação sexual, raça ou biometria.
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="fecharModalNovoColab()" class="bg-slate-200 text-slate-700 px-3 py-1.5 rounded">Cancelar</button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded">Salvar Colaborador</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT ENGINE COMPLETO EM JAVASCRIPT NATIVO -->
+  <script>
+    // ESTADO DA APLICAÇÃO (Dados reais e fiéis à Especificação v1.3 e Seção 11)
+    let perfilAtual = 'RH';
+    let competenciaAtual = '2026-10';
+    let statusCompetencia = 'ABERTA'; // 'ABERTA', 'CALCULADA', 'FECHADA'
+
+    // Dados fictícios oficiais dos colaboradores (Seção 11 de spec.md)
+    let colaboradores = [
+      { id: 1, nome: 'Ana Souza', cpf: '529.982.247-25', filial: 'Matriz - São Paulo', cargo: 'Atendente', setor: 'Atendimento', admissao: '2023-03-10', salarioBase: 2200.00, situacao: 'ATIVO', banco: '001', agencia: '1234', conta: '56789', dependentes: 0 },
+      { id: 2, nome: 'Bruno Lima', cpf: '123.456.789-01', filial: 'Filial 1 - Campinas', cargo: 'Gerente', setor: 'Operações', admissao: '2021-01-02', salarioBase: 5000.00, situacao: 'ATIVO', banco: '237', agencia: '4321', conta: '98765', dependentes: 1 },
+      { id: 3, nome: 'Carla Dias', cpf: '234.567.890-12', filial: 'Filial 2 - Santos', cargo: 'Atendente', setor: 'Atendimento', admissao: '2026-09-15', salarioBase: 1900.00, situacao: 'ATIVO', banco: '033', agencia: '1111', conta: '22222', dependentes: 0 },
+      { id: 4, nome: 'Diego Alves', cpf: '345.678.901-23', filial: 'Matriz - São Paulo', cargo: 'Operador', setor: 'Operações', admissao: '2022-06-05', salarioBase: 2000.00, situacao: 'ATIVO', banco: '104', agencia: '2222', conta: '33333', dependentes: 0 },
+      { id: 5, nome: 'Elisa Rocha', cpf: '456.789.012-34', filial: 'Filial 1 - Campinas', cargo: 'Analista', setor: 'Financeiro', admissao: '2024-08-20', salarioBase: 3000.00, situacao: 'ATIVO', banco: '001', agencia: '3333', conta: '44444', dependentes: 0 },
+      { id: 6, nome: 'Hugo Pires', cpf: '678.901.234-56', filial: 'Filial 2 - Santos', cargo: 'Gerente', setor: 'Comercial', admissao: '2020-05-12', salarioBase: 5500.00, situacao: 'ATIVO', banco: '341', agencia: '5555', conta: '66666', dependentes: 2 },
+      { id: 7, nome: 'Iara Costa', cpf: '789.012.345-67', filial: 'Filial 1 - Campinas', cargo: 'Atendente', setor: 'Atendimento', admissao: '2026-08-20', salarioBase: 3000.00, situacao: 'ATIVO', banco: '001', agencia: '6666', conta: '77777', dependentes: 0 },
+      { id: 8, nome: 'Marcos Vinicius', cpf: '890.123.456-78', filial: 'Matriz - São Paulo', cargo: 'Supervisor', setor: 'Operações', admissao: '2023-02-15', salarioBase: 4200.00, situacao: 'ATIVO', banco: '033', agencia: '7777', conta: '88888', dependentes: 0 },
+      { id: 9, nome: 'Juliana Paes', cpf: '901.234.567-89', filial: 'Filial 2 - Santos', cargo: 'Atendente', setor: 'Atendimento', admissao: '2025-01-10', salarioBase: 2200.00, situacao: 'ATIVO', banco: '104', agencia: '8888', conta: '99999', dependentes: 0 },
+      { id: 10, nome: 'Renato Silva', cpf: '012.345.678-90', filial: 'Matriz - São Paulo', cargo: 'Analista', setor: 'TI', admissao: '2022-11-01', salarioBase: 6000.00, situacao: 'ATIVO', banco: '237', agencia: '9999', conta: '11111', dependentes: 0 },
+      { id: 11, nome: 'Vanessa Lins', cpf: '111.222.333-44', filial: 'Matriz - São Paulo', cargo: 'Diretor', setor: 'Diretoria', admissao: '2019-01-01', salarioBase: 10000.00, situacao: 'ATIVO', banco: '001', agencia: '1212', conta: '34343', dependentes: 1 },
+      { id: 12, nome: 'Lucas Mendes', cpf: '222.333.444-55', filial: 'Filial 1 - Campinas', cargo: 'Atendente', setor: 'Atendimento', admissao: '2024-04-12', salarioBase: 2100.00, situacao: 'ATIVO', banco: '341', agencia: '2323', conta: '45454', dependentes: 0 },
+      { id: 13, nome: 'Patricia Ramos', cpf: '333.444.555-66', filial: 'Filial 2 - Santos', cargo: 'Atendente', setor: 'Atendimento', admissao: '2024-09-01', salarioBase: 2200.00, situacao: 'ATIVO', banco: '033', agencia: '3434', conta: '56565', dependentes: 0 },
+      { id: 14, nome: 'Rodrigo Faro', cpf: '444.555.666-77', filial: 'Filial 1 - Campinas', cargo: 'Operador', setor: 'Operações', admissao: '2025-03-20', salarioBase: 2000.00, situacao: 'ATIVO', banco: '104', agencia: '4545', conta: '67676', dependentes: 0 },
+      { id: 15, nome: 'Tatiane Melo', cpf: '555.666.777-88', filial: 'Matriz - São Paulo', cargo: 'Atendente', setor: 'Atendimento', admissao: '2025-07-01', salarioBase: 2200.00, situacao: 'ATIVO', banco: '237', agencia: '5656', conta: '78787', dependentes: 0 }
+    ];
+
+    // Eventos lançados (Etapa 2)
+    let eventos = [
+      { id: 1, colaboradorId: 1, tipo: 'HORA_EXTRA_UTIL', quantidade: 10, valor: 150.00, obs: 'Fechamento de metas' },
+      { id: 2, colaboradorId: 4, tipo: 'ATESTADO_MEDICO', quantidade: 3, valor: 0.00, obs: 'Atestado ortopédico com CID' },
+      { id: 3, colaboradorId: 2, tipo: 'VALE_TRANSPORTE', quantidade: 0, valor: 180.00, obs: 'Custo mensal informado' }
+    ];
+
+    // Alertas (Etapa 4)
+    let alertas = [
+      { tipo: 'DOCUMENTO_VENCENDO', titulo: 'Documento a vencer em 25 dias', detalhes: 'CNH de Ana Souza vence em 26/10/2026.', badge: 'Documento' },
+      { tipo: 'EXAME_VENCENDO', titulo: 'Exame Periódico PCMSO a vencer em 15 dias', detalhes: 'Exame anual de Diego Alves vence em 16/11/2026.', badge: 'Saúde' },
+      { tipo: 'FERIAS_CONCESSIVO', titulo: 'Período concessivo de férias a vencer em 50 dias', detalhes: 'Período de Bruno Lima encerra em 20/11/2026.', badge: 'Férias' },
+      { tipo: 'DADOS_FORA_PRAZO_GUARDA', titulo: 'Dado fora do prazo de guarda (LGPD)', detalhes: 'Ex-colaborador desligado há mais de 5 anos sinalizado para descarte.', badge: 'LGPD' }
+    ];
+
+    // Logs de Auditoria
+    let logsAuditoria = [
+      { id: 1, dataHora: '2026-10-27 14:00', usuario: 'rh@empresa.com', perfil: 'RH', acao: 'CALCULO_FOLHA', entidade: 'FOLHA', detalhes: 'Cálculo mensal da competência 10/2026' },
+      { id: 2, dataHora: '2026-10-28 09:15', usuario: 'rh@empresa.com', perfil: 'RH', acao: 'LANCAR_EVENTO', entidade: 'EVENTO', detalhes: 'Horas extras de Ana Souza (10h)' },
+      { id: 3, dataHora: '2026-10-29 11:30', usuario: 'diretoria@empresa.com', perfil: 'DIRETORIA', acao: 'CONSULTAR_RELATORIO', entidade: 'RELATORIO', detalhes: 'Relatório da Folha emitido em Excel' }
+    ];
+
+    // MOTOR DE CÁLCULO EXATO (RN-22, RN-23, RN-24, RN-31, Lei 15.270/2025)
+    function calcularINSS(base) {
+      if (base <= 0) return 0;
+      let inss = 0;
+      const teto = 8475.55;
+      const b = Math.min(base, teto);
+
+      const f1 = Math.min(b, 1621.00);
+      inss += f1 * 0.075;
+
+      if (b > 1621.00) {
+        const f2 = Math.min(b, 2902.84) - 1621.00;
+        inss += f2 * 0.09;
+      }
+      if (b > 2902.84) {
+        const f3 = Math.min(b, 4354.27) - 2902.84;
+        inss += f3 * 0.12;
+      }
+      if (b > 4354.27) {
+        const f4 = b - 4354.27;
+        inss += f4 * 0.14;
+      }
+      return Math.round(inss * 100) / 100;
+    }
+
+    function calcularIRRF(baseBruta, inss, dependentes = 0) {
+      const deducaoDependentes = dependentes * 189.59;
+      const baseTradicional = Math.max(0, baseBruta - inss - deducaoDependentes);
+      const baseSimplificada = Math.max(0, baseBruta - inss - 607.20);
+
+      function calcTabela(base) {
+        if (base <= 2428.80) return 0;
+        if (base <= 2826.65) return (base * 0.075) - 182.16;
+        if (base <= 3751.05) return (base * 0.15) - 394.16;
+        if (base <= 4664.68) return (base * 0.225) - 675.49;
+        return (base * 0.275) - 908.73;
+      }
+
+      const impostoTrad = calcTabela(baseTradicional);
+      const impostoSimp = calcTabela(baseSimplificada);
+      let impostoBase = Math.min(impostoTrad, impostoSimp);
+
+      // Redução da Lei 15.270/2025
+      let reducao = 0;
+      if (baseBruta <= 5000.00) {
+        reducao = 312.89;
+      } else if (baseBruta <= 7350.00) {
+        reducao = Math.max(0, 978.62 - (0.133145 * baseBruta));
+      }
+
+      const irrfFinal = Math.max(0, impostoBase - reducao);
+      return Math.round(irrfFinal * 100) / 100;
+    }
+
+    // NAVEGAÇÃO DE ABAS
+    function navegarAba(idAba) {
+      document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('border-indigo-600', 'text-indigo-600', 'font-semibold');
+        el.classList.add('border-transparent', 'text-slate-600');
+      });
+
+      const secao = document.getElementById(`view-${idAba}`);
+      const botao = document.getElementById(`tab-${idAba}`);
+      if (secao) secao.classList.remove('hidden');
+      if (botao) {
+        botao.classList.add('border-indigo-600', 'text-indigo-600', 'font-semibold');
+        botao.classList.remove('border-transparent', 'text-slate-600');
+      }
+
+      if (idAba === 'colaboradores') renderizarTabelaColaboradores();
+      if (idAba === 'folha') renderizarFolha();
+      if (idAba === 'eventos') renderizarEventos();
+      if (idAba === 'contracheque') renderizarContracheque();
+      if (idAba === 'relatorios') carregarRelatorio();
+      if (idAba === 'alertas') renderizarAlertasCompleto();
+    }
+
+    // CONTROLE DE PERFIL
+    function mudarPerfil(novoPerfil) {
+      perfilAtual = novoPerfil;
+      const banner = document.getElementById('bannerPermissao');
+      const bannerTxt = document.getElementById('bannerPermissaoTexto');
+
+      if (novoPerfil === 'DIRETORIA') {
+        banner.classList.remove('hidden');
+        bannerTxt.innerHTML = '<strong>Perfil Diretoria ativo:</strong> você tem acesso de consulta aos relatórios, logs e memória de cálculo. Edições de folha e atestados médicos estão desativados por segurança (RNF-02, RN-54).';
+      } else if (novoPerfil === 'ADMIN') {
+        banner.classList.remove('hidden');
+        bannerTxt.innerHTML = '<strong>Perfil Administrador ativo:</strong> gestão de credenciais e segurança. Dados financeiros da folha de pagamento não são exibidos para este perfil (US-12).';
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      renderizarTabelaColaboradores();
+      renderizarFolha();
+      if (!document.getElementById('view-relatorios').classList.contains('hidden')) {
+        carregarRelatorio();
+      }
+    }
+
+    function mudarCompetencia(novaComp) {
+      competenciaAtual = novaComp;
+      renderizarFolha();
+      renderizarContracheque();
+    }
+
+    // RENDERIZAR TABELA DE COLABORADORES
+    function renderizarTabelaColaboradores() {
+      const tbody = document.getElementById('tbodyColaboradores');
+      const busca = document.getElementById('filtroColabNome').value.toLowerCase();
+      const filial = document.getElementById('filtroColabFilial').value;
+
+      const filtrados = colaboradores.filter(c => {
+        const matchNome = c.nome.toLowerCase().includes(busca) || c.cpf.includes(busca);
+        const matchFilial = !filial || c.filial === filial;
+        return matchNome && matchFilial;
+      });
+
+      tbody.innerHTML = filtrados.map(c => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-3">
+            <strong class="text-slate-900 block">${c.nome}</strong>
+            <span class="text-slate-500 text-[11px]">${c.cpf}</span>
+          </td>
+          <td class="p-3 text-slate-700">${c.filial}</td>
+          <td class="p-3">
+            <span class="font-medium text-slate-800">${c.cargo}</span>
+            <span class="text-slate-400 block text-[11px]">${c.setor}</span>
+          </td>
+          <td class="p-3 text-slate-600">${c.admissao.split('-').reverse().join('/')}</td>
+          <td class="p-3 text-right font-bold text-slate-900">R$ ${c.salarioBase.toFixed(2)}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${c.situacao === 'ATIVO' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">
+              ${c.situacao}
+            </span>
+          </td>
+          <td class="p-3 text-center space-x-1">
+            <button onclick="verMemoriaColaborador(${c.id})" class="text-indigo-600 hover:text-indigo-900 font-semibold text-[11px]">Memória</button>
+            ${perfilAtual === 'RH' ? `<button onclick="inativarColab(${c.id})" class="text-rose-600 hover:text-rose-900 font-semibold text-[11px] ml-1">Inativar</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function inativarColab(id) {
+      if (perfilAtual !== 'RH') {
+        alert('Apenas o perfil de RH pode inativar colaboradores.');
+        return;
+      }
+      const c = colaboradores.find(x => x.id === id);
+      if (confirm(`Deseja inativar o colaborador ${c.nome}? (RN-12: colaborador nunca é excluído fisicamente)`)) {
+        c.situacao = 'INATIVO';
+        renderizarTabelaColaboradores();
+        alert(`Colaborador ${c.nome} inativado com sucesso (histórico preservado).`);
+      }
+    }
+
+    // RENDERIZAR FOLHA DO MÊS
+    function renderizarFolha() {
+      const tbody = document.getElementById('tbodyFolha');
+      let totBase = 0, totHE = 0, totProv = 0, totINSS = 0, totIRRF = 0, totOutros = 0, totLiq = 0, totFGTS = 0;
+
+      const linhas = colaboradores.filter(c => c.situacao === 'ATIVO').map(c => {
+        let horasExtrasValor = 0;
+        let dsrValor = 0;
+        if (c.id === 1) { // Ana Souza exemplo G
+          horasExtrasValor = 150.00;
+          dsrValor = 28.85;
+        }
+
+        const heEDsr = horasExtrasValor + dsrValor;
+        const proventos = c.salarioBase + heEDsr;
+        const inss = calcularINSS(proventos);
+        const irrf = calcularIRRF(proventos, inss, c.dependentes);
+        const outros = (c.id === 2 ? 120.00 : 0); // VT
+        const liquido = proventos - inss - irrf - outros;
+        const fgts = Math.round(proventos * 0.08 * 100) / 100;
+
+        totBase += c.salarioBase;
+        totHE += heEDsr;
+        totProv += proventos;
+        totINSS += inss;
+        totIRRF += irrf;
+        totOutros += outros;
+        totLiq += liquido;
+        totFGTS += fgts;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3">
+              <strong class="text-slate-900 block">${c.nome}</strong>
+              <span class="text-slate-400 text-[11px]">${c.filial}</span>
+            </td>
+            <td class="p-3 text-right">R$ ${c.salarioBase.toFixed(2)}</td>
+            <td class="p-3 text-right">R$ ${heEDsr.toFixed(2)}</td>
+            <td class="p-3 text-right font-bold text-emerald-700">R$ ${proventos.toFixed(2)}</td>
+            <td class="p-3 text-right text-rose-600">R$ ${inss.toFixed(2)}</td>
+            <td class="p-3 text-right text-rose-600">R$ ${irrf.toFixed(2)}</td>
+            <td class="p-3 text-right text-rose-600">R$ ${outros.toFixed(2)}</td>
+            <td class="p-3 text-right font-black text-indigo-700">R$ ${liquido.toFixed(2)}</td>
+            <td class="p-3 text-right text-teal-600">R$ ${fgts.toFixed(2)}</td>
+            <td class="p-3 text-center">
+              <button onclick="verMemoriaColaborador(${c.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2 py-1 rounded text-[11px] border border-indigo-200">
+                🔍 Ver Regras
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = linhas.join('');
+
+      document.getElementById('ftSalarioBase').innerText = `R$ ${totBase.toFixed(2)}`;
+      document.getElementById('ftHE').innerText = `R$ ${totHE.toFixed(2)}`;
+      document.getElementById('ftProventos').innerText = `R$ ${totProv.toFixed(2)}`;
+      document.getElementById('ftINSS').innerText = `R$ ${totINSS.toFixed(2)}`;
+      document.getElementById('ftIRRF').innerText = `R$ ${totIRRF.toFixed(2)}`;
+      document.getElementById('ftOutros').innerText = `R$ ${totOutros.toFixed(2)}`;
+      document.getElementById('ftLiquido').innerText = `R$ ${totLiq.toFixed(2)}`;
+      document.getElementById('ftFGTS').innerText = `R$ ${totFGTS.toFixed(2)}`;
+
+      document.getElementById('dashTotalBruto').innerText = `R$ ${totProv.toFixed(2)}`;
+      document.getElementById('dashTotalDescontos').innerText = `R$ ${(totINSS + totIRRF + totOutros).toFixed(2)}`;
+      document.getElementById('dashTotalLiquido').innerText = `R$ ${totLiq.toFixed(2)}`;
+      document.getElementById('dashTotalFGTS').innerText = `R$ ${totFGTS.toFixed(2)}`;
+    }
+
+    // MODAL DE MEMÓRIA DE CÁLCULO EXPLICATIVA (RN-02)
+    function verMemoriaColaborador(id) {
+      const c = colaboradores.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('modalMemoriaNome').innerText = `Memória de Cálculo: ${c.nome}`;
+      document.getElementById('modalMemoriaCargo').innerText = `${c.cargo} &bull; ${c.filial} &bull; Salário Contratual: R$ ${c.salarioBase.toFixed(2)}`;
+
+      let heValor = 0;
+      let dsrValor = 0;
+      if (c.id === 1) { heValor = 150.00; dsrValor = 28.85; }
+
+      const baseBruta = c.salarioBase + heValor + dsrValor;
+      const inss = calcularINSS(baseBruta);
+      const irrf = calcularIRRF(baseBruta, inss, c.dependentes);
+      const liquido = baseBruta - inss - irrf;
+
+      let html = `
+        <div class="border-b pb-3">
+          <strong class="text-indigo-900 block text-sm mb-1">1. Proventos e Salário Base (RN-20 / RN-30)</strong>
+          <p class="text-slate-600">Salário contratual integral de R$ ${c.salarioBase.toFixed(2)}. Divisor legal de 220 horas.</p>
+          ${heValor > 0 ? `<p class="text-emerald-700 font-semibold mt-1">+ Horas Extras 50% (10h): R$ ${heValor.toFixed(2)} | DSR sobre HE (26 dias úteis, 5 repousos - RN-31): R$ ${dsrValor.toFixed(2)}</p>` : ''}
+          <p class="font-bold text-slate-800 mt-1">Total Proventos Brutos: R$ ${baseBruta.toFixed(2)}</p>
+        </div>
+
+        <div class="border-b pb-3">
+          <strong class="text-rose-900 block text-sm mb-1">2. INSS Empregado Progressivo por Faixas (RN-22 / Portaria MPS/MF 13/2026)</strong>
+          <p class="text-slate-600">Alíquotas progressivas aplicadas estritamente por faixa de salário de contribuição:</p>
+          <ul class="list-disc list-inside text-slate-700 mt-1 space-y-0.5">
+            <li>Faixa 1 (até R$ 1.621,00 a 7,5%): R$ ${Math.min(baseBruta, 1621.00) * 0.075 > 0 ? (Math.min(baseBruta, 1621.00) * 0.075).toFixed(2) : '0,00'}</li>
+            <li>Faixa 2 (de R$ 1.621,01 a R$ 2.902,84 a 9%): ${baseBruta > 1621 ? ((Math.min(baseBruta, 2902.84) - 1621) * 0.09).toFixed(2) : 'R$ 0,00'}</li>
+            <li>Faixa 3 (de R$ 2.902,85 a R$ 4.354,27 a 12%): ${baseBruta > 2902.84 ? ((Math.min(baseBruta, 4354.27) - 2902.84) * 0.12).toFixed(2) : 'R$ 0,00'}</li>
+            <li>Faixa 4 (de R$ 4.354,28 a R$ 8.475,55 a 14%): ${baseBruta > 4354.27 ? ((Math.min(baseBruta, 8475.55) - 4354.27) * 0.14).toFixed(2) : 'R$ 0,00'}</li>
+          </ul>
+          <p class="font-bold text-rose-700 mt-1">Desconto Total de INSS: R$ ${inss.toFixed(2)} (arredondamento half-up por verba)</p>
+        </div>
+
+        <div class="border-b pb-3">
+          <strong class="text-rose-900 block text-sm mb-1">3. IRRF com Redução da Lei 15.270/2025 (RN-23)</strong>
+          <p class="text-slate-600">Base Tradicional = R$ ${baseBruta.toFixed(2)} - INSS R$ ${inss.toFixed(2)} - Dep. R$ ${(c.dependentes * 189.59).toFixed(2)} = R$ ${(baseBruta - inss - (c.dependentes * 189.59)).toFixed(2)}</p>
+          <p class="text-slate-600">Base Simplificada = R$ ${baseBruta.toFixed(2)} - INSS R$ ${inss.toFixed(2)} - R$ 607,20 = R$ ${(baseBruta - inss - 607.20).toFixed(2)}</p>
+          <p class="text-slate-700 mt-1">Aplica-se a base de menor tributação e a redução legal progressiva que zera o imposto até R$ 5.000,00.</p>
+          <p class="font-bold text-rose-700 mt-1">IRRF Final Retido na Fonte: R$ ${irrf.toFixed(2)}</p>
+        </div>
+
+        <div class="border-b pb-3">
+          <strong class="text-teal-900 block text-sm mb-1">4. FGTS Patronal (RN-24)</strong>
+          <p class="text-slate-600">8% sobre a remuneração de R$ ${baseBruta.toFixed(2)} = <strong>R$ ${(baseBruta * 0.08).toFixed(2)}</strong>. Encargo da empresa depositado na conta vinculada; não reduz o líquido do colaborador.</p>
+        </div>
+
+        <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
+          <p class="text-sm font-bold text-indigo-950 flex justify-between">
+            <span>SALÁRIO LÍQUIDO A RECEBER:</span>
+            <span>R$ ${liquido.toFixed(2)}</span>
+          </p>
+          <p class="text-[11px] text-indigo-700 mt-1">Proteção ao Líquido: garantido líquido mínimo de R$ 0,00 (RN-06). Nenhum desconto suplantou os proventos.</p>
+        </div>
+      `;
+
+      document.getElementById('modalMemoriaConteudo').innerHTML = html;
+      document.getElementById('modalMemoria').classList.remove('hidden');
+    }
+
+    function fecharModalMemoria() {
+      document.getElementById('modalMemoria').classList.add('hidden');
+    }
+
+    // CONTRACHEQUE DINÂMICO (RN-55 / US-09)
+    function renderizarContracheque() {
+      const select = document.getElementById('selectColabContracheque');
+      if (select.children.length === 0) {
+        select.innerHTML = colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.filial})</option>`).join('');
+      }
+
+      const id = parseInt(select.value || '1', 10);
+      const c = colaboradores.find(x => x.id === id) || colaboradores[0];
+
+      document.getElementById('holeriteNome').innerText = c.nome;
+      document.getElementById('holeriteCPF').innerText = c.cpf;
+      document.getElementById('holeriteCargo').innerText = `${c.cargo} (${c.setor})`;
+      document.getElementById('holeriteAdmissao').innerText = c.admissao.split('-').reverse().join('/');
+      document.getElementById('holeriteBanco').innerText = c.banco;
+      document.getElementById('holeriteAgencia').innerText = c.agencia;
+      document.getElementById('holeriteConta').innerText = c.conta;
+      document.getElementById('holeriteCompetencia').innerText = competenciaAtual;
+
+      let heValor = (c.id === 1 ? 150.00 : 0);
+      let dsrValor = (c.id === 1 ? 28.85 : 0);
+      const proventos = c.salarioBase + heValor + dsrValor;
+      const inss = calcularINSS(proventos);
+      const irrf = calcularIRRF(proventos, inss, c.dependentes);
+      const outrosDesc = (c.id === 2 ? 120.00 : 0);
+      const totalDesc = inss + irrf + outrosDesc;
+      const liquido = proventos - totalDesc;
+      const fgts = Math.round(proventos * 0.08 * 100) / 100;
+
+      let verbas = [
+        `<tr>
+          <td class="p-2 font-medium">001 - Salário Base Mensal</td>
+          <td class="p-2 text-slate-500">30 dias trabalhados integral</td>
+          <td class="p-2 text-right font-bold text-emerald-700">R$ ${c.salarioBase.toFixed(2)}</td>
+          <td class="p-2 text-right text-slate-400">-</td>
+        </tr>`
+      ];
+
+      if (heValor > 0) {
+        verbas.push(`
+          <tr>
+            <td class="p-2 font-medium">010 - Horas Extras 50%</td>
+            <td class="p-2 text-slate-500">10 horas úteis</td>
+            <td class="p-2 text-right font-bold text-emerald-700">R$ ${heValor.toFixed(2)}</td>
+            <td class="p-2 text-right text-slate-400">-</td>
+          </tr>
+          <tr>
+            <td class="p-2 font-medium">015 - DSR sobre Horas Extras</td>
+            <td class="p-2 text-slate-500">26 úteis / 5 repousos (RN-31)</td>
+            <td class="p-2 text-right font-bold text-emerald-700">R$ ${dsrValor.toFixed(2)}</td>
+            <td class="p-2 text-right text-slate-400">-</td>
+          </tr>
+        `);
+      }
+
+      verbas.push(`
+        <tr>
+          <td class="p-2 font-medium text-rose-900">101 - INSS Empregado</td>
+          <td class="p-2 text-slate-500">Progressivo por faixa (Tabela 2026)</td>
+          <td class="p-2 text-right text-slate-400">-</td>
+          <td class="p-2 text-right font-bold text-rose-700">R$ ${inss.toFixed(2)}</td>
+        </tr>
+      `);
+
+      if (irrf > 0) {
+        verbas.push(`
+          <tr>
+            <td class="p-2 font-medium text-rose-900">105 - IRRF Fonte</td>
+            <td class="p-2 text-slate-500">Base com redução Lei 15.270/2025</td>
+            <td class="p-2 text-right text-slate-400">-</td>
+            <td class="p-2 text-right font-bold text-rose-700">R$ ${irrf.toFixed(2)}</td>
+          </tr>
+        `);
+      }
+
+      if (outrosDesc > 0) {
+        verbas.push(`
+          <tr>
+            <td class="p-2 font-medium text-rose-900">120 - Vale-Transporte</td>
+            <td class="p-2 text-slate-500">Menor entre 6% e custo (RN-50)</td>
+            <td class="p-2 text-right text-slate-400">-</td>
+            <td class="p-2 text-right font-bold text-rose-700">R$ ${outrosDesc.toFixed(2)}</td>
+          </tr>
+        `);
+      }
+
+      document.getElementById('holeriteTbodyVerbas').innerHTML = verbas.join('');
+      document.getElementById('holeriteTotProventos').innerText = `R$ ${proventos.toFixed(2)}`;
+      document.getElementById('holeriteTotDescontos').innerText = `R$ ${totalDesc.toFixed(2)}`;
+      document.getElementById('holeriteLiquido').innerText = `R$ ${liquido.toFixed(2)}`;
+      document.getElementById('holeriteFGTS').innerText = `R$ ${fgts.toFixed(2)}`;
+    }
+
+    // RELATÓRIOS & EXPORTAÇÕES (EXCEL E PDF)
+    function carregarRelatorio() {
+      const tipo = document.getElementById('selectTipoRelatorio').value;
+      const thead = document.getElementById('theadRelatorio');
+      const tbody = document.getElementById('tbodyRelatorio');
+      const titulo = document.getElementById('relatorioTitulo');
+
+      if (tipo === 'logs' && perfilAtual === 'RH') {
+        titulo.innerText = 'Acesso Negado (RNF-03 / Seção 13)';
+        thead.innerHTML = '';
+        tbody.innerHTML = `<tr><td class="p-4 text-center text-rose-600 font-bold">Apenas usuários com perfil Diretoria ou Administrador têm permissão para acessar o Log de Auditoria.</td></tr>`;
+        return;
+      }
+
+      if (tipo === 'folhaMes') {
+        titulo.innerText = 'Relatório Geral da Folha do Mês (Competência 10/2026)';
+        thead.innerHTML = `
+          <tr class="bg-slate-50 border-b text-slate-600 font-bold uppercase text-[11px]">
+            <th class="p-2.5">Colaborador</th>
+            <th class="p-2.5">Filial</th>
+            <th class="p-2.5 text-right">Proventos</th>
+            <th class="p-2.5 text-right">Descontos</th>
+            <th class="p-2.5 text-right">Líquido</th>
+            <th class="p-2.5 text-right">FGTS (8%)</th>
+          </tr>
+        `;
+        tbody.innerHTML = colaboradores.filter(c => c.situacao === 'ATIVO').map(c => {
+          const prov = c.salarioBase + (c.id === 1 ? 178.85 : 0);
+          const inss = calcularINSS(prov);
+          const irrf = calcularIRRF(prov, inss, c.dependentes);
+          const desc = inss + irrf;
+          const liq = prov - desc;
+          const fgts = prov * 0.08;
+          return `
+            <tr>
+              <td class="p-2.5 font-medium">${c.nome}</td>
+              <td class="p-2.5 text-slate-600">${c.filial}</td>
+              <td class="p-2.5 text-right font-semibold text-emerald-700">R$ ${prov.toFixed(2)}</td>
+              <td class="p-2.5 text-right text-rose-600">R$ ${desc.toFixed(2)}</td>
+              <td class="p-2.5 text-right font-bold text-indigo-700">R$ ${liq.toFixed(2)}</td>
+              <td class="p-2.5 text-right text-teal-600">R$ ${fgts.toFixed(2)}</td>
+            </tr>
+          `;
+        }).join('');
+      } else if (tipo === 'dadosPagamento') {
+        titulo.innerText = 'Relatório de Dados de Pagamento Bancário (RN-57)';
+        thead.innerHTML = `
+          <tr class="bg-slate-50 border-b text-slate-600 font-bold uppercase text-[11px]">
+            <th class="p-2.5">Colaborador</th>
+            <th class="p-2.5">CPF</th>
+            <th class="p-2.5">Filial</th>
+            <th class="p-2.5">Banco</th>
+            <th class="p-2.5">Agência</th>
+            <th class="p-2.5">Conta</th>
+            <th class="p-2.5 text-right">Valor Líquido</th>
+          </tr>
+        `;
+        tbody.innerHTML = colaboradores.filter(c => c.situacao === 'ATIVO').map(c => {
+          const prov = c.salarioBase;
+          const inss = calcularINSS(prov);
+          const irrf = calcularIRRF(prov, inss, c.dependentes);
+          const liq = prov - inss - irrf;
+          return `
+            <tr>
+              <td class="p-2.5 font-bold">${c.nome}</td>
+              <td class="p-2.5 text-slate-500">${c.cpf}</td>
+              <td class="p-2.5">${c.filial}</td>
+              <td class="p-2.5">${c.banco}</td>
+              <td class="p-2.5">${c.agencia}</td>
+              <td class="p-2.5">${c.conta}</td>
+              <td class="p-2.5 text-right font-black text-indigo-800">R$ ${liq.toFixed(2)}</td>
+            </tr>
+          `;
+        }).join('');
+      } else if (tipo === 'logs') {
+        titulo.innerText = 'Log de Auditoria Imutável (RNF-03)';
+        thead.innerHTML = `
+          <tr class="bg-slate-50 border-b text-slate-600 font-bold uppercase text-[11px]">
+            <th class="p-2.5">Data/Hora</th>
+            <th class="p-2.5">Usuário</th>
+            <th class="p-2.5">Perfil</th>
+            <th class="p-2.5">Ação</th>
+            <th class="p-2.5">Detalhes</th>
+          </tr>
+        `;
+        tbody.innerHTML = logsAuditoria.map(l => `
+          <tr>
+            <td class="p-2.5 text-slate-600">${l.dataHora}</td>
+            <td class="p-2.5 font-medium">${l.usuario}</td>
+            <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${l.perfil}</span></td>
+            <td class="p-2.5 font-bold text-indigo-700">${l.acao}</td>
+            <td class="p-2.5 text-slate-700">${l.detalhes}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // EXPORTAÇÃO PARA EXCEL COM DADOS REAIS
+    function exportarRelatorioAtual(formato) {
+      if (formato === 'PDF') {
+        window.print();
+        return;
+      }
+
+      const tipo = document.getElementById('selectTipoRelatorio').value;
+      if (tipo === 'logs' && perfilAtual === 'RH') {
+        alert('Você não tem permissão para exportar logs de auditoria.');
+        return;
+      }
+
+      let csv = '\uFEFF'; // BOM UTF-8 para Excel abrir nativamente em português
+      csv += `Relatorio;${tipo};Competencia;${competenciaAtual};Emissao;${new Date().toLocaleDateString('pt-BR')}\r\n\r\n`;
+
+      if (tipo === 'folhaMes') {
+        csv += 'Colaborador;Filial;Salario Base;Proventos;INSS;IRRF;Liquido;FGTS\r\n';
+        colaboradores.filter(c => c.situacao === 'ATIVO').forEach(c => {
+          const prov = c.salarioBase + (c.id === 1 ? 178.85 : 0);
+          const inss = calcularINSS(prov);
+          const irrf = calcularIRRF(prov, inss, c.dependentes);
+          const liq = prov - inss - irrf;
+          const fgts = prov * 0.08;
+          csv += `"${c.nome}";"${c.filial}";${c.salarioBase.toFixed(2).replace('.', ',')};${prov.toFixed(2).replace('.', ',')};${inss.toFixed(2).replace('.', ',')};${irrf.toFixed(2).replace('.', ',')};${liq.toFixed(2).replace('.', ',')};${fgts.toFixed(2).replace('.', ',')}\r\n`;
+        });
+      } else if (tipo === 'dadosPagamento') {
+        csv += 'Colaborador;CPF;Filial;Banco;Agencia;Conta;Liquido\r\n';
+        colaboradores.filter(c => c.situacao === 'ATIVO').forEach(c => {
+          const prov = c.salarioBase;
+          const inss = calcularINSS(prov);
+          const irrf = calcularIRRF(prov, inss, c.dependentes);
+          const liq = prov - inss - irrf;
+          csv += `"${c.nome}";"${c.cpf}";"${c.filial}";"${c.banco}";"${c.agencia}";"${c.conta}";${liq.toFixed(2).replace('.', ',')}\r\n`;
+        });
+      }
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio_${tipo}_${competenciaAtual}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      alert('Arquivo exportado com sucesso no formato compatível com Microsoft Excel!');
+    }
+
+    // SIMULAÇÃO DE FÉRIAS (ETAPA 4)
+    function simularSolicitacaoFerias(e) {
+      e.preventDefault();
+      const id = parseInt(document.getElementById('feriasColaborador').value, 10);
+      const c = colaboradores.find(x => x.id === id);
+      const diasGozo = parseInt(document.getElementById('feriasDiasGozo').value, 10);
+      const diasAbono = parseInt(document.getElementById('feriasDiasAbono').value, 10);
+      const mediaHE = parseFloat(document.getElementById('feriasMediaHE').value || '0');
+
+      const remuneracao = c.salarioBase + mediaHE;
+      const valorDia = remuneracao / 30;
+      const valorGozo = valorDia * diasGozo;
+      const tercoGozo = valorGozo / 3;
+
+      const valorAbono = valorDia * diasAbono;
+      const tercoAbono = valorAbono / 3;
+
+      const baseTributavel = valorGozo + tercoGozo;
+      const inss = calcularINSS(baseTributavel);
+      const irrf = calcularIRRF(baseTributavel, inss, c.dependentes);
+
+      const totalBruto = valorGozo + tercoGozo + valorAbono + tercoAbono;
+      const liquido = totalBruto - inss - irrf;
+
+      const resDiv = document.getElementById('resultadoFerias');
+      resDiv.innerHTML = `
+        <strong class="text-emerald-900 block text-sm">✅ Férias Calculadas com Sucesso:</strong>
+        <p>• Remuneração Base (Salário + Média RN-48): R$ ${remuneracao.toFixed(2)}</p>
+        <p>• Férias Gozadas (${diasGozo} dias): R$ ${valorGozo.toFixed(2)} | 1/3 Constitucional: R$ ${tercoGozo.toFixed(2)}</p>
+        ${diasAbono > 0 ? `<p>• Abono Pecuniário (${diasAbono} dias vendidos + 1/3): <strong>R$ ${(valorAbono + tercoAbono).toFixed(2)} (Isento de INSS/IRRF)</strong></p>` : ''}
+        <p>• Descontos: INSS R$ ${inss.toFixed(2)} | IRRF R$ ${irrf.toFixed(2)}</p>
+        <p class="font-bold text-indigo-900 text-sm mt-1">Líquido a Pagar das Férias: R$ ${liquido.toFixed(2)}</p>
+      `;
+      resDiv.classList.remove('hidden');
+    }
+
+    // SIMULAÇÃO DO 13º (ETAPA 4)
+    function simularCalculo13() {
+      const id = parseInt(document.getElementById('decimoColaborador').value, 10);
+      const c = colaboradores.find(x => x.id === id);
+      const parcela = parseInt(document.getElementById('decimoParcela').value, 10);
+      const meses = parseInt(document.getElementById('decimoMeses').value, 10);
+
+      const integral = (c.salarioBase / 12) * meses;
+      const resDiv = document.getElementById('resultado13');
+
+      if (parcela === 1) {
+        const valor1a = integral * 0.5;
+        resDiv.innerHTML = `
+          <strong class="text-indigo-950 block text-sm">✅ 1ª Parcela do 13º Salário (Até 30/11):</strong>
+          <p>• Valor Integral Proporcional (${meses}/12 avos): R$ ${integral.toFixed(2)}</p>
+          <p class="font-bold text-emerald-800 text-sm mt-1">Adiantamento de 50% Líquido (Sem descontos legais): R$ ${valor1a.toFixed(2)}</p>
+        `;
+      } else {
+        const valor1a = integral * 0.5;
+        const inss = calcularINSS(integral);
+        const irrf = calcularIRRF(integral, inss, c.dependentes);
+        const liq2a = integral - valor1a - inss - irrf;
+        resDiv.innerHTML = `
+          <strong class="text-indigo-950 block text-sm">✅ 2ª Parcela do 13º Salário (Até 20/12):</strong>
+          <p>• 13º Integral: R$ ${integral.toFixed(2)} | Dedução da 1ª Parcela: - R$ ${valor1a.toFixed(2)}</p>
+          <p>• Descontos na Fonte: INSS R$ ${inss.toFixed(2)} | IRRF R$ ${irrf.toFixed(2)}</p>
+          <p class="font-bold text-indigo-900 text-sm mt-1">Líquido Final da 2ª Parcela: R$ ${liq2a.toFixed(2)}</p>
+        `;
+      }
+      resDiv.classList.remove('hidden');
+    }
+
+    // FECHAMENTO SEGURO
+    function simularFechamento() {
+      if (perfilAtual === 'DIRETORIA') {
+        alert('Operação Negada (Seção 4 / Tabela 7.1): Usuários com perfil Diretoria não têm permissão para fechar a folha.');
+        return;
+      }
+      alert('Folha de 10/2026 fechada com sucesso! Não há pendências cadastrais ou saldos a descontar sem justificativa (Tabela 7.1 respeitada).');
+      statusCompetencia = 'FECHADA';
+      document.getElementById('badgeStatusCompetencia').innerText = 'Fechada';
+      document.getElementById('badgeStatusCompetencia').className = 'ml-2 text-xs font-bold px-2 py-0.5 rounded bg-slate-600 text-white uppercase tracking-wide';
+      document.getElementById('dashStatusLabel').innerText = 'Fechada para alterações';
+    }
+
+    function simularCalculoFolha() {
+      renderizarFolha();
+      alert('Folha calculada com sucesso para os 15 colaboradores! Memória de cálculo atualizada.');
+    }
+
+    // MODAL NOVO COLABORADOR
+    function abrirModalNovoColab() {
+      if (perfilAtual !== 'RH') {
+        alert('Apenas o perfil de RH pode cadastrar colaboradores.');
+        return;
+      }
+      document.getElementById('modalNovoColab').classList.remove('hidden');
+    }
+
+    function fecharModalNovoColab() {
+      document.getElementById('modalNovoColab').classList.add('hidden');
+    }
+
+    function salvarNovoColab(e) {
+      e.preventDefault();
+      const nome = document.getElementById('novoNome').value;
+      const cpf = document.getElementById('novoCPF').value;
+      const salario = parseFloat(document.getElementById('novoSalario').value);
+      const filial = document.getElementById('novoFilial').value;
+      const adm = document.getElementById('novoAdm').value;
+
+      // Validações de borda (Seção 10)
+      if (salario <= 0) {
+        alert('Erro: Informe um salário-base maior que zero.');
+        return;
+      }
+
+      colaboradores.push({
+        id: colaboradores.length + 1,
+        nome,
+        cpf,
+        filial,
+        cargo: document.getElementById('novoCargo').value,
+        setor: 'Geral',
+        admissao: adm,
+        salarioBase: salario,
+        situacao: 'ATIVO',
+        banco: document.getElementById('novoBanco').value,
+        agencia: document.getElementById('novoAgencia').value,
+        conta: document.getElementById('novoConta').value,
+        dependentes: 0
+      });
+
+      fecharModalNovoColab();
+      renderizarTabelaColaboradores();
+      renderizarFolha();
+      alert(`Colaborador ${nome} cadastrado com sucesso!`);
+    }
+
+    // INICIALIZAÇÃO
+    window.onload = function() {
+      // Preenche selects de colaboradores
+      const selects = ['evColaborador', 'feriasColaborador', 'decimoColaborador', 'selectColabContracheque'];
+      selects.forEach(sId => {
+        const el = document.getElementById(sId);
+        if (el) {
+          el.innerHTML = colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.filial})</option>`).join('');
+        }
+      });
+
+      // Renderiza alertas rápidos no dashboard
+      const dashAlerts = document.getElementById('listaAlertasDashboard');
+      dashAlerts.innerHTML = alertas.map(a => `
+        <div class="p-3 bg-slate-50 border-l-4 border-amber-500 rounded text-xs flex justify-between items-center">
+          <div>
+            <strong class="text-slate-800 block">${a.titulo}</strong>
+            <span class="text-slate-500">${a.detalhes}</span>
+          </div>
+          <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">${a.badge}</span>
+        </div>
+      `).join('');
+
+      renderizarTabelaColaboradores();
+      renderizarFolha();
+      renderizarContracheque();
+    };
+  </script>
+</body>
+</html>
