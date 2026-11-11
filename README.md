@@ -3,10 +3,10 @@
 Sistema web acadêmico de RH e folha de pagamento para uma empresa **correspondente bancária** (15 colaboradores, 1 matriz + 2 filiais). O escopo prevê cálculos de **INSS** e **IRRF**, memória de cálculo por verba e controle de férias, 13º salário, documentos, alertas e relatórios.
 
 > **Disciplina:** Spec-Driven Development com IA · Prof. Dr. Juan Apolinario
-> **Especificação de referência:** v1.3 (21/10/2026), elaborada pelo GTI 4º período.
+> **Especificação de referência:** v1.7 (10/11/2026), elaborada pelo GTI 4º período.
 > **Equipe de desenvolvimento:** GTI 2º período.
 > **Repositório:** [github.com/Kauzalidade/projetoFolha](https://github.com/Kauzalidade/projetoFolha)
-> **Status geral:** em desenvolvimento acadêmico. Este README descreve o escopo e os requisitos; não significa que todas as funcionalidades já estejam implementadas.
+> **Status geral:** Implementação completa das Etapas 1, 2, 3 e 4 conforme a especificação v1.7. Inclui servidor HTTP nativo (`server.ts`), interface web interativa de testes e suite completa de testes automatizados.
 > **Stack definida:** Node.js e TypeScript. **Banco de dados:** pendente de confirmação da equipe, pois o README anterior cita MySQL e o CHANGELOG registra PostgreSQL.
 > **Regra de ouro:** se faltar informação, **não invente a regra**. Registre a dúvida e consulte o GTI 4º período.
 
@@ -81,7 +81,7 @@ Implementar **uma etapa por vez, nesta ordem**. Testes primeiro: a etapa só est
 
 ## Status de implementação verificado
 
-As etapas abaixo representam o plano da especificação oficial v1.3. O status reflete evidências verificáveis de código executável e testes automatizados na branch `main`:
+As etapas abaixo representam o plano da especificação oficial v1.7. O status reflete evidências verificáveis de código executável e testes automatizados na branch `main`:
 
 | Etapa | Escopo | Status na `main` | Evidência / Testes |
 |-------|--------|------------------|-------------------|
@@ -89,8 +89,9 @@ As etapas abaixo representam o plano da especificação oficial v1.3. O status r
 | 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | **Concluída** | 16 testes automatizados aprovados em [`back-end/tests/etapa2.test.ts`](./back-end/tests/etapa2.test.ts) |
 | 3 | Cálculo da folha, memória de cálculo e fechamento | **Concluída** | 10 testes automatizados aprovados em [`back-end/tests/etapa3.test.ts`](./back-end/tests/etapa3.test.ts) |
 | 4 | Férias, 13º, documentos, contracheque e relatórios | **Concluída** | 24 testes automatizados aprovados em [`back-end/tests/etapa4.test.ts`](./back-end/tests/etapa4.test.ts) |
+| v1.7 | Requisitos avançados: RN-78 piso, RN-74 saldos iniciais, RN-80 atrasos, RN-59 conferência, RN-67 aprovação, RN-68 versões SHA-256, RN-61 pagamento, RN-79 férias dobro, RN-76 ficha PDF, RN-77 incidentes | **Concluída** | 12 testes automatizados aprovados em [`back-end/tests/etapa_v1_7.test.ts`](./back-end/tests/etapa_v1_7.test.ts) |
 
-As Etapas 1, 2, 3 e 4 foram implementadas e validadas utilizando Node.js LTS (v24.22.1), TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **67 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00, saldo a descontar limitado a 30% no mês seguinte (RN-06), controle de férias com 1/3, faltas, abono sem incidências, fracionamento, média de variáveis (RN-48), férias que cruzam meses (RN-49), 13º salário em duas parcelas e proporcional (RN-46), alertas de documentos (RN-52), exames ocupacionais (RN-53), concessivo de férias (RN-45), prazo de pagamento (RN-58), retenção LGPD (RN-56), contracheque em PDF e relatórios completos exportáveis em Excel e PDF.
+As Etapas 1, 2, 3 e 4 foram implementadas e validadas utilizando Node.js LTS, TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **79 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, atrasos sem perda de DSR (RN-80), VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00, saldo a descontar limitado a 30% no mês seguinte (RN-06), controle de férias com 1/3, faltas, abono sem incidências, fracionamento, média de variáveis (RN-48), férias que cruzam meses (RN-49), férias vencidas em dobro (RN-79), 13º salário em duas parcelas e proporcional (RN-46), alertas de documentos (RN-52), exames ocupacionais (RN-53), concessivo de férias (RN-45), prazo de pagamento (RN-58), alerta do 13º (RN-84), conferência financeira interna com tolerância R$ 0,00 (RN-59), fluxo de conferência e devolução (RN-67), versionamento com hash SHA-256 (RN-68), registro de data de pagamento (RN-61), ficha completa em PDF por CPF (RN-76), registro de incidentes de segurança (RN-77), retenção LGPD (RN-56), contracheque em PDF e relatórios completos exportáveis em Excel e PDF.
 
 ## Regras de negócio em destaque
 

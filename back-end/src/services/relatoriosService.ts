@@ -4,6 +4,8 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { Dec } from '../dec.js';
+import { registrarLog } from './logService.js';
+import { limparCPF, formatarCPF } from '../cpf.js';
 
 function escapeXML(str: string): string {
   return String(str)
@@ -657,6 +659,113 @@ export function exportarRelatorioPDF(
       );
     }
   }
+
+  return montarPDF(linhasPDF);
+}
+
+/**
+ * RN-76: Direitos do Titular (LGPD) - Ficha Completa do Colaborador em PDF por CPF.
+ * Localiza todos os dados do colaborador pelo CPF e gera relatório estruturado em PDF:
+ * cadastro, eventos, férias, histórico, documentos anexados e logs.
+ */
+export function gerarFichaColaboradorPDF(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  cpfBusca: string
+): Buffer {
+  if (usuarioSolicitante.perfil !== 'RH') {
+    throw new Error('Você não tem permissão para acessar a ficha completa do colaborador.');
+  }
+
+  const cpfLimpo = limparCPF(cpfBusca);
+  const colab = db.prepare(`
+    SELECT c.*, f.nome as filial_nome
+    FROM colaboradores c
+    JOIN filiais f ON f.id = c.filial_id
+    WHERE c.cpf = ?
+  `).get(cpfLimpo) as any;
+
+  if (!colab) {
+    throw new Error('Colaborador não encontrado com o CPF informado.');
+  }
+
+  const dependentes = db.prepare('SELECT * FROM dependentes WHERE colaborador_id = ?').all(colab.id) as any[];
+  const historico = db.prepare('SELECT * FROM historico_colaborador WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
+  const ferias = db.prepare('SELECT * FROM ferias WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
+  const docs = db.prepare('SELECT * FROM documentos_colaborador WHERE colaborador_id = ?').all(colab.id) as any[];
+
+  const salarioDec = new Dec(BigInt(colab.salario_base_centavos));
+
+  const linhasPDF: { texto: string; negrito?: boolean; tamanho?: number; dy?: number }[] = [
+    { texto: 'FICHA CADASTRAL COMPLETA DO COLABORADOR (LGPD - ART. 18 / RN-76)', negrito: true, tamanho: 13, dy: 10 },
+    { texto: `Gerado por: ${usuarioSolicitante.email} em ${new Date().toISOString()}`, tamanho: 8, dy: 14 },
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+    { texto: 'DADOS PESSOAIS E CONTRATUAIS', negrito: true, tamanho: 10, dy: 14 },
+    { texto: `Nome: ${colab.nome} | CPF: ${formatarCPF(colab.cpf)} | Nascimento: ${colab.nascimento}`, tamanho: 9, dy: 12 },
+    { texto: `Filial: ${colab.filial_nome} | Cargo: ${colab.cargo} | Setor: ${colab.setor}`, tamanho: 9, dy: 12 },
+    { texto: `Admissão: ${colab.admissao} | Desligamento: ${colab.desligamento || 'Não'} | Situação: ${colab.situacao}`, tamanho: 9, dy: 12 },
+    { texto: `Salário Contratual: ${salarioDec.toFormatado()} | Jornada: ${colab.jornada_horas_mensais}h mensais`, tamanho: 9, dy: 12 },
+    { texto: `Dados Bancários: Banco ${colab.banco} Agência ${colab.agencia} Conta ${colab.conta} | Titular: ${colab.titular_conta || colab.nome}`, tamanho: 9, dy: 12 },
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: `DEPENDENTES CADASTRADOS (${dependentes.length})`, negrito: true, tamanho: 10, dy: 14 },
+  ];
+
+  if (dependentes.length === 0) {
+    linhasPDF.push({ texto: 'Nenhum dependente informado.', tamanho: 8, dy: 12 });
+  } else {
+    for (const d of dependentes) {
+      linhasPDF.push({ texto: `* ${d.nome} - Nascimento: ${d.nascimento} - Parentesco: ${d.parentesco}`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: `HISTORICO DE ALTERACOES CADASTRADAS (${historico.length})`, negrito: true, tamanho: 10, dy: 14 }
+  );
+
+  if (historico.length === 0) {
+    linhasPDF.push({ texto: 'Nenhum registro histórico anterior.', tamanho: 8, dy: 12 });
+  } else {
+    for (const h of historico.slice(0, 10)) {
+      linhasPDF.push({ texto: `[${h.data_hora}] Campo ${h.campo}: de "${h.valor_anterior}" para "${h.valor_novo}"`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: `FERIAS E LICENCAS (${ferias.length})`, negrito: true, tamanho: 10, dy: 14 }
+  );
+
+  if (ferias.length === 0) {
+    linhasPDF.push({ texto: 'Nenhuma concessão de férias registrada.', tamanho: 8, dy: 12 });
+  } else {
+    for (const f of ferias) {
+      linhasPDF.push({ texto: `* Início: ${f.data_inicio} a ${f.data_fim} (${f.dias_gozo} dias gozo, ${f.dias_abono} abono) - Situação: ${f.situacao}`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: `DOCUMENTOS ANEXADOS (${docs.length})`, negrito: true, tamanho: 10, dy: 14 }
+  );
+
+  if (docs.length === 0) {
+    linhasPDF.push({ texto: 'Nenhum documento anexado.', tamanho: 8, dy: 12 });
+  } else {
+    for (const doc of docs) {
+      linhasPDF.push({ texto: `* ${doc.tipo}: ${doc.nome_arquivo} (Validade: ${doc.data_validade || 'Sem validade'})`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  registrarLog(db, {
+    usuarioId: usuarioSolicitante.id,
+    usuarioEmail: usuarioSolicitante.email,
+    usuarioPerfil: usuarioSolicitante.perfil,
+    acao: 'GERAR_FICHA_COLABORADOR_LGPD',
+    entidade: 'COLABORADOR',
+    registroId: colab.id,
+    detalhes: `Ficha completa do colaborador CPF ${formatarCPF(colab.cpf)} gerada para cumprimento de direitos do titular (RN-76)`,
+  });
 
   return montarPDF(linhasPDF);
 }

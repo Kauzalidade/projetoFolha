@@ -1,5 +1,5 @@
 /**
- * documentosAlertasService.ts - Documentos, Exames e Central de Alertas (RN-52, RN-53, RN-56, RN-58).
+ * documentosAlertasService.ts - Documentos, Exames, Incidentes e Central de Alertas (RN-52, RN-53, RN-56, RN-58, RN-77, RN-84).
  */
 
 import { DatabaseSync } from 'node:sqlite';
@@ -67,7 +67,7 @@ export function cadastrarExameOcupacional(
 }
 
 export interface AlertaItem {
-  tipo: 'DOCUMENTO_VENCENDO' | 'EXAME_VENCENDO' | 'FERIAS_CONCESSIVO' | 'PRAZO_PAGAMENTO_FOLHA' | 'DADOS_FORA_PRAZO_GUARDA';
+  tipo: 'DOCUMENTO_VENCENDO' | 'EXAME_VENCENDO' | 'FERIAS_CONCESSIVO' | 'PRAZO_PAGAMENTO_FOLHA' | 'DECIMO_TERCEIRO' | 'DADOS_FORA_PRAZO_GUARDA';
   titulo: string;
   detalhes: string;
   referenciaId?: number;
@@ -105,15 +105,29 @@ export function consultarAlertas(
   }
 
   // 2. Alerta de prazo de pagamento da folha (RN-58)
-  // Alerta no 3º dia útil se a competência do mês anterior ainda não estiver fechada
-  const competenciasNaoFechadas = db.prepare("SELECT id, mes_ano, situacao FROM competencias WHERE situacao != 'FECHADA'").all() as any[];
-  for (const comp of competenciasNaoFechadas) {
-    alertas.push({
-      tipo: 'PRAZO_PAGAMENTO_FOLHA',
-      titulo: 'Alerta de prazo de pagamento da folha',
-      detalhes: `A competência ${comp.mes_ano} ainda não está fechada no prazo limite para pagamento.`,
-      referenciaId: comp.id,
-    });
+  // Alerta no 3º dia útil se a competência ainda não estiver fechada OU se fechada mas ainda não paga (RN-61)
+  const competenciasPendentesPagamento = db.prepare(`
+    SELECT id, mes_ano, situacao, pago_em
+    FROM competencias
+    WHERE situacao != 'FECHADA' OR (situacao = 'FECHADA' AND pago_em IS NULL)
+  `).all() as any[];
+
+  for (const comp of competenciasPendentesPagamento) {
+    if (comp.situacao !== 'FECHADA') {
+      alertas.push({
+        tipo: 'PRAZO_PAGAMENTO_FOLHA',
+        titulo: 'Alerta de prazo de pagamento da folha',
+        detalhes: `A competência ${comp.mes_ano} ainda não está fechada no prazo limite para pagamento.`,
+        referenciaId: comp.id,
+      });
+    } else if (!comp.pago_em) {
+      alertas.push({
+        tipo: 'PRAZO_PAGAMENTO_FOLHA',
+        titulo: 'Registro de pagamento pendente',
+        detalhes: `A competência ${comp.mes_ano} está fechada mas o pagamento ainda não foi registrado pelo RH (RN-61).`,
+        referenciaId: comp.id,
+      });
+    }
   }
 
   // 3. Dados fora do prazo de guarda (LGPD - RN-56)
@@ -176,5 +190,128 @@ export function consultarAlertas(
     }
   }
 
+  // 6. Alerta do 13º Salário (RN-84: 15 dias antes de 30/11 e de 20/12)
+  const anoAtual = hoje.getFullYear();
+  const data1aParcela = new Date(`${anoAtual}-11-30`);
+  const data2aParcela = new Date(`${anoAtual}-12-20`);
+
+  const diff1a = Math.ceil((data1aParcela.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff1a >= 0 && diff1a <= 15) {
+    alertas.push({
+      tipo: 'DECIMO_TERCEIRO',
+      titulo: `Prazo da 1ª parcela do 13º salário em ${diff1a} dias`,
+      detalhes: `O pagamento da 1ª parcela do 13º salário deve ocorrer até 30/11/${anoAtual}.`,
+      diasRestantes: diff1a,
+    });
+  }
+
+  const diff2a = Math.ceil((data2aParcela.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff2a >= 0 && diff2a <= 15) {
+    alertas.push({
+      tipo: 'DECIMO_TERCEIRO',
+      titulo: `Prazo da 2ª parcela do 13º salário em ${diff2a} dias`,
+      detalhes: `O pagamento da 2ª parcela do 13º salário deve ocorrer até 20/12/${anoAtual}.`,
+      diasRestantes: diff2a,
+    });
+  }
+
   return alertas;
+}
+
+/**
+ * RN-77: Registro de Incidentes de Segurança da Informação (LGPD art. 48).
+ * RH, Diretoria e Admin registram incidentes; Diretoria e Admin tratam.
+ */
+export function registrarIncidenteSeguranca(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  dados: {
+    descricao: string;
+    dadosAfetados: string;
+    pessoasAfetadas: string;
+    providenciasIniciais?: string;
+  }
+): any {
+  if (!dados.descricao || !dados.dadosAfetados || !dados.pessoasAfetadas) {
+    throw new Error('Informe a descrição, os dados possivelmente afetados e as pessoas afetadas.');
+  }
+
+  const agora = new Date().toISOString();
+  const stmt = db.prepare(`
+    INSERT INTO incidentes_seguranca (
+      data_hora, descricao, dados_afetados, pessoas_afetadas,
+      responsavel_usuario_id, responsavel_email, providencias, situacao, criado_em, atualizado_em
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ABERTO', ?, ?)
+  `);
+
+  const res = stmt.run(
+    agora,
+    dados.descricao.trim(),
+    dados.dadosAfetados.trim(),
+    dados.pessoasAfetadas.trim(),
+    usuarioSolicitante.id,
+    usuarioSolicitante.email,
+    dados.providenciasIniciais ?? null,
+    agora,
+    agora
+  );
+
+  const incidenteId = Number(res.lastInsertRowid);
+
+  registrarLog(db, {
+    usuarioId: usuarioSolicitante.id,
+    usuarioEmail: usuarioSolicitante.email,
+    usuarioPerfil: usuarioSolicitante.perfil,
+    acao: 'REGISTRAR_INCIDENTE_SEGURANCA',
+    entidade: 'INCIDENTE',
+    registroId: incidenteId,
+    detalhes: `Incidente de segurança registrado: "${dados.descricao.trim()}"`,
+  });
+
+  return { id: incidenteId, situacao: 'ABERTO', criadoEm: agora };
+}
+
+export function atualizarIncidenteSeguranca(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  incidenteId: number,
+  dados: {
+    providencias?: string;
+    situacao?: 'ABERTO' | 'EM_TRATAMENTO' | 'ENCERRADO';
+  }
+): void {
+  // Apenas Diretoria e Admin tratam incidentes (Tabela 4.1)
+  if (usuarioSolicitante.perfil !== 'DIRETORIA' && usuarioSolicitante.perfil !== 'ADMIN') {
+    throw new Error('Apenas Diretoria e Admin podem tratar e encerrar incidentes de segurança.');
+  }
+
+  const atual = db.prepare('SELECT * FROM incidentes_seguranca WHERE id = ?').get(incidenteId) as any;
+  if (!atual) throw new Error('Incidente não encontrado.');
+
+  const agora = new Date().toISOString();
+  const novaSituacao = dados.situacao || atual.situacao;
+  const novasProvidencias = dados.providencias ? `${atual.providencias ? atual.providencias + '\n' : ''}[${agora} ${usuarioSolicitante.email}]: ${dados.providencias.trim()}` : atual.providencias;
+
+  db.prepare(`
+    UPDATE incidentes_seguranca
+    SET providencias = ?, situacao = ?, atualizado_em = ?
+    WHERE id = ?
+  `).run(novasProvidencias, novaSituacao, agora, incidenteId);
+
+  registrarLog(db, {
+    usuarioId: usuarioSolicitante.id,
+    usuarioEmail: usuarioSolicitante.email,
+    usuarioPerfil: usuarioSolicitante.perfil,
+    acao: 'TRATAR_INCIDENTE_SEGURANCA',
+    entidade: 'INCIDENTE',
+    registroId: incidenteId,
+    detalhes: `Incidente ID ${incidenteId} atualizado para situação ${novaSituacao}`,
+  });
+}
+
+export function listarIncidentesSeguranca(
+  db: DatabaseSync,
+  usuarioSolicitante: { perfil: string }
+): any[] {
+  return db.prepare('SELECT * FROM incidentes_seguranca ORDER BY id DESC').all();
 }

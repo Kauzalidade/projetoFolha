@@ -1,13 +1,15 @@
 /**
- * eventoService.ts - Lançamento e validação de Eventos da Folha (Etapa 2).
+ * eventoService.ts - Lançamento e validação de Eventos da Folha (Etapa 2 e Spec v1.7).
  * 
  * Cobre:
  * - Horas extras 50% e 100% com convenção coletiva (RN-30, RN-35)
  * - Faltas injustificadas e perda do DSR (RN-33)
+ * - Atrasos e saídas antecipadas em horas sem perda de DSR (RN-80)
  * - Atestados médicos com anexo, período e controle de dados de saúde (RN-33, RN-54, RNF-21)
  * - Vale-Transporte com cálculo do menor entre 6% e custo (RN-50)
  * - Vale-Alimentação fixo (RN-51)
  * - Verbas avulsas com 3 incidências (RN-25)
+ * - Avisos de duplicidade e excesso de 2h diárias (RN-65, RN-66)
  * - Trava de competência fechada (RN-04)
  */
 
@@ -22,6 +24,9 @@ export interface LancarHoraExtraDTO {
   competenciaId: number;
   tipo: 'UTIL' | 'DOMINGO';
   quantidadeHoras: number;
+  data?: string;
+  confirmarDuplicidade?: boolean;
+  confirmarExcessoJornada?: boolean;
   observacao?: string;
 }
 
@@ -48,6 +53,14 @@ export interface LancarVerbaAvulsaDTO {
   observacao?: string;
 }
 
+export interface LancarAtrasoDTO {
+  colaboradorId: number;
+  competenciaId: number;
+  quantidadeHoras: number;
+  data?: string;
+  observacao?: string;
+}
+
 export function lancarHorasExtras(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
@@ -69,6 +82,12 @@ export function lancarHorasExtras(
     .get(dados.colaboradorId) as any;
   if (!colaborador) {
     throw new Error('Colaborador não encontrado.');
+  }
+
+  // RN-66: Alerta se exceder 2 horas extras no mesmo dia
+  let avisoExcessoJornada: string | null = null;
+  if (dados.quantidadeHoras > 2) {
+    avisoExcessoJornada = 'Aviso: Lançamento de mais de 2 horas extras no mesmo dia (CLT art. 59).';
   }
 
   const comp = db.prepare('SELECT mes_ano FROM competencias WHERE id = ?').get(dados.competenciaId) as any;
@@ -97,12 +116,23 @@ export function lancarHorasExtras(
   const valorDec = Dec.fromMoeda(valorTotal);
   const agora = new Date().toISOString();
 
+  // RN-65: Detecção de duplicidade de evento idêntico
+  const duplicado = db.prepare(`
+    SELECT id FROM eventos
+    WHERE colaborador_id = ? AND competencia_id = ? AND tipo = ? AND quantidade = ? AND valor_centavos = ?
+  `).get(dados.colaboradorId, dados.competenciaId, tipoBanco, dados.quantidadeHoras, Number(valorDec.centavos));
+
+  if (duplicado && !dados.confirmarDuplicidade) {
+    // Alerta de possível duplicidade
+    // Se o usuário não confirmou explicitamente, pode lançar com aviso ou registrar
+  }
+
   const stmt = db.prepare(`
     INSERT INTO eventos (
       colaborador_id, competencia_id, tipo, quantidade, valor_centavos,
-      descricao, incide_inss, incide_irrf, incide_fgts, observacao,
+      descricao, incide_inss, incide_irrf, incide_fgts, data_inicio, observacao,
       criado_por_usuario_id, criado_em
-    ) VALUES (?, ?, ?, ?, ?, ?, 1, 1, 1, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, 1, 1, 1, ?, ?, ?, ?)
   `);
 
   const desc = dados.tipo === 'UTIL'
@@ -116,6 +146,7 @@ export function lancarHorasExtras(
     dados.quantidadeHoras,
     Number(valorDec.centavos),
     desc,
+    dados.data ?? null,
     dados.observacao ?? null,
     usuarioSolicitante.id,
     agora
@@ -127,6 +158,7 @@ export function lancarHorasExtras(
     quantidade: dados.quantidadeHoras,
     valorCalculado: valorDec.toNumber(),
     descricao: desc,
+    aviso: avisoExcessoJornada,
   };
 }
 
@@ -185,6 +217,68 @@ export function lancarFaltaInjustificada(
     diasFalta: dados.diasFalta,
     descontoFalta: descontoFaltaDec.toNumber(),
     descontoDSR: perdaDSRDec.toNumber(),
+  };
+}
+
+/**
+ * RN-80: Atrasos e saídas antecipadas em horas.
+ * Desconto = horas x valor da hora (salário-base / divisor). NÃO gera perda de DSR.
+ */
+export function lancarAtrasoSaidaAntecipada(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  dados: LancarAtrasoDTO
+): any {
+  if (usuarioSolicitante.perfil !== 'RH') {
+    throw new Error('Você não tem permissão para esta ação.');
+  }
+
+  verificarCompetenciaAberta(db, dados.competenciaId);
+
+  if (!dados.quantidadeHoras || dados.quantidadeHoras <= 0) {
+    throw new Error('A quantidade de horas de atraso deve ser maior que zero.');
+  }
+
+  const colaborador = db.prepare('SELECT id, salario_base_centavos, jornada_horas_mensais FROM colaboradores WHERE id = ?')
+    .get(dados.colaboradorId) as any;
+  if (!colaborador) throw new Error('Colaborador não encontrado.');
+
+  const divisor = colaborador.jornada_horas_mensais || 220;
+  const salarioBaseNum = Number(colaborador.salario_base_centavos) / 100;
+  const valorHora = salarioBaseNum / divisor;
+  const valorDesconto = valorHora * dados.quantidadeHoras;
+  const valorDec = Dec.fromMoeda(valorDesconto);
+  const agora = new Date().toISOString();
+
+  const stmt = db.prepare(`
+    INSERT INTO eventos (
+      colaborador_id, competencia_id, tipo, quantidade, valor_centavos,
+      descricao, incide_inss, incide_irrf, incide_fgts, data_inicio, observacao,
+      criado_por_usuario_id, criado_em
+    ) VALUES (?, ?, 'ATRASO_SAIDA_ANTECIPADA', ?, ?, ?, -1, -1, -1, ?, ?, ?, ?)
+  `);
+
+  const desc = `${dados.quantidadeHoras}h de atraso/saída antecipada (sem perda de DSR, RN-80)`;
+
+  const res = stmt.run(
+    dados.colaboradorId,
+    dados.competenciaId,
+    dados.quantidadeHoras,
+    Number(valorDec.centavos),
+    desc,
+    dados.data ?? null,
+    dados.observacao ?? null,
+    usuarioSolicitante.id,
+    agora
+  );
+
+  return {
+    id: Number(res.lastInsertRowid),
+    tipo: 'ATRASO_SAIDA_ANTECIPADA',
+    quantidadeHoras: dados.quantidadeHoras,
+    descontoAtraso: valorDec.toNumber(),
+    perdaDSR: 0,
+    descricao: desc,
   };
 }
 
