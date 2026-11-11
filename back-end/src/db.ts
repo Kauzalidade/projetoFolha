@@ -1,7 +1,9 @@
 /**
  * db.ts - Gerenciador do banco de dados SQLite nativo (node:sqlite).
  * 
- * Cria as tabelas da Etapa 1 e garante imutabilidade dos logs de auditoria (RNF-03).
+ * Cria as tabelas das Etapas 1, 2, 3 e 4 (Spec v1.7).
+ * Garante imutabilidade dos logs de auditoria (RNF-03), controle de versões da folha (RN-68),
+ * incidentes de segurança (RN-77) e histórico de alterações (RN-07).
  */
 
 import { DatabaseSync } from 'node:sqlite';
@@ -31,7 +33,7 @@ CREATE TABLE IF NOT EXISTS filiais (
   criado_em TEXT NOT NULL
 );
 
--- Tabela de Colaboradores (RN-10 a RN-15, RN-12 inativação lógica)
+-- Tabela de Colaboradores (RN-10 a RN-15, RN-74, RN-78)
 CREATE TABLE IF NOT EXISTS colaboradores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   filial_id INTEGER NOT NULL REFERENCES filiais(id),
@@ -47,7 +49,12 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   banco TEXT NOT NULL,
   agencia TEXT NOT NULL,
   conta TEXT NOT NULL,
-  situacao TEXT NOT NULL DEFAULT 'ATIVO' CHECK(situacao IN ('ATIVO', 'INATIVO')),
+  titular_conta TEXT NOT NULL DEFAULT '',
+  email TEXT NULL,
+  implantacao_ferias_gozadas_dias INTEGER NOT NULL DEFAULT 0,
+  implantacao_saldo_descontar_centavos INTEGER NOT NULL DEFAULT 0,
+  implantacao_competencia_inicio TEXT NULL,
+  situacao TEXT NOT NULL DEFAULT 'ATIVO' CHECK(situacao IN ('ATIVO', 'INATIVO', 'EM_FERIAS', 'AFASTADO', 'DESLIGADO')),
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
 );
@@ -61,7 +68,7 @@ CREATE TABLE IF NOT EXISTS dependentes (
   parentesco TEXT NOT NULL
 );
 
--- Histórico de alterações do colaborador (RN-07)
+-- Histórico de alterações do colaborador (RN-07, RN-13, RN-74)
 CREATE TABLE IF NOT EXISTS historico_colaborador (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
@@ -72,7 +79,7 @@ CREATE TABLE IF NOT EXISTS historico_colaborador (
   usuario_id INTEGER NULL REFERENCES usuarios(id)
 );
 
--- Parâmetros legais com vigência (RN-01, Seção 6)
+-- Parâmetros legais com vigência (RN-01, RN-75, Seção 6)
 CREATE TABLE IF NOT EXISTS parametros (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nome TEXT NOT NULL,
@@ -80,6 +87,7 @@ CREATE TABLE IF NOT EXISTS parametros (
   data_inicio TEXT NOT NULL,
   data_fim TEXT NOT NULL,
   versao TEXT NOT NULL DEFAULT '1.0',
+  fonte TEXT NULL,
   criado_em TEXT NOT NULL
 );
 
@@ -91,17 +99,25 @@ CREATE TABLE IF NOT EXISTS feriados (
   tipo TEXT NOT NULL DEFAULT 'NACIONAL' CHECK(tipo IN ('NACIONAL', 'ESTADUAL', 'MUNICIPAL'))
 );
 
--- Competências da Folha (RN-04, RN-08, Tabela 7.5)
+-- Competências da Folha (RN-04, RN-08, RN-63, RN-67, Tabela 7.5)
 CREATE TABLE IF NOT EXISTS competencias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   mes_ano TEXT NOT NULL UNIQUE, -- Formato 'AAAA-MM'
   situacao TEXT NOT NULL DEFAULT 'ABERTA' CHECK(situacao IN ('ABERTA', 'CALCULADA', 'FECHADA')),
   fechado_em TEXT NULL,
+  fechado_por INTEGER NULL REFERENCES usuarios(id),
+  lancado_por INTEGER NULL REFERENCES usuarios(id),
+  calculado_por INTEGER NULL REFERENCES usuarios(id),
+  conferido_por INTEGER NULL REFERENCES usuarios(id),
+  conferido_em TEXT NULL,
   justificativa_reabertura TEXT NULL,
+  motivo_devolucao TEXT NULL,
+  pago_em TEXT NULL,
+  pago_por INTEGER NULL REFERENCES usuarios(id),
   criado_em TEXT NOT NULL
 );
 
--- Lançamento de Eventos (Horas Extras, Faltas, Atestados, VT, VA, Verbas Avulsas - Etapa 2)
+-- Lançamento de Eventos (Horas Extras, Faltas, Atrasos, Atestados, VT, VA, Verbas Avulsas - Etapa 2)
 CREATE TABLE IF NOT EXISTS eventos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
@@ -109,10 +125,11 @@ CREATE TABLE IF NOT EXISTS eventos (
   tipo TEXT NOT NULL CHECK(tipo IN (
     'HORA_EXTRA_UTIL', 'HORA_EXTRA_DOMINGO',
     'FALTA_INJUSTIFICADA', 'ATESTADO',
+    'ATRASO_SAIDA_ANTECIPADA',
     'VALE_TRANSPORTE', 'VALE_ALIMENTACAO',
     'VERBA_AVULSA_PROVENTO', 'VERBA_AVULSA_DESCONTO'
   )),
-  quantidade REAL NULL, -- horas (HE) ou dias (faltas/atestado)
+  quantidade REAL NULL, -- horas (HE, atrasos) ou dias (faltas/atestado)
   valor_centavos INTEGER NULL, -- Dec centavos
   descricao TEXT NULL,
   incide_inss INTEGER NOT NULL DEFAULT 0,
@@ -161,14 +178,33 @@ CREATE TABLE IF NOT EXISTS folha_verbas (
 CREATE TABLE IF NOT EXISTS saldos_a_descontar (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
-  competencia_origem_id INTEGER NOT NULL REFERENCES competencias(id),
+  competencia_origem_id INTEGER NULL REFERENCES competencias(id),
+  origem_tipo TEXT NOT NULL DEFAULT 'FOLHA' CHECK(origem_tipo IN ('FOLHA', 'IMPLANTACAO')),
   valor_original_centavos INTEGER NOT NULL,
   valor_restante_centavos INTEGER NOT NULL,
   situacao TEXT NOT NULL DEFAULT 'PENDENTE' CHECK(situacao IN ('PENDENTE', 'QUITADO')),
   criado_em TEXT NOT NULL
 );
 
--- Férias e Controle de Períodos (RN-40 a RN-49, Etapa 4)
+-- Versões da Folha Fechada (RN-68, RNF-54)
+CREATE TABLE IF NOT EXISTS folha_versoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  competencia_id INTEGER NOT NULL REFERENCES competencias(id),
+  versao_numero TEXT NOT NULL, -- Ex: 'V1', 'V2'
+  data_hora TEXT NOT NULL,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  usuario_email TEXT NOT NULL,
+  hash_sha256 TEXT NOT NULL,
+  total_proventos_centavos INTEGER NOT NULL,
+  total_descontos_centavos INTEGER NOT NULL,
+  liquido_centavos INTEGER NOT NULL,
+  fgts_centavos INTEGER NOT NULL,
+  dados_json TEXT NOT NULL,
+  criado_em TEXT NOT NULL,
+  UNIQUE(competencia_id, versao_numero)
+);
+
+-- Férias e Controle de Períodos (RN-40 a RN-49, RN-79, Etapa 4)
 CREATE TABLE IF NOT EXISTS ferias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   colaborador_id INTEGER NOT NULL REFERENCES colaboradores(id),
@@ -188,6 +224,7 @@ CREATE TABLE IF NOT EXISTS ferias (
   inss_centavos INTEGER NOT NULL DEFAULT 0,
   irrf_centavos INTEGER NOT NULL DEFAULT 0,
   liquido_centavos INTEGER NOT NULL,
+  em_dobro INTEGER NOT NULL DEFAULT 0,
   situacao TEXT NOT NULL DEFAULT 'PENDENTE' CHECK(situacao IN ('PENDENTE', 'APROVADA', 'RECUSADA')),
   justificativa TEXT NULL,
   criado_em TEXT NOT NULL
@@ -229,6 +266,21 @@ CREATE TABLE IF NOT EXISTS exames_ocupacionais (
   periodicidade_meses INTEGER NOT NULL DEFAULT 12,
   data_proximo_vencimento TEXT NOT NULL,
   criado_em TEXT NOT NULL
+);
+
+-- Incidentes de Segurança da Informação (RN-77)
+CREATE TABLE IF NOT EXISTS incidentes_seguranca (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  data_hora TEXT NOT NULL,
+  descricao TEXT NOT NULL,
+  dados_afetados TEXT NOT NULL,
+  pessoas_afetadas TEXT NOT NULL,
+  responsavel_usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  responsavel_email TEXT NOT NULL,
+  providencias TEXT NULL,
+  situacao TEXT NOT NULL DEFAULT 'ABERTO' CHECK(situacao IN ('ABERTO', 'EM_TRATAMENTO', 'ENCERRADO')),
+  criado_em TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
 );
 
 -- Log de Auditoria Imutável (RNF-03)

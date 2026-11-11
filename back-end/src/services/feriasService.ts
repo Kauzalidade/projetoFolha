@@ -1,5 +1,5 @@
 /**
- * feriasService.ts - Gerenciamento e Cálculo de Férias (RN-40 a RN-49, Seções 5.5, 7.2 e 8).
+ * feriasService.ts - Gerenciamento e Cálculo de Férias (RN-40 a RN-49, RN-79, Seções 5.5, 7.2 e 8).
  */
 
 import { DatabaseSync } from 'node:sqlite';
@@ -16,6 +16,7 @@ export interface SolicitarFeriasDTO {
   mediaHorasExtras?: number | string; // RN-48
   justificativa?: string; // Tabela 7.2
   periodoConcessivoFim?: string; // Período concessivo específico ou vencido
+  calcularEmDobro?: boolean; // RN-79
 }
 
 export function solicitarFerias(
@@ -71,9 +72,7 @@ export function solicitarFerias(
   }
 
   // RN-47: Início das férias não pode começar nos 2 dias que antecedem feriado ou descanso semanal
-  // Sábado (6) e Domingo (0) são descanso semanal. Sexta (5) ou Sábado (6) antes de feriado ou repouso semanal é vedado.
   const diaSemana = dataInicioFerias.getUTCDay();
-  // Se início for sábado (6), é véspera imediata de descanso semanal (domingo)
   if (diaSemana === 6) {
     throw new Error('Início das férias não pode começar nos 2 dias que antecedem feriado ou descanso semanal.');
   }
@@ -123,10 +122,17 @@ export function solicitarFerias(
 
   // Valor das férias gozadas = (remuneraçãoBase / 30) * diasGozo
   const valorDiaNum = remuneracaoBase.toNumber() / 30;
-  const valorFeriasGozadasDec = Dec.fromMoeda(valorDiaNum * diasGozo);
-  const valorTercoGozadoDec = Dec.fromMoeda(valorFeriasGozadasDec.toNumber() / 3);
+  let valorFeriasGozadasDec = Dec.fromMoeda(valorDiaNum * diasGozo);
+  let valorTercoGozadoDec = Dec.fromMoeda(valorFeriasGozadasDec.toNumber() / 3);
 
-  // Abono pecuniário (RN-43): diasAbono x valorDia + 1/3 sobre o abono
+  // RN-79: Férias vencidas pagas em dobro (CLT art. 137) se o concessivo estiver vencido e marcado para pagamento em dobro
+  const emDobro = (dados.calcularEmDobro !== undefined ? dados.calcularEmDobro : false) ? 1 : 0;
+  if (emDobro === 1) {
+    valorFeriasGozadasDec = valorFeriasGozadasDec.mul(2);
+    valorTercoGozadoDec = valorTercoGozadoDec.mul(2);
+  }
+
+  // Abono pecuniário (RN-43): diasAbono x valorDia + 1/3 sobre o abono (abono não dobra)
   let valorAbonoDec = Dec.zero();
   let valorTercoAbonoDec = Dec.zero();
   if (diasAbono > 0) {
@@ -157,8 +163,8 @@ export function solicitarFerias(
       colaborador_id, periodo_aquisitivo_inicio, periodo_aquisitivo_fim, periodo_concessivo_fim,
       dias_direito, dias_gozo, dias_abono, data_inicio, data_fim, data_limite_pagamento,
       valor_ferias_centavos, valor_terco_centavos, valor_abono_centavos, valor_terco_abono_centavos,
-      inss_centavos, irrf_centavos, liquido_centavos, situacao, justificativa, criado_em
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APROVADA', ?, ?)
+      inss_centavos, irrf_centavos, liquido_centavos, em_dobro, situacao, justificativa, criado_em
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APROVADA', ?, ?)
   `);
 
   const res = stmt.run(
@@ -179,6 +185,7 @@ export function solicitarFerias(
     Number(inssTotal.centavos),
     Number(irrfFinal.centavos),
     Number(liquidoFerias.centavos),
+    emDobro,
     dados.justificativa ?? null,
     agora
   );
@@ -190,7 +197,7 @@ export function solicitarFerias(
     acao: 'APROVAR_FERIAS',
     entidade: 'FERIAS',
     registroId: Number(res.lastInsertRowid),
-    detalhes: `Férias aprovadas para ${colab.nome}: ${diasGozo} dias de gozo, ${diasAbono} dias de abono. Líquido: ${liquidoFerias.toFormatado()}`,
+    detalhes: `Férias aprovadas para ${colab.nome}: ${diasGozo} dias de gozo${emDobro ? ' (EM DOBRO - RN-79)' : ''}, ${diasAbono} dias de abono. Líquido: ${liquidoFerias.toFormatado()}`,
   });
 
   return {
@@ -198,6 +205,7 @@ export function solicitarFerias(
     diasDireito,
     diasGozo,
     diasAbono,
+    emDobro: emDobro === 1,
     dataInicio: dados.dataInicio,
     dataFim: dataFimGozo.toISOString().slice(0, 10),
     dataLimitePagamento: dataLimitePagamentoStr,
@@ -256,6 +264,7 @@ export function listarFerias(
     diasDireito: r.dias_direito,
     diasGozo: r.dias_gozo,
     diasAbono: r.dias_abono,
+    emDobro: r.em_dobro === 1,
     dataInicio: r.data_inicio,
     dataFim: r.data_fim,
     dataLimitePagamento: r.data_limite_pagamento,
