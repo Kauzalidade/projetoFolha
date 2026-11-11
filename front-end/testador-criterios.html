@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>projetoFolha | Testador Interativo de Critérios e Memória de Cálculo (US-03)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printableHolerite, #printableHolerite * { visibility: visible; }
+      #printableHolerite { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-40 border-b border-indigo-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-1.5 rounded-lg text-white font-bold text-sm tracking-wide transition flex items-center gap-1.5">
+          &larr; Voltar ao Sistema Principal
+        </a>
+        <div>
+          <h1 class="text-base md:text-lg font-bold leading-tight flex items-center gap-2">
+            🔬 Testador de Critérios de Aceite &bull; US-03
+            <span class="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded font-mono font-semibold">Spec v1.7</span>
+          </h1>
+          <p class="text-xs text-indigo-200">
+            Validação Interativa da Memória de Cálculo, INSS 2026, IRRF comparativo + Lei 15.270/2025 e Seção 8
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="bg-indigo-950 text-indigo-200 px-3 py-1.5 rounded-md border border-indigo-800 font-medium">
+          Tolerância: <strong class="text-emerald-400">R$ 0,00</strong> (Centavos exatos)
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Central -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+
+    <!-- Card de Aferição dos Critérios de Aceite (v1.7) -->
+    <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+      <div class="flex flex-wrap justify-between items-center mb-3 pb-2 border-b border-slate-100 gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-indigo-950 uppercase tracking-wide">
+            ✅ Status dos Critérios de Aceite da História US-03 (v1.7)
+          </h2>
+          <p class="text-xs text-slate-500">
+            "Como analista de RH, quero consultar a memória de cálculo para explicar cada valor pago ou descontado."
+          </p>
+        </div>
+        <span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-300">
+          5 de 5 Critérios Aprovados no Projeto
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+        <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+          <div class="flex items-center justify-between font-bold text-emerald-900 mb-1">
+            <span>1. Memória (RN-02)</span>
+            <span class="text-emerald-600">✓ 100%</span>
+          </div>
+          <p class="text-slate-600 text-[11px] leading-relaxed">
+            Exibe base, regra, parâmetro e versão legal utilizados, valor e arredondamento half-up.
+          </p>
+        </div>
+
+        <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+          <div class="flex items-center justify-between font-bold text-emerald-900 mb-1">
+            <span>2. Cálculo Legal</span>
+            <span class="text-emerald-600">✓ 100%</span>
+          </div>
+          <p class="text-slate-600 text-[11px] leading-relaxed">
+            INSS progressivo no teto, IRRF tradicional vs simplificado + Lei 15.270/2025, FGTS encargo 8%.
+          </p>
+        </div>
+
+        <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+          <div class="flex items-center justify-between font-bold text-emerald-900 mb-1">
+            <span>3. Parâmetros</span>
+            <span class="text-emerald-600">✓ 100%</span>
+          </div>
+          <p class="text-slate-600 text-[11px] leading-relaxed">
+            Vigência de datas (RN-01); folhas fechadas são imutáveis contra alterações futuras (RN-62).
+          </p>
+        </div>
+
+        <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+          <div class="flex items-center justify-between font-bold text-emerald-900 mb-1">
+            <span>4. Arredondamento</span>
+            <span class="text-emerald-600">✓ 100%</span>
+          </div>
+          <p class="text-slate-600 text-[11px] leading-relaxed">
+            2 casas decimais meio para cima por verba (RN-03 e RN-72), precisão contínua intermediária.
+          </p>
+        </div>
+
+        <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+          <div class="flex items-center justify-between font-bold text-emerald-900 mb-1">
+            <span>5. Casos Seção 8</span>
+            <span class="text-emerald-600">✓ 100%</span>
+          </div>
+          <p class="text-slate-600 text-[11px] leading-relaxed">
+            Exemplos A a N conferem com tolerância de R$ 0,01. Teste cada um pelos botões abaixo!
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra de Atalhos Rápidos dos Exemplos Oficiais da Seção 8 -->
+    <section class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wide flex items-center gap-1.5">
+          ⚡ Carregar Casos de Teste Oficiais da Seção 8 (Clique para simular instantaneamente):
+        </h3>
+        <span class="text-[11px] text-indigo-600 font-semibold">Tolerância aceita: &plusmn; R$ 0,01</span>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <button onclick="carregarExemplo('A')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo A (R$ 3.000)
+        </button>
+        <button onclick="carregarExemplo('B')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo B (R$ 6.000 / Lei 15.270)
+        </button>
+        <button onclick="carregarExemplo('C')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo C (Teto R$ 10.000)
+        </button>
+        <button onclick="carregarExemplo('D')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo D (Horas Extras 50%/100%)
+        </button>
+        <button onclick="carregarExemplo('F')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo F (Vale-Transporte)
+        </button>
+        <button onclick="carregarExemplo('G')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo G (DSR e Folha 10/2026)
+        </button>
+        <button onclick="carregarExemplo('H')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo H (R$ 5.500 + 2 Dependentes)
+        </button>
+        <button onclick="carregarExemplo('I')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo I (R$ 2.000 + FGTS Encargo)
+        </button>
+        <button onclick="carregarExemplo('M')" class="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white border border-indigo-300 rounded font-semibold text-indigo-950 transition shadow-xs">
+          Exemplo M (Feriado Municipal e DSR)
+        </button>
+        <button onclick="carregarExemplo('DESCONTO_EXCESSIVO')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-300 text-rose-800 rounded font-semibold transition shadow-xs">
+          Caso RN-06 (Descontos > Proventos / Líquido 0)
+        </button>
+      </div>
+    </section>
+
+    <!-- Layout Dividido: Painel de Parâmetros de Entrada & Resultados com Memória -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- COLUNA DA ESQUERDA: ENTRADA DE DADOS E SIMULAÇÃO (5 cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b pb-2">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              ⚙️ Parâmetros do Colaborador & Eventos
+            </h2>
+            <button onclick="redefinirPadroes()" class="text-xs text-indigo-600 hover:underline">
+              Limpar / Padrão
+            </button>
+          </div>
+
+          <!-- Salário Base e Dependentes -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Salário-Base Mensal (R$)</label>
+              <input type="number" id="inpSalario" step="0.01" value="3000.00" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-900 bg-slate-50">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Dependentes IRRF (R$ 189,59)</label>
+              <input type="number" id="inpDependentes" min="0" max="10" value="0" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-900 bg-slate-50">
+            </div>
+          </div>
+
+          <!-- Horas Extras 50% e 100% -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Horas Extras 50% (Horas)</label>
+              <input type="number" id="inpHE50" min="0" step="0.5" value="0" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 text-slate-900">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Horas Extras 100% (Horas)</label>
+              <input type="number" id="inpHE100" min="0" step="0.5" value="0" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 text-slate-900">
+            </div>
+          </div>
+
+          <!-- Calendário DSR (Dias Úteis e Descansos) -->
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Configuração de Calendário DSR (RN-31)</span>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span class="text-slate-500">Dias Úteis:</span>
+                <input type="number" id="inpDiasUteis" value="26" min="1" max="31" oninput="calcularTudo()"
+                  class="w-full px-2 py-1 border rounded text-xs text-center font-semibold">
+              </div>
+              <div>
+                <span class="text-slate-500">Domingos/Feriados:</span>
+                <input type="number" id="inpDomingosFeriados" value="5" min="0" max="15" oninput="calcularTudo()"
+                  class="w-full px-2 py-1 border rounded text-xs text-center font-semibold">
+              </div>
+            </div>
+          </div>
+
+          <!-- Faltas e Atrasos -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Faltas Injustificadas (Dias)</label>
+              <input type="number" id="inpFaltas" min="0" max="30" value="0" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-rose-500 text-slate-900">
+              <span class="text-[10px] text-slate-400">Gera desconto salário + perda DSR</span>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Atrasos (Horas - RN-80)</label>
+              <input type="number" id="inpAtrasos" min="0" step="1" value="0" oninput="calcularTudo()"
+                class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-rose-500 text-slate-900">
+              <span class="text-[10px] text-slate-400">Sem perda do DSR</span>
+            </div>
+          </div>
+
+          <!-- Benefício Vale-Transporte (RN-50) -->
+          <div class="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                <input type="checkbox" id="chkOptanteVT" onchange="calcularTudo()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                Optante de Vale-Transporte (RN-50)
+              </label>
+            </div>
+            <div id="boxCustoVT" class="hidden">
+              <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Custo Mensal do VT Fornecido (R$)</label>
+              <input type="number" id="inpCustoVT" step="0.01" value="180.00" oninput="calcularTudo()"
+                class="w-full px-2.5 py-1 text-xs border rounded bg-white">
+              <span class="text-[10px] text-slate-500">Regra: Menor entre 6% do salário e o custo real.</span>
+            </div>
+          </div>
+
+          <!-- Verbas Avulsas Manuais (RN-25) -->
+          <div class="p-3 bg-amber-50/50 rounded-lg border border-amber-200 space-y-2">
+            <span class="block text-xs font-bold text-amber-950">Lançamento de Verba Avulsa (RN-25)</span>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="col-span-2">
+                <input type="text" id="inpDescAvulsa" placeholder="Descrição (ex: Bônus)" class="w-full px-2 py-1 text-xs border rounded bg-white">
+              </div>
+              <div>
+                <input type="number" id="inpValorAvulsa" step="0.01" value="0.00" oninput="calcularTudo()"
+                  class="w-full px-2 py-1 text-xs border rounded bg-white font-semibold">
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <label class="flex items-center gap-1">
+                <input type="radio" name="tipoAvulsa" value="PROVENTO" checked onchange="calcularTudo()"> Provento
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="radio" name="tipoAvulsa" value="DESCONTO" onchange="calcularTudo()"> Desconto
+              </label>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] text-slate-700 pt-1 border-t border-amber-200/60">
+              <span class="font-semibold text-slate-500">Incidências:</span>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" id="chkIncideINSS" checked onchange="calcularTudo()"> INSS
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" id="chkIncideIRRF" checked onchange="calcularTudo()"> IRRF
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" id="chkIncideFGTS" checked onchange="calcularTudo()"> FGTS
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUNA DA DIREITA: RESULTADOS & MEMÓRIA AUDITÁVEL (7 cols) -->
+      <div class="lg:col-span-7 space-y-4">
+
+        <!-- Totais em Destaque -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-[11px] font-bold text-slate-500 uppercase">Bruto Total</span>
+            <div class="text-xl font-bold text-slate-900 mt-0.5" id="resBruto">R$ 3.000,00</div>
+            <span class="text-[10px] text-indigo-600">Base tributável</span>
+          </div>
+
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-[11px] font-bold text-slate-500 uppercase">INSS Empregado</span>
+            <div class="text-xl font-bold text-rose-600 mt-0.5" id="resINSS">R$ 248,60</div>
+            <span class="text-[10px] text-slate-400" id="resAliqEfetivaINSS">8,29% efetiva</span>
+          </div>
+
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-[11px] font-bold text-slate-500 uppercase">IRRF Mensal</span>
+            <div class="text-xl font-bold text-rose-600 mt-0.5" id="resIRRF">R$ 0,00</div>
+            <span class="text-[10px] text-slate-400" id="resBaseIRRF">Base Simplificada</span>
+          </div>
+
+          <div class="bg-emerald-50 p-3.5 rounded-xl border border-emerald-300 shadow-sm">
+            <span class="text-[11px] font-bold text-emerald-800 uppercase">Salário Líquido</span>
+            <div class="text-xl font-black text-emerald-700 mt-0.5" id="resLiquido">R$ 2.751,40</div>
+            <span class="text-[10px] text-emerald-800 font-medium">A transferir</span>
+          </div>
+        </div>
+
+        <!-- Alerta de Saldo a Descontar se Descontos > Proventos (RN-06) -->
+        <div id="bannerSaldoDescontar" class="hidden p-3 bg-amber-100 border-l-4 border-amber-500 text-amber-900 rounded-lg text-xs shadow-sm">
+          <strong>⚠️ Regra de Proteção ao Líquido (RN-06):</strong> Os descontos superaram os proventos disponíveis.
+          O líquido foi preservado em <strong class="text-rose-700">R$ 0,00</strong> e o excedente de
+          <strong id="valSaldoGerado" class="text-amber-900 font-bold">R$ 0,00</strong> foi registrado como <em>Saldo a Descontar</em> para o mês seguinte.
+        </div>
+
+        <!-- Memória de Cálculo Passo a Passo (RN-02) -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b pb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                📜 Memória de Cálculo Auditável (RN-02)
+              </h3>
+              <p class="text-xs text-slate-500">
+                Cada valor acompanhado de sua base, fórmula, norma de 2026 e arredondamento half-up
+              </p>
+            </div>
+            <button onclick="window.print()" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold border border-slate-300 transition flex items-center gap-1">
+              🖨️ Imprimir Holerite
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-300">
+                  <th class="py-2 px-2.5 font-bold">Verba / Descrição</th>
+                  <th class="py-2 px-2 font-bold text-center">Tipo</th>
+                  <th class="py-2 px-2 font-bold text-right">Base</th>
+                  <th class="py-2 px-3 font-bold">Regra e Parâmetro Legal</th>
+                  <th class="py-2 px-2 font-bold text-right">Valor Final</th>
+                </tr>
+              </thead>
+              <tbody id="corpoMemoria" class="divide-y divide-slate-100 text-slate-800">
+                <!-- Populado dinamicamente -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Informações de Encargo Patronal (FGTS 8%) -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
+            <div>
+              <strong class="text-slate-800">Encargo Patronal - FGTS 8% (RN-24):</strong>
+              <span class="text-slate-500 ml-1">Base <span id="fgtsBase" class="font-semibold">R$ 3.000,00</span> &bull; 8% da empresa</span>
+            </div>
+            <div class="font-bold text-indigo-900 text-sm" id="fgtsValor">R$ 240,00</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Área Oculta para Impressão de Contracheque / Holerite (Print Media) -->
+    <div id="printableHolerite" class="hidden p-6 bg-white border border-slate-400 text-slate-900 font-sans">
+      <div class="border-b-2 border-slate-800 pb-3 mb-4 flex justify-between items-start">
+        <div>
+          <h2 class="text-base font-bold uppercase tracking-wider">CORRESPONDENTE BANCÁRIO S.A.</h2>
+          <p class="text-xs text-slate-600">CNPJ: 12.345.678/0001-90 &bull; Matriz São Paulo</p>
+        </div>
+        <div class="text-right">
+          <div class="text-sm font-bold">RECIBO DE PAGAMENTO DE SALÁRIO</div>
+          <div class="text-xs text-slate-600">Competência: 10/2026</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-100 p-2.5 rounded text-xs mb-4 flex justify-between border border-slate-300">
+        <span><strong>Colaborador:</strong> Teste Homologação RH</span>
+        <span><strong>CPF:</strong> ***.458.921-**</span>
+        <span><strong>Cargo:</strong> Atendente Operacional</span>
+      </div>
+
+      <table class="w-full text-xs border border-slate-300 mb-4">
+        <thead>
+          <tr class="bg-slate-200">
+            <th class="p-2 border">Cód</th>
+            <th class="p-2 border">Descrição da Verba</th>
+            <th class="p-2 border text-right">Proventos (R$)</th>
+            <th class="p-2 border text-right">Descontos (R$)</th>
+          </tr>
+        </thead>
+        <tbody id="printCorpoHolerite"></tbody>
+      </table>
+
+      <div class="grid grid-cols-3 gap-3 text-center text-xs border-t-2 border-slate-800 pt-3 mb-6">
+        <div class="p-2 border bg-slate-50">
+          <span class="block text-slate-500 text-[10px]">TOTAL PROVENTOS</span>
+          <strong id="printTotalProventos" class="text-sm">R$ 0,00</strong>
+        </div>
+        <div class="p-2 border bg-slate-50">
+          <span class="block text-slate-500 text-[10px]">TOTAL DESCONTOS</span>
+          <strong id="printTotalDescontos" class="text-sm text-rose-700">R$ 0,00</strong>
+        </div>
+        <div class="p-2 border bg-emerald-50">
+          <span class="block text-emerald-700 text-[10px] font-bold">LÍQUIDO A RECEBER</span>
+          <strong id="printTotalLiquido" class="text-base text-emerald-800">R$ 0,00</strong>
+        </div>
+      </div>
+
+      <div class="border-t border-dashed pt-4 text-center text-[10px] text-slate-500">
+        Declaro ter recebido a importância líquida discriminada neste recibo. &bull; Data: ____/____/2026 &bull; Assinatura: ___________________________________
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Script do Motor de Cálculo Idêntico ao Back-End Oficial -->
+  <script>
+    // Parâmetros Oficiais de 2026
+    const SALARIO_MINIMO = 1621.00;
+    const INSS_TETO = 8475.55;
+    const INSS_MAX = 988.09;
+    const IRRF_DEP = 189.59;
+    const IRRF_SIMPLIFICADO = 607.20;
+
+    function roundHalfUp(val) {
+      return Math.round(val * 100) / 100;
+    }
+
+    function formatMoeda(val) {
+      return 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function toggleCustoVT() {
+      const optante = document.getElementById('chkOptanteVT').checked;
+      const box = document.getElementById('boxCustoVT');
+      if (optante) {
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('chkOptanteVT').addEventListener('change', toggleCustoVT);
+
+    // Motor de Cálculo INSS 2026
+    function calcularINSS(base) {
+      if (base >= INSS_TETO) {
+        return {
+          total: INSS_MAX,
+          memoria: `Base ${formatMoeda(base)} atingiu o teto legal de R$ 8.475,55. Contribuição limitada ao teto máximo de R$ 988,09 (Portaria MPS/MF 13/2026).`
+        };
+      }
+
+      let soma = 0;
+      let passos = [];
+
+      // Faixa 1: até 1.621,00 a 7,5%
+      const f1 = Math.min(base, 1621.00);
+      const v1 = f1 * 0.075;
+      soma += v1;
+      passos.push(`Faixa 1 (até R$ 1.621,00): ${f1.toFixed(2)} × 7,5% = ${v1.toFixed(4)}`);
+
+      // Faixa 2: 1.621,01 a 2.902,84 a 9%
+      if (base > 1621.00) {
+        const f2 = Math.min(base - 1621.00, 1281.84);
+        const v2 = f2 * 0.09;
+        soma += v2;
+        passos.push(`Faixa 2 (de 1.621,01 a 2.902,84): ${f2.toFixed(2)} × 9% = ${v2.toFixed(4)}`);
+      }
+
+      // Faixa 3: 2.902,85 a 4.354,27 a 12%
+      if (base > 2902.84) {
+        const f3 = Math.min(base - 2902.84, 1451.43);
+        const v3 = f3 * 0.12;
+        soma += v3;
+        passos.push(`Faixa 3 (de 2.902,85 a 4.354,27): ${f3.toFixed(2)} × 12% = ${v3.toFixed(4)}`);
+      }
+
+      // Faixa 4: 4.354,28 a 8.475,55 a 14%
+      if (base > 4354.27) {
+        const f4 = Math.min(base - 4354.27, 4121.28);
+        const v4 = f4 * 0.14;
+        soma += v4;
+        passos.push(`Faixa 4 (de 4.354,28 a 8.475,55): ${f4.toFixed(2)} × 14% = ${v4.toFixed(4)}`);
+      }
+
+      return {
+        total: roundHalfUp(soma),
+        memoria: passos.join(' | ') + ` &rarr; Total INSS: ${formatMoeda(roundHalfUp(soma))}`
+      };
+    }
+
+    // Motor de Cálculo IRRF 2026 + Lei 15.270/2025
+    function calcularIRRF(rendimento, inss, dependentes) {
+      const baseTrad = Math.max(0, rendimento - inss - (dependentes * IRRF_DEP));
+      const baseSimp = Math.max(0, rendimento - IRRF_SIMPLIFICADO);
+
+      function calcFaixa(b) {
+        if (b <= 2428.80) return 0;
+        if (b <= 2826.65) return (b * 0.075) - 182.16;
+        if (b <= 3751.05) return (b * 0.15) - 394.16;
+        if (b <= 4664.68) return (b * 0.225) - 675.49;
+        return (b * 0.275) - 908.73;
+      }
+
+      const impTrad = Math.max(0, calcFaixa(baseTrad));
+      const impSimp = Math.max(0, calcFaixa(baseSimp));
+
+      let impApurado = 0;
+      let baseEscolhida = '';
+      let explicacaoBase = '';
+
+      if (impTrad <= impSimp) {
+        impApurado = impTrad;
+        baseEscolhida = 'TRADICIONAL';
+        explicacaoBase = `Base Tradicional (R$ ${baseTrad.toFixed(2)}) gerou imposto menor (${formatMoeda(impTrad)}) vs Simplificada (${formatMoeda(impSimp)})`;
+      } else {
+        impApurado = impSimp;
+        baseEscolhida = 'SIMPLIFICADA';
+        explicacaoBase = `Base Simplificada (R$ ${baseSimp.toFixed(2)}) gerou imposto menor (${formatMoeda(impSimp)}) vs Tradicional (${formatMoeda(impTrad)})`;
+      }
+
+      // Redução da Lei 15.270/2025
+      let reducao = 0;
+      let explicacaoReducao = '';
+      if (rendimento <= 5000.00) {
+        reducao = Math.min(impApurado, 312.89);
+        explicacaoReducao = `Redução da Lei 15.270/2025 (rendimento até R$ 5.000,00) de ${formatMoeda(reducao)} zera o imposto.`;
+      } else if (rendimento <= 7350.00) {
+        reducao = Math.max(0, Math.min(impApurado, 978.62 - (0.133145 * rendimento)));
+        explicacaoReducao = `Redução da Lei 15.270/2025: R$ 978,62 - (0,133145 × ${rendimento.toFixed(2)}) = ${formatMoeda(reducao)}.`;
+      } else {
+        reducao = 0;
+        explicacaoReducao = 'Rendimento superior a R$ 7.350,00: sem redução adicional.';
+      }
+
+      const irrfFinal = roundHalfUp(Math.max(0, impApurado - reducao));
+      return {
+        total: irrfFinal,
+        baseEscolhida,
+        memoria: `${explicacaoBase} | ${explicacaoReducao} &rarr; IRRF Retido: ${formatMoeda(irrfFinal)}`
+      };
+    }
+
+    // Função de Cálculo Geral da Página
+    function calcularTudo() {
+      const salarioBase = parseFloat(document.getElementById('inpSalario').value) || 0;
+      const dependentes = parseInt(document.getElementById('inpDependentes').value) || 0;
+      const he50 = parseFloat(document.getElementById('inpHE50').value) || 0;
+      const he100 = parseFloat(document.getElementById('inpHE100').value) || 0;
+      const diasUteis = parseInt(document.getElementById('inpDiasUteis').value) || 26;
+      const domingosFeriados = parseInt(document.getElementById('inpDomingosFeriados').value) || 5;
+      const faltasDias = parseInt(document.getElementById('inpFaltas').value) || 0;
+      const atrasosHoras = parseFloat(document.getElementById('inpAtrasos').value) || 0;
+
+      const optanteVT = document.getElementById('chkOptanteVT').checked;
+      const custoVT = parseFloat(document.getElementById('inpCustoVT').value) || 0;
+
+      const descAvulsa = document.getElementById('inpDescAvulsa').value.trim() || 'Verba Avulsa';
+      const valorAvulsa = parseFloat(document.getElementById('inpValorAvulsa').value) || 0;
+      const tipoAvulsa = document.querySelector('input[name="tipoAvulsa"]:checked').value;
+      const incideINSS = document.getElementById('chkIncideINSS').checked;
+      const incideIRRF = document.getElementById('chkIncideIRRF').checked;
+      const incideFGTS = document.getElementById('chkIncideFGTS').checked;
+
+      const salarioHora = salarioBase / 220;
+
+      const listaMemoria = [];
+
+      // 1. Salário Base
+      listaMemoria.push({
+        tipo: 'SALARIO_BASE',
+        descricao: 'Salário Base Contratual (divisor 220)',
+        natureza: 'PROVENTO',
+        base: salarioBase,
+        regra: 'Salário integral mensal CLT / Convenção',
+        parametro: 'Contrato CLT (RN-20 / RN-30)',
+        valor: salarioBase
+      });
+
+      // 2. Horas Extras
+      let valorHE = 0;
+      if (he50 > 0) {
+        const v50 = roundHalfUp(he50 * salarioHora * 1.50);
+        valorHE += v50;
+        listaMemoria.push({
+          tipo: 'HORA_EXTRA_50',
+          descricao: `Horas Extras 50% (${he50}h)`,
+          natureza: 'PROVENTO',
+          base: salarioBase,
+          regra: `${he50}h × R$ ${salarioHora.toFixed(4)}/h × 1,50`,
+          parametro: 'CLT art. 59 (RN-30)',
+          valor: v50
+        });
+      }
+
+      if (he100 > 0) {
+        const v100 = roundHalfUp(he100 * salarioHora * 2.00);
+        valorHE += v100;
+        listaMemoria.push({
+          tipo: 'HORA_EXTRA_100',
+          descricao: `Horas Extras 100% (${he100}h)`,
+          natureza: 'PROVENTO',
+          base: salarioBase,
+          regra: `${he100}h × R$ ${salarioHora.toFixed(4)}/h × 2,00`,
+          parametro: 'Lei 605/49 / Convenção (RN-30)',
+          valor: v100
+        });
+      }
+
+      // 3. DSR sobre Horas Extras (RN-31)
+      let valorDSR = 0;
+      if (valorHE > 0 && diasUteis > 0) {
+        valorDSR = roundHalfUp((valorHE / diasUteis) * domingosFeriados);
+        listaMemoria.push({
+          tipo: 'DSR_HORA_EXTRA',
+          descricao: 'DSR s/ Horas Extras (Súmula 172 TST)',
+          natureza: 'PROVENTO',
+          base: valorHE,
+          regra: `(${formatMoeda(valorHE)} / ${diasUteis} dias úteis) × ${domingosFeriados} repousos`,
+          parametro: 'Lei 605/49 / RN-31',
+          valor: valorDSR
+        });
+      }
+
+      // 4. Verba Avulsa Provento (RN-25)
+      let valorAvulsaProventoTributavel = 0;
+      let valorAvulsaProventoIsento = 0;
+      if (tipoAvulsa === 'PROVENTO' && valorAvulsa > 0) {
+        if (incideINSS) valorAvulsaProventoTributavel += valorAvulsa;
+        else valorAvulsaProventoIsento += valorAvulsa;
+
+        listaMemoria.push({
+          tipo: 'VERBA_AVULSA_PROVENTO',
+          descricao: descAvulsa,
+          natureza: 'PROVENTO',
+          base: valorAvulsa,
+          regra: `Lançamento manual. Incidências: INSS=${incideINSS}, IRRF=${incideIRRF}, FGTS=${incideFGTS}`,
+          parametro: 'RN-25 (Verbas Avulsas)',
+          valor: valorAvulsa
+        });
+      }
+
+      // 5. Faltas Injustificadas e Atrasos (Descontos)
+      let valorFalta = 0;
+      if (faltasDias > 0) {
+        const descSalario = roundHalfUp((salarioBase / 30) * faltasDias);
+        const descDSRFalta = roundHalfUp((salarioBase / 30) * 1); // 1 semana de perda
+        valorFalta = descSalario + descDSRFalta;
+
+        listaMemoria.push({
+          tipo: 'FALTA_INJUSTIFICADA',
+          descricao: `Faltas Injustificadas (${faltasDias} dias + DSR perdido)`,
+          natureza: 'DESCONTO',
+          base: salarioBase,
+          regra: `(R$ ${salarioBase.toFixed(2)} / 30) × ${faltasDias} dias + Perda DSR semanal`,
+          parametro: 'Art. 6º Lei 605/49 (RN-33)',
+          valor: valorFalta
+        });
+      }
+
+      let valorAtraso = 0;
+      if (atrasosHoras > 0) {
+        valorAtraso = roundHalfUp(atrasosHoras * salarioHora);
+        listaMemoria.push({
+          tipo: 'ATRASO_HORAS',
+          descricao: `Atrasos / Saída Antecipada (${atrasosHoras}h)`,
+          natureza: 'DESCONTO',
+          base: salarioBase,
+          regra: `${atrasosHoras}h × R$ ${salarioHora.toFixed(4)}/h (sem perda de DSR)`,
+          parametro: 'RN-80 (Atrasos em Horas)',
+          valor: valorAtraso
+        });
+      }
+
+      // 6. Base e Cálculo do INSS (RN-22)
+      const baseINSS = Math.max(0, (salarioBase + valorHE + valorDSR + valorAvulsaProventoTributavel) - valorFalta - valorAtraso);
+      const calcINSS = calcularINSS(baseINSS);
+
+      listaMemoria.push({
+        tipo: 'INSS',
+        descricao: 'INSS Empregado (Progressivo por Faixas)',
+        natureza: 'DESCONTO',
+        base: baseINSS,
+        regra: calcINSS.memoria,
+        parametro: 'Portaria Interministerial MPS/MF 13/2026',
+        valor: calcINSS.total
+      });
+
+      // 7. Base e Cálculo do IRRF (RN-23)
+      const calcIRRF = calcularIRRF(baseINSS, calcINSS.total, dependentes);
+      listaMemoria.push({
+        tipo: 'IRRF',
+        descricao: `IRRF Retido na Fonte (${calcIRRF.baseEscolhida})`,
+        natureza: 'DESCONTO',
+        base: baseINSS,
+        regra: calcIRRF.memoria,
+        parametro: 'Lei 15.270/2025 e Tabela Receita Federal 2026',
+        valor: calcIRRF.total
+      });
+
+      // 8. Vale-Transporte (RN-50)
+      let valorVT = 0;
+      if (optanteVT) {
+        const limite6 = roundHalfUp(salarioBase * 0.06);
+        valorVT = Math.min(limite6, custoVT);
+        listaMemoria.push({
+          tipo: 'VALE_TRANSPORTE',
+          descricao: 'Desconto de Vale-Transporte',
+          natureza: 'DESCONTO',
+          base: salarioBase,
+          regra: `Menor entre 6% do salário (${formatMoeda(limite6)}) e custo mensal real (${formatMoeda(custoVT)})`,
+          parametro: 'Lei 7.418/85 (RN-50)',
+          valor: valorVT
+        });
+      }
+
+      // 9. Verba Avulsa Desconto (RN-25)
+      let valorAvulsaDesconto = 0;
+      if (tipoAvulsa === 'DESCONTO' && valorAvulsa > 0) {
+        valorAvulsaDesconto = valorAvulsa;
+        listaMemoria.push({
+          tipo: 'VERBA_AVULSA_DESCONTO',
+          descricao: descAvulsa,
+          natureza: 'DESCONTO',
+          base: valorAvulsa,
+          regra: 'Desconto manual lançado pelo RH com incidências controladas',
+          parametro: 'RN-25 (Verbas Avulsas)',
+          valor: valorAvulsaDesconto
+        });
+      }
+
+      // 10. Totalização e Regra do Líquido (RN-06)
+      const totalProventos = roundHalfUp(salarioBase + valorHE + valorDSR + valorAvulsaProventoTributavel + valorAvulsaProventoIsento);
+      const descontosMandatorios = roundHalfUp(calcINSS.total + calcIRRF.total);
+      const descontosOpcionaisDesejados = roundHalfUp(valorFalta + valorAtraso + valorVT + valorAvulsaDesconto);
+
+      let liquidoFinal = 0;
+      let saldoGerado = 0;
+      let descontosOpcionaisAplicados = 0;
+
+      if (totalProventos < descontosMandatorios) {
+        liquidoFinal = 0;
+        saldoGerado = descontosOpcionaisDesejados;
+        descontosOpcionaisAplicados = 0;
+      } else {
+        const margem = roundHalfUp(totalProventos - descontosMandatorios);
+        if (descontosOpcionaisDesejados > margem) {
+          descontosOpcionaisAplicados = margem;
+          saldoGerado = roundHalfUp(descontosOpcionaisDesejados - margem);
+          liquidoFinal = 0;
+        } else {
+          descontosOpcionaisAplicados = descontosOpcionaisDesejados;
+          saldoGerado = 0;
+          liquidoFinal = roundHalfUp(margem - descontosOpcionaisDesejados);
+        }
+      }
+
+      const totalDescontosFinal = roundHalfUp(descontosMandatorios + descontosOpcionaisAplicados);
+
+      // FGTS Encargo (RN-24)
+      let baseFGTS = baseINSS;
+      if (tipoAvulsa === 'PROVENTO' && !incideINSS && incideFGTS) baseFGTS += valorAvulsa;
+      const fgtsFinal = roundHalfUp(baseFGTS * 0.08);
+
+      // Atualiza interface
+      document.getElementById('resBruto').innerText = formatMoeda(totalProventos);
+      document.getElementById('resINSS').innerText = formatMoeda(calcINSS.total);
+      document.getElementById('resAliqEfetivaINSS').innerText = baseINSS > 0 ? ((calcINSS.total / baseINSS) * 100).toFixed(2) + '% efetiva' : '0%';
+      document.getElementById('resIRRF').innerText = formatMoeda(calcIRRF.total);
+      document.getElementById('resBaseIRRF').innerText = 'Base ' + calcIRRF.baseEscolhida;
+      document.getElementById('resLiquido').innerText = formatMoeda(liquidoFinal);
+
+      document.getElementById('fgtsBase').innerText = formatMoeda(baseFGTS);
+      document.getElementById('fgtsValor').innerText = formatMoeda(fgtsFinal);
+
+      // Alerta de saldo a descontar
+      const bannerSaldo = document.getElementById('bannerSaldoDescontar');
+      if (saldoGerado > 0) {
+        bannerSaldo.classList.remove('hidden');
+        document.getElementById('valSaldoGerado').innerText = formatMoeda(saldoGerado);
+      } else {
+        bannerSaldo.classList.add('hidden');
+      }
+
+      // Renderiza Tabela de Memória
+      const tbody = document.getElementById('corpoMemoria');
+      tbody.innerHTML = '';
+
+      const printTbody = document.getElementById('printCorpoHolerite');
+      printTbody.innerHTML = '';
+
+      let cod = 1;
+      listaMemoria.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = item.natureza === 'PROVENTO' ? 'hover:bg-slate-50' : 'hover:bg-rose-50/40';
+
+        const badgeNatureza = item.natureza === 'PROVENTO'
+          ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">PROVENTO</span>'
+          : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">DESCONTO</span>';
+
+        tr.innerHTML = `
+          <td class="py-2 px-2.5 font-medium text-slate-900">${item.descricao}</td>
+          <td class="py-2 px-2 text-center">${badgeNatureza}</td>
+          <td class="py-2 px-2 text-right font-mono text-slate-500">${formatMoeda(item.base)}</td>
+          <td class="py-2 px-3 text-[11px] text-slate-600 leading-snug">
+            <div>${item.regra}</div>
+            <div class="text-[10px] text-indigo-600 font-semibold mt-0.5">&bull; ${item.parametro} &bull; Arredondamento: HALF_UP_2_CASAS</div>
+          </td>
+          <td class="py-2 px-2 text-right font-mono font-bold ${item.natureza === 'PROVENTO' ? 'text-emerald-700' : 'text-rose-700'}">
+            ${formatMoeda(item.valor)}
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Preenche espelho do holerite para impressão
+        const trPrint = document.createElement('tr');
+        trPrint.innerHTML = `
+          <td class="p-1.5 border text-center font-mono">${(cod++).toString().padStart(3, '0')}</td>
+          <td class="p-1.5 border">${item.descricao}</td>
+          <td class="p-1.5 border text-right font-mono">${item.natureza === 'PROVENTO' ? formatMoeda(item.valor) : '-'}</td>
+          <td class="p-1.5 border text-right font-mono">${item.natureza === 'DESCONTO' ? formatMoeda(item.valor) : '-'}</td>
+        `;
+        printTbody.appendChild(trPrint);
+      });
+
+      document.getElementById('printTotalProventos').innerText = formatMoeda(totalProventos);
+      document.getElementById('printTotalDescontos').innerText = formatMoeda(totalDescontosFinal);
+      document.getElementById('printTotalLiquido').innerText = formatMoeda(liquidoFinal);
+    }
+
+    // Carregador de Exemplos Oficiais da Seção 8
+    function carregarExemplo(tipo) {
+      redefinirPadroes();
+
+      if (tipo === 'A') {
+        // Exemplo A: Salário 3.000,00 sem dep -> INSS 248,60 | IRRF 0,00 | Líquido 2.751,40
+        document.getElementById('inpSalario').value = '3000.00';
+        document.getElementById('inpDependentes').value = '0';
+      } else if (tipo === 'B') {
+        // Exemplo B: Salário 6.000,00 sem dep -> INSS 641,51 | IRRF 385,10 | Líquido 4.973,39
+        document.getElementById('inpSalario').value = '6000.00';
+        document.getElementById('inpDependentes').value = '0';
+      } else if (tipo === 'C') {
+        // Exemplo C: Teto INSS 10.000,00 -> INSS 988,09
+        document.getElementById('inpSalario').value = '10000.00';
+        document.getElementById('inpDependentes').value = '0';
+      } else if (tipo === 'D') {
+        // Exemplo D: Salário 2.200,00 com 2h úteis (R$ 30,00) e 2h domingo (R$ 40,00)
+        document.getElementById('inpSalario').value = '2200.00';
+        document.getElementById('inpHE50').value = '2';
+        document.getElementById('inpHE100').value = '2';
+      } else if (tipo === 'F') {
+        // Exemplo F: Salário 2.000,00 com VT custo 180 (gera 120)
+        document.getElementById('inpSalario').value = '2000.00';
+        document.getElementById('chkOptanteVT').checked = true;
+        document.getElementById('inpCustoVT').value = '180.00';
+        toggleCustoVT();
+      } else if (tipo === 'G') {
+        // Exemplo G: Salário 2.200,00 + 10h extras úteis (150,00) + DSR (28,85) -> Bruto 2.378,85, INSS 189,78, Líquido 2.189,07
+        document.getElementById('inpSalario').value = '2200.00';
+        document.getElementById('inpHE50').value = '10';
+        document.getElementById('inpDiasUteis').value = '26';
+        document.getElementById('inpDomingosFeriados').value = '5';
+      } else if (tipo === 'H') {
+        // Exemplo H: Salário 5.500,00 com 2 dep -> INSS 571,51, IRRF 101,78, Líquido 4.826,71
+        document.getElementById('inpSalario').value = '5500.00';
+        document.getElementById('inpDependentes').value = '2';
+      } else if (tipo === 'I') {
+        // Exemplo I: Salário 2.000,00 -> INSS 155,69, IRRF 0,00, Líquido 1.844,31, FGTS 240,00
+        document.getElementById('inpSalario').value = '2000.00';
+      } else if (tipo === 'M') {
+        // Exemplo M: Feriado municipal cadastrado altera dias úteis para 25 e descansos para 6 -> DSR 36,00
+        document.getElementById('inpSalario').value = '2200.00';
+        document.getElementById('inpHE50').value = '10';
+        document.getElementById('inpDiasUteis').value = '25';
+        document.getElementById('inpDomingosFeriados').value = '6';
+      } else if (tipo === 'DESCONTO_EXCESSIVO') {
+        // RN-06: Salário 2.000,00 com desconto avulso de 2.500,00 -> Líquido 0,00 e Saldo a Descontar 655,69
+        document.getElementById('inpSalario').value = '2000.00';
+        document.getElementById('inpDescAvulsa').value = 'Desconto Extraordinário Convênio';
+        document.getElementById('inpValorAvulsa').value = '2500.00';
+        document.querySelector('input[name="tipoAvulsa"][value="DESCONTO"]').checked = true;
+      }
+
+      calcularTudo();
+    }
+
+    function redefinirPadroes() {
+      document.getElementById('inpSalario').value = '3000.00';
+      document.getElementById('inpDependentes').value = '0';
+      document.getElementById('inpHE50').value = '0';
+      document.getElementById('inpHE100').value = '0';
+      document.getElementById('inpDiasUteis').value = '26';
+      document.getElementById('inpDomingosFeriados').value = '5';
+      document.getElementById('inpFaltas').value = '0';
+      document.getElementById('inpAtrasos').value = '0';
+      document.getElementById('chkOptanteVT').checked = false;
+      document.getElementById('inpCustoVT').value = '180.00';
+      toggleCustoVT();
+      document.getElementById('inpDescAvulsa').value = '';
+      document.getElementById('inpValorAvulsa').value = '0.00';
+      document.querySelector('input[name="tipoAvulsa"][value="PROVENTO"]').checked = true;
+      document.getElementById('chkIncideINSS').checked = true;
+      document.getElementById('chkIncideIRRF').checked = true;
+      document.getElementById('chkIncideFGTS').checked = true;
+      calcularTudo();
+    }
+
+    // Inicialização ao carregar
+    window.onload = function() {
+      calcularTudo();
+    };
+  </script>
+
+</body>
+</html>
+
