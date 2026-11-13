@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Simples: Conferência e Fechamento Seguro (Etapa 3)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Cabeçalho Simples -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+          Simulador Rápido de Homologação
+        </span>
+        <h1 class="text-xl md:text-2xl font-black text-slate-900 mt-1">
+          🔒 Conferência & Fechamento Seguro da Folha
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Teste prático dos critérios: RN-04, RN-06, RN-08, RN-59, RN-63, RN-67, RN-68 e RN-73
+        </p>
+      </div>
+
+      <!-- Status Atual da Competência -->
+      <div class="text-right">
+        <span class="text-[11px] text-slate-400 font-semibold uppercase block">Estado da Competência 10/2026:</span>
+        <span id="badgeEstado" class="inline-block px-3 py-1 text-sm font-bold rounded-lg uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 mt-0.5">
+          ABERTA
+        </span>
+      </div>
+    </div>
+
+    <!-- PASSO 1: SIMULAR BLOQUEIOS OU CENÁRIO NORMAL -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs">1</span>
+        Escolha o Cenário que Deseja Testar:
+      </h2>
+      <p class="text-xs text-slate-500">
+        Selecione abaixo para testar o fluxo normal com sucesso ou simular os bloqueios da Tabela 7.1:
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+        <label class="p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 transition bg-slate-50/50">
+          <input type="radio" name="cenarioTeste" value="NORMAL" checked onchange="trocarCenario()" class="mt-0.5 text-indigo-600">
+          <div>
+            <strong class="text-slate-800 block">Cenário Normal (Tudo Válido)</strong>
+            <span class="text-slate-500 text-[11px]">15 colaboradores, dados bancários preenchidos, conferência bate R$ 0,00.</span>
+          </div>
+        </label>
+
+        <label class="p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 transition">
+          <input type="radio" name="cenarioTeste" value="DADOS_PENDENTES" onchange="trocarCenario()" class="mt-0.5 text-rose-600">
+          <div>
+            <strong class="text-rose-900 block">Bloqueio: Dados Bancários Ausentes (RN-73)</strong>
+            <span class="text-slate-500 text-[11px]">Simula colaborador sem agência/conta para testar o bloqueio impeditivo.</span>
+          </div>
+        </label>
+
+        <label class="p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 transition">
+          <input type="radio" name="cenarioTeste" value="COMP_ANTERIOR_ABERTA" onchange="trocarCenario()" class="mt-0.5 text-amber-600">
+          <div>
+            <strong class="text-amber-900 block">Bloqueio: Competência Anterior Aberta (RN-63)</strong>
+            <span class="text-slate-500 text-[11px]">Simula a competência 09/2026 ainda aberta. Bloqueia fechar 10/2026 fora de ordem.</span>
+          </div>
+        </label>
+
+        <label class="p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 transition">
+          <input type="radio" name="cenarioTeste" value="DIVERGENCIA_FINANCEIRA" onchange="trocarCenario()" class="mt-0.5 text-rose-600">
+          <div>
+            <strong class="text-rose-900 block">Bloqueio: Divergência na Conferência (RN-59)</strong>
+            <span class="text-slate-500 text-[11px]">Simula R$ 0,01 de divergência na soma de filiais para travar o fechamento.</span>
+          </div>
+        </label>
+
+        <label class="p-3 border rounded-xl flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 transition col-span-1 md:col-span-2">
+          <input type="radio" name="cenarioTeste" value="SALDO_DESCONTAR" onchange="trocarCenario()" class="mt-0.5 text-purple-600">
+          <div>
+            <strong class="text-purple-900 block">Caso Especial: Descontos > Proventos (RN-06 e Tabela 7.1)</strong>
+            <span class="text-slate-500 text-[11px]">Líquido preservado em R$ 0,00; gera saldo a descontar e EXIGE justificativa do RH para fechar.</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- PASSO 2: BOTÕES DO FLUXO DO RH -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs">2</span>
+        Ações do Ciclo da Folha (Clique na sequência):
+      </h2>
+
+      <div class="flex flex-wrap gap-2.5">
+        <button id="btnCalcular" onclick="acaoCalcular()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5">
+          ⚙️ 1. Calcular Folha
+        </button>
+
+        <button id="btnConferir" onclick="acaoConferir()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+          🔍 2. Executar Conferência (RN-59)
+        </button>
+
+        <button id="btnConfirmarConf" onclick="acaoConfirmarConferencia()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+          ✍️ 3. Confirmar Conferência (RN-67)
+        </button>
+
+        <button id="btnFechar" onclick="acaoFechar()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+          🔒 4. Fechar Folha Segura
+        </button>
+
+        <button id="btnDevolver" onclick="acaoDevolver()" class="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs rounded-xl border border-amber-300 transition flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+          ↩️ Devolver para Ajuste
+        </button>
+
+        <button id="btnReabrir" onclick="acaoReabrir()" class="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold text-xs rounded-xl border border-rose-300 transition flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+          🔓 Reabrir pelo RH (RN-04)
+        </button>
+      </div>
+
+      <!-- Feedback / Mensagens de Erro e Sucesso -->
+      <div id="boxAlerta" class="hidden p-3.5 rounded-xl text-xs font-medium border transition"></div>
+
+      <!-- PAINEL DA CONFERÊNCIA FINANCEIRA (RN-59) -->
+      <div id="painelConferencia" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <strong class="text-xs font-bold text-slate-800 uppercase tracking-wide">
+            📊 Painel de Conferência Financeira Interna (RN-59 - Tolerância R$ 0,00)
+          </strong>
+          <span id="badgeConfGeral" class="text-[11px] font-bold px-2 py-0.5 rounded"></span>
+        </div>
+
+        <div id="itensConferenciaLista" class="space-y-1.5 text-xs"></div>
+      </div>
+    </div>
+
+    <!-- PASSO 3: HISTÓRICO DE VERSÕES FECHADAS (RN-68) E LOG IMUTÁVEL (RN-04) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <!-- Histórico de Versões V1, V2... -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center justify-between">
+          <span>📦 Versões Fechadas Salvas (RN-68)</span>
+          <span id="qtdVersoes" class="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono">0 versão</span>
+        </h3>
+        <p class="text-[11px] text-slate-500">
+          Cada fechamento grava uma versão numerada com hash SHA-256 e snapshot imutável:
+        </p>
+        <div id="listaVersoes" class="space-y-2 text-xs">
+          <div class="text-slate-400 text-center py-4 text-xs italic">Nenhuma versão fechada ainda.</div>
+        </div>
+      </div>
+
+      <!-- Log de Auditoria Imutável -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center justify-between">
+          <span>🛡️ Log de Auditoria Imutável (RNF-03)</span>
+          <span class="text-[10px] text-emerald-600 font-bold">● Gravando</span>
+        </h3>
+        <p class="text-[11px] text-slate-500">
+          Registro de quem calculou, conferiu, fechou ou reabriu:
+        </p>
+        <div id="listaLogs" class="space-y-1.5 text-[11px] font-mono max-h-56 overflow-y-auto border p-2 rounded-lg bg-slate-50">
+          <div class="text-slate-400 italic">Aguardando ações...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Rodapé -->
+    <div class="text-center text-xs text-slate-400 pt-2">
+      projetoFolha &bull; Testador dos Critérios de Fechamento Seguro (Etapa 3 / v1.7) &bull; <a href="index.html" class="text-indigo-600 font-semibold hover:underline">Voltar ao Sistema Completo</a>
+    </div>
+
+  </div>
+
+  <!-- Script Interativo do Simulador -->
+  <script>
+    // Estado local da competência
+    let estado = 'ABERTA'; // ABERTA, CALCULADA, FECHADA
+    let conferenciaFeita = false;
+    let conferenciaConfirmada = false;
+    let versoes = [];
+    let logs = [];
+    let cenario = 'NORMAL';
+
+    const usuarioAtual = { nome: 'Deyse (Analista de DP)', email: 'deyse.dp@empresa.com', perfil: 'RH' };
+
+    function registrarLogLocal(acao, detalhes) {
+      const dataHora = new Date().toLocaleTimeString('pt-BR');
+      logs.unshift({ acao, detalhes, dataHora, usuario: usuarioAtual.email });
+      atualizarLogsNaTela();
+    }
+
+    function atualizarLogsNaTela() {
+      const div = document.getElementById('listaLogs');
+      div.innerHTML = logs.map(l => `
+        <div class="border-b border-slate-200 pb-1">
+          <span class="text-slate-400">[${l.dataHora}]</span>
+          <strong class="text-indigo-900">${l.acao}:</strong>
+          <span class="text-slate-700">${l.detalhes}</span>
+          <span class="text-slate-400">por ${l.usuario}</span>
+        </div>
+      `).join('');
+    }
+
+    function trocarCenario() {
+      cenario = document.querySelector('input[name="cenarioTeste"]:checked').value;
+      esconderAlerta();
+      document.getElementById('painelConferencia').classList.add('hidden');
+      conferenciaFeita = false;
+      conferenciaConfirmada = false;
+      atualizarBotoes();
+    }
+
+    function mostrarAlerta(tipo, msg) {
+      const box = document.getElementById('boxAlerta');
+      box.className = 'p-3.5 rounded-xl text-xs font-semibold border transition ';
+      if (tipo === 'ERRO') {
+        box.className += 'bg-rose-50 border-rose-300 text-rose-900';
+        box.innerHTML = '❌ ' + msg;
+      } else if (tipo === 'SUCESSO') {
+        box.className += 'bg-emerald-50 border-emerald-300 text-emerald-900';
+        box.innerHTML = '✅ ' + msg;
+      } else if (tipo === 'AVISO') {
+        box.className += 'bg-amber-50 border-amber-300 text-amber-900';
+        box.innerHTML = '⚠️ ' + msg;
+      }
+      box.classList.remove('hidden');
+    }
+
+    function esconderAlerta() {
+      document.getElementById('boxAlerta').classList.add('hidden');
+    }
+
+    function atualizarBotoes() {
+      const btnCalcular = document.getElementById('btnCalcular');
+      const btnConferir = document.getElementById('btnConferir');
+      const btnConfirmarConf = document.getElementById('btnConfirmarConf');
+      const btnFechar = document.getElementById('btnFechar');
+      const btnDevolver = document.getElementById('btnDevolver');
+      const btnReabrir = document.getElementById('btnReabrir');
+      const badge = document.getElementById('badgeEstado');
+
+      // Atualiza Badge
+      badge.innerText = estado;
+      if (estado === 'ABERTA') {
+        badge.className = 'inline-block px-3 py-1 text-sm font-bold rounded-lg uppercase tracking-wider bg-slate-200 text-slate-800 border border-slate-300 mt-0.5';
+      } else if (estado === 'CALCULADA') {
+        badge.className = 'inline-block px-3 py-1 text-sm font-bold rounded-lg uppercase tracking-wider bg-indigo-100 text-indigo-900 border border-indigo-300 mt-0.5';
+      } else if (estado === 'FECHADA') {
+        badge.className = 'inline-block px-3 py-1 text-sm font-bold rounded-lg uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 mt-0.5';
+      }
+
+      if (estado === 'ABERTA') {
+        btnCalcular.disabled = false;
+        btnCalcular.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        btnConferir.disabled = true;
+        btnConferir.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnConfirmarConf.disabled = true;
+        btnConfirmarConf.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnFechar.disabled = true;
+        btnFechar.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnDevolver.disabled = true;
+        btnDevolver.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnReabrir.disabled = true;
+        btnReabrir.classList.add('opacity-50', 'cursor-not-allowed');
+      } else if (estado === 'CALCULADA') {
+        btnCalcular.disabled = false;
+        btnCalcular.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        btnConferir.disabled = false;
+        btnConferir.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        if (conferenciaFeita) {
+          btnConfirmarConf.disabled = false;
+          btnConfirmarConf.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          btnConfirmarConf.disabled = true;
+          btnConfirmarConf.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        btnFechar.disabled = false;
+        btnFechar.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        btnDevolver.disabled = false;
+        btnDevolver.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        btnReabrir.disabled = true;
+        btnReabrir.classList.add('opacity-50', 'cursor-not-allowed');
+      } else if (estado === 'FECHADA') {
+        btnCalcular.disabled = true;
+        btnCalcular.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnConferir.disabled = true;
+        btnConferir.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnConfirmarConf.disabled = true;
+        btnConfirmarConf.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnFechar.disabled = true;
+        btnFechar.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnDevolver.disabled = true;
+        btnDevolver.classList.add('opacity-50', 'cursor-not-allowed');
+
+        btnReabrir.disabled = false;
+        btnReabrir.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    // 1. AÇÃO CALCULAR
+    function acaoCalcular() {
+      estado = 'CALCULADA';
+      conferenciaFeita = false;
+      conferenciaConfirmada = false;
+      document.getElementById('painelConferencia').classList.add('hidden');
+
+      registrarLogLocal('CALCULAR_FOLHA', 'Folha de 10/2026 processada com memória para 15 colaboradores. Estado: CALCULADA.');
+      mostrarAlerta('SUCESSO', 'Folha calculada com sucesso! A competência agora está no estado CALCULADA (RN-08). Prossiga para a conferência financeira.');
+      atualizarBotoes();
+    }
+
+    // 2. AÇÃO CONFERIR (RN-59)
+    function acaoConferir() {
+      conferenciaFeita = true;
+      const painel = document.getElementById('painelConferencia');
+      const badgeGeral = document.getElementById('badgeConfGeral');
+      const lista = document.getElementById('itensConferenciaLista');
+
+      let temDivergencia = (cenario === 'DIVERGENCIA_FINANCEIRA');
+
+      const itens = [
+        { nome: 'a) Soma dos líquidos dos colaboradores vs Total da Folha', status: 'CONFERE', val: 'R$ 38.642,80 = R$ 38.642,80' },
+        { nome: 'b) Total Proventos - Total Descontos vs Total Líquido', status: 'CONFERE', val: 'R$ 44.800,00 - R$ 6.157,20 = R$ 38.642,80' },
+        {
+          nome: 'c) Soma dos Totais por Filial vs Total Geral da Empresa',
+          status: temDivergencia ? 'DIVERGE' : 'CONFERE',
+          val: temDivergencia ? 'R$ 38.642,81 != R$ 38.642,80 (Divergência de R$ 0,01!)' : 'R$ 38.642,80 = R$ 38.642,80'
+        },
+        { nome: 'd) Total do Relatório Dados de Pagamento vs Contracheques', status: 'CONFERE', val: 'R$ 38.642,80 = R$ 38.642,80' },
+        { nome: 'e) Totais de Encargos INSS, IRRF e FGTS (Relatórios vs Verbas)', status: 'CONFERE', val: 'Exatos em centavos (Tolerância R$ 0,00)' }
+      ];
+
+      if (temDivergencia) {
+        badgeGeral.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300';
+        badgeGeral.innerText = 'STATUS: DIVERGENTE';
+        mostrarAlerta('ERRO', 'A conferência financeira encontrou divergência no item (c) Soma por Filiais! O fechamento está BLOQUEADO (RN-59).');
+      } else {
+        badgeGeral.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeGeral.innerText = 'STATUS: APROVADO (100% CONFERE)';
+        mostrarAlerta('SUCESSO', 'Conferência Financeira aprovada com tolerância R$ 0,00! Confirme a conferência para liberar o fechamento.');
+      }
+
+      lista.innerHTML = itens.map(i => `
+        <div class="flex justify-between items-center p-2 rounded-lg ${i.status === 'CONFERE' ? 'bg-emerald-50/60 border border-emerald-200' : 'bg-rose-50 border border-rose-300'}">
+          <div>
+            <strong class="${i.status === 'CONFERE' ? 'text-slate-800' : 'text-rose-900'} block">${i.nome}</strong>
+            <span class="text-[11px] text-slate-500 font-mono">${i.val}</span>
+          </div>
+          <span class="font-bold px-2 py-0.5 rounded text-[10px] uppercase ${i.status === 'CONFERE' ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'}">
+            ${i.status}
+          </span>
+        </div>
+      `).join('');
+
+      painel.classList.remove('hidden');
+      registrarLogLocal('CONFERENCIA_FINANCEIRA', temDivergencia ? 'Conferência financeira DIVERGENTE (R$ 0,01).' : 'Conferência financeira APROVADA (R$ 0,00 tolerância).');
+      atualizarBotoes();
+    }
+
+    // 3. AÇÃO CONFIRMAR CONFERÊNCIA (RN-67)
+    function acaoConfirmarConferencia() {
+      if (cenario === 'DIVERGENCIA_FINANCEIRA') {
+        mostrarAlerta('ERRO', 'Não é possível confirmar conferência com divergências financeiras pendentes.');
+        return;
+      }
+      conferenciaConfirmada = true;
+      registrarLogLocal('CONFIRMAR_CONFERENCIA', 'Conferência confirmada formalmente pelo RH. Trilha de aprovação atualizada.');
+      mostrarAlerta('SUCESSO', 'Conferência confirmada com sucesso (RN-67)! O botão "Fechar Folha Segura" está pronto.');
+      atualizarBotoes();
+    }
+
+    // 4. AÇÃO FECHAR FOLHA SEGURA
+    function acaoFechar() {
+      // Teste de Bloqueio 1: Competência anterior aberta (RN-63)
+      if (cenario === 'COMP_ANTERIOR_ABERTA') {
+        mostrarAlerta('ERRO', 'Fechamento bloqueado: a competência anterior (09/2026) precisa ser fechada primeiro (RN-63).');
+        registrarLogLocal('BLOQUEIO_FECHAMENTO', 'Tentativa de fechamento bloqueada: competência anterior aberta (RN-63).');
+        return;
+      }
+
+      // Teste de Bloqueio 2: Dados pendentes (RN-73 / RN-05)
+      if (cenario === 'DADOS_PENDENTES') {
+        mostrarAlerta('ERRO', 'O fechamento está bloqueado. Dados bancários pendentes para o colaborador: CARLOS ALBERTO SILVA (RN-05/RN-73).');
+        registrarLogLocal('BLOQUEIO_FECHAMENTO', 'Bloqueio: colaborador sem dados bancários cadastrados (RN-73).');
+        return;
+      }
+
+      // Teste de Bloqueio 3: Divergência na conferência (RN-59)
+      if (cenario === 'DIVERGENCIA_FINANCEIRA') {
+        mostrarAlerta('ERRO', 'O fechamento está bloqueado: existem divergências na conferência financeira interna (RN-59).');
+        return;
+      }
+
+      // Teste de Bloqueio 4: Conferência não confirmada (RN-67)
+      if (!conferenciaConfirmada) {
+        mostrarAlerta('AVISO', 'A conferência financeira precisa ser expressamente confirmada pelo RH antes de fechar a folha (RN-67).');
+        return;
+      }
+
+      // Teste de Caso Especial: Saldo a Descontar (RN-06 e Tabela 7.1)
+      let justificativaSaldo = null;
+      if (cenario === 'SALDO_DESCONTAR') {
+        justificativaSaldo = prompt('ATENÇÃO (Tabela 7.1 / RN-06):\nOs descontos superam os proventos deste colaborador. O líquido foi limitado a R$ 0,00 e o excedente virou saldo a descontar no mês seguinte.\n\nInforme a JUSTIFICATIVA OBRIGATÓRIA do RH para autorizar o fechamento:');
+        if (!justificativaSaldo || !justificativaSaldo.trim()) {
+          mostrarAlerta('ERRO', 'Fechamento cancelado: a justificativa do RH é OBRIGATÓRIA quando há saldo a descontar (Tabela 7.1).');
+          registrarLogLocal('BLOQUEIO_FECHAMENTO', 'Fechamento cancelado por falta de justificativa de saldo a descontar.');
+          return;
+        }
+      }
+
+      // GERAÇÃO DE NOVA VERSÃO (RN-68)
+      const numV = versoes.length + 1;
+      const tagV = 'V' + numV;
+      const hashSimulado = 'sha256_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      const agoraStr = new Date().toLocaleTimeString('pt-BR');
+
+      versoes.push({
+        tag: tagV,
+        hash: hashSimulado,
+        dataHora: agoraStr,
+        usuario: usuarioAtual.email,
+        liquidoTotal: 'R$ 38.642,80',
+        justificativa: justificativaSaldo
+      });
+
+      estado = 'FECHADA';
+      document.getElementById('qtdVersoes').innerText = versoes.length + (versoes.length === 1 ? ' versão' : ' versões');
+
+      // Atualiza lista de versões na tela
+      const divVersoes = document.getElementById('listaVersoes');
+      divVersoes.innerHTML = versoes.map(v => `
+        <div class="p-3 bg-emerald-50/60 border border-emerald-300 rounded-xl">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-emerald-950 text-xs">${v.tag} &bull; Fechamento Oficial</span>
+            <span class="text-[10px] text-slate-500">${v.dataHora}</span>
+          </div>
+          <div class="font-mono text-[10px] text-slate-600 truncate">Hash: ${v.hash}</div>
+          <div class="text-[11px] text-emerald-800 font-semibold mt-1">Líquido Consolidado: ${v.liquidoTotal}</div>
+          ${v.justificativa ? `<div class="text-[10px] text-amber-800 mt-1 italic">Justificativa Saldo: "${v.justificativa}"</div>` : ''}
+        </div>
+      `).join('');
+
+      registrarLogLocal('FECHAR_FOLHA_COMPETENCIA', `Competência fechada com sucesso! Gerada versão ${tagV} com hash SHA-256 e snapshot imutável.`);
+      mostrarAlerta('SUCESSO', `PARABÉNS! Folha fechada com sucesso na versão ${tagV} (RN-68). Os dados agora estão congelados e imutáveis.`);
+      atualizarBotoes();
+    }
+
+    // 5. AÇÃO DEVOLVER PARA AJUSTE (RN-67)
+    function acaoDevolver() {
+      const motivo = prompt('Informe o motivo formal da devolução da folha para ajuste (RN-67):');
+      if (!motivo || !motivo.trim()) return;
+
+      estado = 'ABERTA';
+      conferenciaFeita = false;
+      conferenciaConfirmada = false;
+      document.getElementById('painelConferencia').classList.add('hidden');
+
+      registrarLogLocal('DEVOLVER_FOLHA_AJUSTE', `Folha devolvida para ABERTA. Motivo: "${motivo}". Conferência anterior invalidada.`);
+      mostrarAlerta('AVISO', `Folha devolvida para ajuste com sucesso! A competência retornou ao estado ABERTA e a conferência foi invalidada.`);
+      atualizarBotoes();
+    }
+
+    // 6. AÇÃO REABRIR COMPETÊNCIA PELO RH (RN-04)
+    function acaoReabrir() {
+      const justificativa = prompt('REABERTURA DE COMPETÊNCIA FECHADA (RN-04):\nInforme a justificativa obrigatória da reabertura para auditoria e notificação da Diretoria:');
+      if (!justificativa || !justificativa.trim()) {
+        mostrarAlerta('ERRO', 'A justificativa é obrigatória para reabrir uma competência fechada (RN-04).');
+        return;
+      }
+
+      estado = 'ABERTA';
+      conferenciaFeita = false;
+      conferenciaConfirmada = false;
+      document.getElementById('painelConferencia').classList.add('hidden');
+
+      registrarLogLocal('REABERTURA_COMPETENCIA_DESTACADA', `REABERTURA HOMOLOGADA NA HORA pelo RH. Justificativa: "${justificativa}". Notificação enviada à Diretoria.`);
+      mostrarAlerta('AVISO', `Competência reaberta com sucesso pelo RH na hora (RN-04)! O próximo fechamento gerará a versão V${versoes.length + 1} sem apagar o histórico.`);
+      atualizarBotoes();
+    }
+
+    // Inicialização
+    window.onload = function() {
+      atualizarBotoes();
+    };
+  </script>
+
+</body>
+</html>
+

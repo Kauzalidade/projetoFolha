@@ -27,8 +27,9 @@ import {
   atualizarColaborador,
   consultarColaborador,
 } from '../src/services/colaboradorService.js';
-import { inicializarFeriadosEParametros } from '../src/services/parametroFeriadoService.js';
+import { inicializarFeriadosEParametros, cadastrarParametro } from '../src/services/parametroFeriadoService.js';
 import { abrirOuObterCompetencia } from '../src/services/competenciaService.js';
+import { consultarLogs, registrarOperacaoCritica } from '../src/services/logService.js';
 import {
   lancarHorasExtras,
   lancarAtrasoSaidaAntecipada,
@@ -460,5 +461,96 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
     const alerta13 = alertas.find((a) => a.tipo === 'DECIMO_TERCEIRO');
     assert.ok(alerta13, 'Deve gerar alerta de proximidade da parcela do 13º salário');
     assert.ok(alerta13.titulo.includes('1ª parcela'));
+  });
+
+  // --- US-07 / RN-71 / RN-75: RASTREAMENTO, LOGS IMUTÁVEIS E OPERAÇÕES CRÍTICAS ---
+
+  it('Cenário RN-75: Parâmetro legal cadastrado com fonte, vigência, responsável e log de auditoria', () => {
+    cadastrarParametro(db, rhUser, {
+      nome: 'auxilio_creche_convencao',
+      valor: '450.00',
+      dataInicio: '2026-01-01',
+      dataFim: '2026-12-31',
+      versao: '2.0',
+      fonte: 'Convenção Coletiva 2026 Cláusula 18',
+    });
+
+    const paramBanco = db.prepare("SELECT * FROM parametros WHERE nome = 'auxilio_creche_convencao'").get() as any;
+    assert.ok(paramBanco, 'Parâmetro deve ser gravado no banco');
+    assert.strictEqual(paramBanco.fonte, 'Convenção Coletiva 2026 Cláusula 18');
+    assert.strictEqual(paramBanco.data_inicio, '2026-01-01');
+
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'PARAMETRO' });
+    const logParam = logs.find((l) => l.detalhes?.includes('auxilio_creche_convencao'));
+    assert.ok(logParam, 'Alteração do parâmetro deve ser registrada no log de auditoria');
+    assert.ok(logParam.detalhes.includes('Convenção Coletiva 2026 Cláusula 18'));
+    assert.ok(logParam.detalhes.includes(rhUser.email));
+  });
+
+  it('Cenário RN-71: Operações críticas registradas com identificador e resultado (concluída, cancelada ou pendente)', () => {
+    // 1. Cálculo concluído com sucesso
+    registrarOperacaoCritica(db, {
+      operacaoId: 'OP-CALC-2026-10-001',
+      tipo: 'CALCULO',
+      competencia: '2026-10',
+      usuario: rhUser,
+      resultado: 'CONCLUIDA',
+      tempoExecucaoMs: 1420,
+      detalhes: 'Cálculo de 15 colaboradores finalizado sem inconsistências.',
+    });
+
+    // 2. Operação interrompida por falha que volta a ser cancelada (RN-71)
+    registrarOperacaoCritica(db, {
+      operacaoId: 'OP-CALC-2026-10-002',
+      tipo: 'CALCULO',
+      competencia: '2026-10',
+      usuario: rhUser,
+      resultado: 'CANCELADA',
+      tempoExecucaoMs: 450,
+      detalhes: 'Operação cancelada após interrupção. Folha revertida com integridade mantida.',
+    });
+
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'OPERACAO_CRITICA' });
+    assert.ok(logs.length >= 2, 'Devem existir as operações críticas registradas');
+
+    const opSucesso = logs.find((l) => l.registro_id === 'OP-CALC-2026-10-001');
+    assert.ok(opSucesso);
+    assert.strictEqual(opSucesso.valor_novo, 'CONCLUIDA');
+    assert.ok(opSucesso.detalhes.includes('1420ms'));
+
+    const opCancelada = logs.find((l) => l.registro_id === 'OP-CALC-2026-10-002');
+    assert.ok(opCancelada);
+    assert.strictEqual(opCancelada.valor_novo, 'CANCELADA');
+  });
+
+  it('Cenário US-07: Diretoria e Admin consultam log de auditoria, mas Admin não acessa dados da folha', () => {
+    // Diretoria consulta logs
+    const logsDiretoria = consultarLogs(db, diretoriaUser);
+    assert.ok(logsDiretoria.length > 0, 'Diretoria deve conseguir consultar logs');
+
+    // Admin consulta logs
+    const logsAdmin = consultarLogs(db, adminUser);
+    assert.ok(logsAdmin.length > 0, 'Admin deve conseguir consultar logs');
+
+    // Colaborador de teste
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Funcionario Sigiloso',
+      cpf: '52998224725',
+      nascimento: '1985-05-10',
+      admissao: '2024-01-01',
+      cargo: 'Tesoureiro',
+      setor: 'Financeiro',
+      salarioBase: '6000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '5678',
+    });
+
+    // Admin NÃO pode consultar dados da folha/colaborador
+    assert.throws(
+      () => consultarColaborador(db, adminUser, colab.id),
+      { message: 'Você não tem permissão para acessar os dados deste colaborador.' }
+    );
   });
 });

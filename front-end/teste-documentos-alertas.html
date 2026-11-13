@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Interativo: Documentos, Exames Ocupacionais e Alertas (Etapa 4)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4 md:p-8">
+
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Cabeçalho -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
+          Simulador de Homologação &bull; Etapa 4
+        </span>
+        <h1 class="text-xl md:text-2xl font-black text-slate-900 mt-1">
+          📁 Documentos, Prazos Ocupacionais e Alertas (US-06)
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Validação interativa dos critérios da especificação v1.7: <strong>RN-52, RN-53, RN-54, RN-56 e Tabela 6.4 (LGPD)</strong>
+        </p>
+      </div>
+
+      <a href="index.html" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg border transition">
+        &larr; Voltar ao Sistema
+      </a>
+    </div>
+
+    <!-- ATALHOS RÁPIDOS DE CENÁRIOS -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+      <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center justify-between">
+        <span>⚡ Testar Critérios com 1 Clique (Carregar Casos Prontos):</span>
+        <span class="text-[11px] text-blue-700 font-semibold">Critérios de Aceite v1.7</span>
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+        <button onclick="carregarCenario('DOC_COM_VALIDADE')" class="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-950 font-bold rounded-xl text-left transition">
+          1. Doc com Validade &le; 30 dias (RN-52)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">CNH vencendo em 20 dias &rarr; Gera alerta amarelo com contagem regressiva.</span>
+        </button>
+
+        <button onclick="carregarCenario('DOC_SEM_VALIDADE')" class="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950 font-bold rounded-xl text-left transition">
+          2. Doc sem Validade (RN-52)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Certificado de Reservista/RG &rarr; Armazenado sem gerar alerta indevido.</span>
+        </button>
+
+        <button onclick="carregarCenario('EXAME_VENCENDO')" class="p-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 font-bold rounded-xl text-left transition">
+          3. Exame Ocupacional PCMSO (RN-53)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Periódico Anual a vencer em 15 dias &rarr; Alerta de renovação médica antes do prazo.</span>
+        </button>
+
+        <button onclick="carregarCenario('LGPD_DIRETORIA_NEGADA')" class="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          4. Diretoria Acessa Saúde (RN-54)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Tentativa de ver atestado &rarr; Bloqueio total e log imutável de infração.</span>
+        </button>
+
+        <button onclick="carregarCenario('LGPD_RH_AUTORIZADO')" class="p-3 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-950 font-bold rounded-xl text-left transition">
+          5. RH Consulta Dado de Saúde (RN-54)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Analista de RH consulta atestado &rarr; Exibição permitida com registro de auditoria.</span>
+        </button>
+
+        <button onclick="carregarCenario('RETENCAO_5_ANOS')" class="p-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-950 font-bold rounded-xl text-left transition">
+          6. Retenção & Descarte LGPD (RN-56)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Inativo há 5 anos sinalizado; eliminação NUNCA automática (exige RH).</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SELETOR DE PERFIL DE USUÁRIO (SIMULAÇÃO DE RBAC) -->
+    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">👤</span>
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-400 font-bold">Perfil em Operação (RBAC / LGPD)</div>
+          <div class="text-sm font-black flex items-center gap-2 mt-0.5">
+            <span id="perfilLabel" class="text-emerald-400">Analista de RH (rh@empresa.com)</span>
+            <span id="perfilBadge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono">ACESSO RH COMPLETO</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-slate-400 font-medium">Trocar perfil ativo:</span>
+        <button onclick="mudarPerfil('RH')" id="btnPerfilRH" class="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 transition">
+          RH
+        </button>
+        <button onclick="mudarPerfil('DIRETORIA')" id="btnPerfilDiretoria" class="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition">
+          Diretoria
+        </button>
+        <button onclick="mudarPerfil('ADMIN')" id="btnPerfilAdmin" class="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition">
+          Admin
+        </button>
+      </div>
+    </div>
+
+    <!-- ABAS PRINCIPAIS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- COLUNA DA ESQUERDA: FORMULÁRIOS E OPERAÇÕES (2 COLUNAS) -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- PAINEL 1: GESTÃO DE DOCUMENTOS (RN-52) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>📄</span> Anexar Documento do Colaborador (RN-52)
+              </h2>
+              <p class="text-xs text-slate-500">Tipo, validade e responsável pelo envio. Alerta configurável (&le; 30 dias).</p>
+            </div>
+            <span class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">RN-52</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Colaborador:</label>
+              <select id="docColaborador" class="w-full p-2 border rounded-lg bg-slate-50 font-medium">
+                <option value="1">Carlos Silva (Matriz SP - Motorista)</option>
+                <option value="2">Mariana Santos (Filial Campinas - Atendente)</option>
+                <option value="3">João Pereira (Matriz SP - Eletricista)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tipo de Documento:</label>
+              <select id="docTipo" class="w-full p-2 border rounded-lg bg-slate-50 font-medium">
+                <option value="CNH">CNH - Carteira Nacional de Habilitação</option>
+                <option value="REGISTRO_CONSELHO">Registro em Conselho (CREA / CRM / OAB)</option>
+                <option value="CERTIFICADO_RESERVISTA">Certificado de Reservista (Sem validade)</option>
+                <option value="CONTRATO_TRABALHO">Contrato de Trabalho Assinado (Sem validade)</option>
+                <option value="COMPROVANTE_RESIDENCIA">Comprovante de Residência</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nome do Arquivo (PDF/JPG/PNG &le; 10 MB):</label>
+              <input type="text" id="docArquivo" value="cnh_carlos_2026.pdf" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">
+                Data de Validade (Deixe em branco se não houver):
+              </label>
+              <input type="date" id="docValidade" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <span class="text-[11px] text-slate-500">
+              * Responsável pelo envio será registrado automaticamente: <strong id="responsavelEnvioText">rh@empresa.com</strong>
+            </span>
+            <button onclick="salvarDocumento()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-sm">
+              + Anexar Documento
+            </button>
+          </div>
+
+          <!-- LISTA DE DOCUMENTOS CADASTRADOS -->
+          <div class="mt-4 border-t pt-3">
+            <div class="text-xs font-bold text-slate-800 mb-2 flex justify-between">
+              <span>Documentos Registrados:</span>
+              <span id="totalDocsBadge" class="text-[11px] text-slate-500 font-normal">2 documentos</span>
+            </div>
+            <div id="listaDocs" class="space-y-2">
+              <!-- Inserido dinamicamente via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- PAINEL 2: EXAMES OCUPACIONAIS / PCMSO (RN-53) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>🩺</span> Exames Ocupacionais &bull; PCMSO (RN-53)
+              </h2>
+              <p class="text-xs text-slate-500">Data do último exame, periodicidade e cálculo da data de vencimento com alerta.</p>
+            </div>
+            <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">RN-53</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Colaborador:</label>
+              <select id="exameColaborador" class="w-full p-2 border rounded-lg bg-slate-50 font-medium">
+                <option value="1">Carlos Silva (Matriz SP)</option>
+                <option value="2">Mariana Santos (Filial Campinas)</option>
+                <option value="3">João Pereira (Matriz SP)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tipo de Exame (NR-7):</label>
+              <select id="exameTipo" class="w-full p-2 border rounded-lg bg-slate-50 font-medium">
+                <option value="Periódico Anual (ASO)">Periódico Anual (ASO)</option>
+                <option value="Admissional">Admissional</option>
+                <option value="Retorno ao Trabalho">Retorno ao Trabalho</option>
+                <option value="Mudança de Riscos Ocupacionais">Mudança de Riscos Ocupacionais</option>
+                <option value="Demissional">Demissional</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Data do Último Exame Realizado:</label>
+              <input type="date" id="exameDataUltimo" value="2025-11-20" onchange="recalcularVencimentoExame()" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Periodicidade (Meses):</label>
+              <select id="examePeriodicidade" onchange="recalcularVencimentoExame()" class="w-full p-2 border rounded-lg bg-slate-50 font-medium">
+                <option value="12" selected>12 meses (Anual)</option>
+                <option value="6">6 meses (Semestral - Atividade Especial)</option>
+                <option value="24">24 meses (Bienal)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between text-xs">
+            <div>
+              <span class="text-amber-900 font-bold">Próximo Vencimento Calculado:</span>
+              <span id="exameVencimentoCalculado" class="ml-2 font-mono font-black text-amber-950 text-sm">2026-11-20</span>
+            </div>
+            <button onclick="cadastrarExame()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition shadow-sm">
+              + Cadastrar Exame
+            </button>
+          </div>
+
+          <!-- LISTA DE EXAMES CADASTRADOS -->
+          <div class="mt-4 border-t pt-3">
+            <div class="text-xs font-bold text-slate-800 mb-2">Exames Ocupacionais Monitorados:</div>
+            <div id="listaExames" class="space-y-2">
+              <!-- Inserido dinamicamente via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- PAINEL 3: DADOS DE SAÚDE - CONTROLE DE ACESSO E LOG (RN-54) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>🛡️</span> Dados de Saúde e Atestados Médicos (RN-54)
+              </h2>
+              <p class="text-xs text-slate-500">Dados sensíveis protegidos: restrito a RH autorizado. Consulta gera log imutável.</p>
+            </div>
+            <span class="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded">RN-54 &bull; LGPD</span>
+          </div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border space-y-2 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-800">Atestado Médico #204 &bull; Colaborador: João Pereira</span>
+              <span class="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px] font-mono">Período: 05/10/2026 a 06/10/2026 (2 dias)</span>
+            </div>
+            <p class="text-[11px] text-slate-600">
+              Contém dados médicos sigilosos, CID-10 e parecer do médico emitente. De acordo com a <strong>RN-54</strong> e a <strong>Tabela 4.1</strong>, a Diretoria e o Admin têm acesso estritamente bloqueado.
+            </p>
+            <div class="pt-2 flex justify-end">
+              <button onclick="tentarConsultarAtestado()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <span>🔍</span> Consultar Detalhes Clínicos do Atestado
+              </button>
+            </div>
+          </div>
+
+          <!-- RESULTADO DA TENTATIVA DE CONSULTA -->
+          <div id="resultadoConsultaSaude" class="hidden p-4 rounded-xl text-xs space-y-2 transition-all">
+            <!-- Injetado dinamicamente -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUNA DA DIREITA: CENTRAL DE ALERTAS E LOGS (1 COLUNA) -->
+      <div class="space-y-6">
+
+        <!-- CENTRAL DE ALERTAS ATIVOS (US-06 / RN-52 / RN-53 / RN-56) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+              <span>🔔</span> Central de Alertas (US-06)
+            </h2>
+            <span id="totalAlertasBadge" class="bg-red-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+              3 alertas
+            </span>
+          </div>
+
+          <div class="text-[11px] text-slate-500 leading-tight">
+            Data de referência do sistema: <strong class="font-mono text-slate-800">01/10/2026</strong>.
+            Alertas antecedem vencimentos em até 30 dias (RN-52 e RN-53).
+          </div>
+
+          <!-- LISTA DINÂMICA DE ALERTAS -->
+          <div id="painelAlertas" class="space-y-2 text-xs">
+            <!-- Injetado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- PAINEL LGPD: RETENÇÃO POR CATEGORIA E DESCARTE SEGURO (RN-56 / TABELA 6.4) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+              <span>⚖️</span> Retenção por Categoria (RN-56)
+            </h2>
+            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">Tabela 6.4</span>
+          </div>
+
+          <div class="text-[11px] text-slate-600 space-y-1">
+            <div class="flex justify-between border-b pb-1">
+              <span>Cadastral / Contrato:</span>
+              <strong class="font-mono text-slate-800">Vínculo + 10 anos</strong>
+            </div>
+            <div class="flex justify-between border-b pb-1">
+              <span>Folha, Recibos e Férias:</span>
+              <strong class="font-mono text-slate-800">10 anos</strong>
+            </div>
+            <div class="flex justify-between border-b pb-1">
+              <span>Docs Pessoais e Bancários:</span>
+              <strong class="font-mono text-slate-800">Vínculo + 5 anos</strong>
+            </div>
+            <div class="flex justify-between pb-1">
+              <span>Saúde e Exames (NR-7):</span>
+              <strong class="font-mono text-slate-800">20 anos</strong>
+            </div>
+          </div>
+
+          <div class="bg-purple-50 border border-purple-200 p-3 rounded-xl text-xs space-y-2">
+            <div class="font-bold text-purple-950 flex items-center gap-1.5">
+              <span>⚠️</span> 1 Colaborador com Prazo Vencido
+            </div>
+            <p class="text-[11px] text-purple-900 leading-snug">
+              <strong>Marcos Oliveira</strong> desligado em <strong>01/05/2020</strong> (mais de 5 anos). Documentos pessoais prontos para descarte.
+            </p>
+            <div class="pt-1">
+              <button onclick="solicitarEliminacaoDados()" class="w-full py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg text-xs transition">
+                🗑️ Eliminar / Anonimizar (Exige RH)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRILHA DE AUDITORIA E LOGS IMUTÁVEIS (RN-54 / RNF-03) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+              <span>📜</span> Log de Auditoria Imutável
+            </h2>
+            <span class="text-[10px] text-slate-500 font-mono">RNF-03</span>
+          </div>
+
+          <div id="containerLogs" class="space-y-1.5 max-h-56 overflow-y-auto text-[11px] font-mono pr-1">
+            <!-- Logs gerados dinamicamente -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DO RH PARA ELIMINAÇÃO/ANONIMIZAÇÃO (RN-56 / RNF-55) -->
+  <div id="modalEliminacao" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center gap-3 border-b pb-3 text-purple-950">
+        <span class="text-3xl">🛡️</span>
+        <div>
+          <h3 class="font-black text-base">Termo de Eliminação de Dados (LGPD)</h3>
+          <p class="text-xs text-slate-500">RN-56, RN-76 e RNF-55 &bull; Confirmação Expressa do RH</p>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-700 space-y-2">
+        <p>
+          O sistema <strong>nunca elimina registros de forma automática</strong>. Para confirmar o descarte seguro dos documentos do colaborador <strong class="text-slate-900">Marcos Oliveira (Desligado em 01/05/2020)</strong>:
+        </p>
+        <div>
+          <label class="block font-bold text-slate-800 mb-1">Justificativa e Fundamento Legal:</label>
+          <textarea id="justificativaDescarte" rows="2" class="w-full p-2 border rounded-lg bg-slate-50 text-xs font-sans">Vencimento do prazo de 5 anos de prescrição trabalhista (CF art. 7º e Tabela 6.4). Ausência de demandas ativas.</textarea>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-lg text-amber-900 text-[11px]">
+          <strong>Atenção:</strong> Esta operação gera um Termo de Eliminação definitivo com registro no Log de Auditoria imutável. Exames ocupacionais (NR-7) serão preservados até completarem 20 anos.
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button onclick="fecharModalEliminacao()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs">
+          Cancelar
+        </button>
+        <button onclick="confirmarEliminacaoDados()" class="px-4 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg text-xs transition">
+          Confirmar Eliminação e Gravar Log
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ESTADO DA APLICAÇÃO EM MEMÓRIA
+    const DATA_HOJE = '2026-10-01'; // Data de teste de referência
+
+    let perfilAtivo = {
+      id: 2,
+      email: 'rh@empresa.com',
+      perfil: 'RH',
+      nome: 'Analista de RH'
+    };
+
+    let documentos = [
+      {
+        id: 1,
+        colaboradorId: 1,
+        colaboradorNome: 'Carlos Silva',
+        tipo: 'CNH',
+        nomeArquivo: 'cnh_motorista.pdf',
+        dataValidade: '2026-10-21', // Vence em 20 dias -> Alerta
+        anexadoPor: 'rh@empresa.com',
+        criadoEm: '2026-09-15 10:30:00'
+      },
+      {
+        id: 2,
+        colaboradorId: 2,
+        colaboradorNome: 'Mariana Santos',
+        tipo: 'CERTIFICADO_RESERVISTA',
+        nomeArquivo: 'rg_mariana.pdf',
+        dataValidade: null, // Sem validade -> Não gera alerta
+        anexadoPor: 'rh@empresa.com',
+        criadoEm: '2026-08-10 14:20:00'
+      }
+    ];
+
+    let exames = [
+      {
+        id: 1,
+        colaboradorId: 1,
+        colaboradorNome: 'Carlos Silva',
+        tipo: 'Periódico Anual (ASO)',
+        dataUltimoExame: '2025-10-16',
+        periodicidadeMeses: 12,
+        dataProximoVencimento: '2026-10-16' // Vence em 15 dias -> Alerta
+      }
+    ];
+
+    let colaboradoresLGPD = [
+      {
+        id: 99,
+        nome: 'Marcos Oliveira',
+        desligamento: '2020-05-01',
+        situacao: 'INATIVO',
+        anosDesligado: 6.4,
+        statusDescarte: 'PENDENTE'
+      }
+    ];
+
+    let logs = [
+      { data: '01/10/2026 08:00', usuario: 'sistema', acao: 'INICIALIZACAO', detalhes: 'Rotina de alertas executada com sucesso.' }
+    ];
+
+    // INICIALIZAÇÃO
+    window.onload = function() {
+      recalcularVencimentoExame();
+      renderizarDocumentos();
+      renderizarExames();
+      renderizarAlertas();
+      renderizarLogs();
+    };
+
+    // GESTÃO DE PERFIS (RBAC)
+    function mudarPerfil(tipo) {
+      if (tipo === 'RH') {
+        perfilAtivo = { id: 2, email: 'rh@empresa.com', perfil: 'RH', nome: 'Analista de RH' };
+        document.getElementById('perfilLabel').innerText = 'Analista de RH (rh@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-emerald-400';
+        document.getElementById('perfilBadge').innerText = 'ACESSO RH COMPLETO';
+        document.getElementById('perfilBadge').className = 'bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono';
+        
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 transition';
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+      } else if (tipo === 'DIRETORIA') {
+        perfilAtivo = { id: 3, email: 'diretoria@empresa.com', perfil: 'DIRETORIA', nome: 'Diretoria Geral' };
+        document.getElementById('perfilLabel').innerText = 'Diretoria Geral (diretoria@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-amber-400';
+        document.getElementById('perfilBadge').innerText = 'ACESSO GESTÃO (SEM DADOS DE SAÚDE)';
+        document.getElementById('perfilBadge').className = 'bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded font-mono';
+
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+      } else if (tipo === 'ADMIN') {
+        perfilAtivo = { id: 1, email: 'admin@empresa.com', perfil: 'ADMIN', nome: 'Administrador de TI' };
+        document.getElementById('perfilLabel').innerText = 'Administrador de TI (admin@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-blue-400';
+        document.getElementById('perfilBadge').innerText = 'ACESSO TÉCNICO / AUDITORIA';
+        document.getElementById('perfilBadge').className = 'bg-blue-500/20 text-blue-300 text-[10px] px-2 py-0.5 rounded font-mono';
+
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 transition';
+      }
+      document.getElementById('responsavelEnvioText').innerText = perfilAtivo.email;
+      adicionarLog('TROCA_PERFIL', `Perfil ativo alternado para ${perfilAtivo.perfil} (${perfilAtivo.email})`);
+    }
+
+    // DOCUMENTOS (RN-52)
+    function salvarDocumento() {
+      if (perfilAtivo.perfil !== 'RH') {
+        alert('Apenas o perfil RH tem permissão para anexar documentos de colaboradores.');
+        adicionarLog('TENTATIVA_NEGADA', `Tentativa de anexar documento negada para perfil ${perfilAtivo.perfil}`);
+        return;
+      }
+
+      const colabSelect = document.getElementById('docColaborador');
+      const tipo = document.getElementById('docTipo').value;
+      const arquivo = document.getElementById('docArquivo').value.trim();
+      const validade = document.getElementById('docValidade').value || null;
+
+      if (!arquivo) {
+        alert('Informe o nome do arquivo.');
+        return;
+      }
+
+      const novoDoc = {
+        id: documentos.length + 1,
+        colaboradorId: Number(colabSelect.value),
+        colaboradorNome: colabSelect.options[colabSelect.selectedIndex].text.split(' (')[0],
+        tipo,
+        nomeArquivo: arquivo,
+        dataValidade: validade,
+        anexadoPor: perfilAtivo.email,
+        criadoEm: '2026-10-01 09:15:00'
+      };
+
+      documentos.push(novoDoc);
+      adicionarLog('ANEXAR_DOCUMENTO', `Doc ${novoDoc.nomeArquivo} (${novoDoc.tipo}) anexado para ${novoDoc.colaboradorNome}. Validade: ${validade || 'Sem validade'}`);
+
+      renderizarDocumentos();
+      renderizarAlertas();
+
+      alert(`✅ Documento salvo com sucesso!\nTipo: ${tipo}\nValidade: ${validade || 'Sem validade (não gera alerta)'}\nResponsável: ${perfilAtivo.email}`);
+    }
+
+    function renderizarDocumentos() {
+      const container = document.getElementById('listaDocs');
+      container.innerHTML = '';
+      document.getElementById('totalDocsBadge').innerText = `${documentos.length} cadastrados`;
+
+      documentos.forEach(doc => {
+        let tagValidade = '';
+        if (doc.dataValidade) {
+          const dias = calcularDiferencaDias(DATA_HOJE, doc.dataValidade);
+          if (dias < 0) {
+            tagValidade = `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">VENCIDO (${doc.dataValidade})</span>`;
+          } else if (dias <= 30) {
+            tagValidade = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">⚠️ Vence em ${dias} dias (${doc.dataValidade})</span>`;
+          } else {
+            tagValidade = `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Válido até ${doc.dataValidade}</span>`;
+          }
+        } else {
+          tagValidade = `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Sem prazo de validade</span>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'p-2.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs';
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📄</span> ${doc.nomeArquivo}
+              <span class="text-[10px] font-normal text-slate-500">(${doc.tipo})</span>
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">
+              Colaborador: <strong>${doc.colaboradorNome}</strong> &bull; Responsável: <span class="font-mono">${doc.anexadoPor}</span>
+            </div>
+          </div>
+          <div class="text-right text-[11px]">
+            ${tagValidade}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // EXAMES OCUPACIONAIS (RN-53)
+    function recalcularVencimentoExame() {
+      const dataUltimo = document.getElementById('exameDataUltimo').value;
+      const meses = Number(document.getElementById('examePeriodicidade').value);
+      if (!dataUltimo) return;
+
+      const d = new Date(dataUltimo);
+      d.setMonth(d.getMonth() + meses);
+      const dataVenc = d.toISOString().slice(0, 10);
+      document.getElementById('exameVencimentoCalculado').innerText = dataVenc;
+      return dataVenc;
+    }
+
+    function cadastrarExame() {
+      if (perfilAtivo.perfil !== 'RH') {
+        alert('Apenas o perfil RH tem permissão para cadastrar exames ocupacionais.');
+        adicionarLog('TENTATIVA_NEGADA', `Tentativa de cadastrar exame negada para perfil ${perfilAtivo.perfil}`);
+        return;
+      }
+
+      const colabSelect = document.getElementById('exameColaborador');
+      const tipo = document.getElementById('exameTipo').value;
+      const dataUltimo = document.getElementById('exameDataUltimo').value;
+      const meses = Number(document.getElementById('examePeriodicidade').value);
+      const vencimento = recalcularVencimentoExame();
+
+      const novoExame = {
+        id: exames.length + 1,
+        colaboradorId: Number(colabSelect.value),
+        colaboradorNome: colabSelect.options[colabSelect.selectedIndex].text.split(' (')[0],
+        tipo,
+        dataUltimoExame: dataUltimo,
+        periodicidadeMeses: meses,
+        dataProximoVencimento: vencimento
+      };
+
+      exames.push(novoExame);
+      adicionarLog('CADASTRAR_EXAME', `Exame ${novoExame.tipo} registrado para ${novoExame.colaboradorNome}. Próximo vencimento: ${vencimento}`);
+
+      renderizarExames();
+      renderizarAlertas();
+
+      alert(`✅ Exame Ocupacional Cadastrado com Sucesso!\nTipo: ${tipo}\nVencimento: ${vencimento}\nPeriodicidade: ${meses} meses`);
+    }
+
+    function renderizarExames() {
+      const container = document.getElementById('listaExames');
+      container.innerHTML = '';
+
+      exames.forEach(ex => {
+        const dias = calcularDiferencaDias(DATA_HOJE, ex.dataProximoVencimento);
+        let tag = '';
+        if (dias <= 30) {
+          tag = `<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">⚠️ Vence em ${dias} dias (${ex.dataProximoVencimento})</span>`;
+        } else {
+          tag = `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Vigente até ${ex.dataProximoVencimento}</span>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl flex items-center justify-between text-xs';
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-800">🩺 ${ex.tipo} &bull; ${ex.colaboradorNome}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">
+              Último exame: ${ex.dataUltimoExame} &bull; Periodicidade: ${ex.periodicidadeMeses} meses
+            </div>
+          </div>
+          <div class="text-right text-[11px]">
+            ${tag}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // PRIVACIDADE E DADOS DE SAÚDE (RN-54)
+    function tentarConsultarAtestado() {
+      const res = document.getElementById('resultadoConsultaSaude');
+      res.classList.remove('hidden');
+
+      if (perfilAtivo.perfil !== 'RH') {
+        // BLOQUEIO TOTAL
+        res.className = 'p-4 rounded-xl text-xs space-y-2 bg-rose-50 border border-rose-200 text-rose-900';
+        res.innerHTML = `
+          <div class="flex items-center gap-2 font-black text-rose-700">
+            <span class="text-xl">🚫</span>
+            ACESSO NEGADO (RN-54 &bull; Tabela 4.1): Usuário sem permissão para acessar dados de saúde!
+          </div>
+          <p class="text-[11px] text-rose-800">
+            O usuário <strong>${perfilAtivo.email}</strong> com perfil <strong>${perfilAtivo.perfil}</strong> tentou acessar dados clínicos confidenciais. A solicitação foi rejeitada no servidor e o incidente foi registrado no Log de Auditoria imutável.
+          </p>
+        `;
+        adicionarLog('TENTATIVA_ACESSO_DADO_SAUDE_NEGADA', `Tentativa de acesso ao Atestado #204 bloqueada para ${perfilAtivo.email} (${perfilAtivo.perfil})`);
+      } else {
+        // ACESSO AUTORIZADO AO RH
+        res.className = 'p-4 rounded-xl text-xs space-y-2 bg-emerald-50 border border-emerald-200 text-emerald-950';
+        res.innerHTML = `
+          <div class="flex items-center gap-2 font-black text-emerald-800">
+            <span class="text-xl">✅</span>
+            ACESSO AUTORIZADO AO RH (RN-54): Dados de Saúde Exibidos
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px] bg-white p-3 rounded-lg border border-emerald-200 mt-1">
+            <div><strong>Colaborador:</strong> João Pereira</div>
+            <div><strong>Médico Responsável:</strong> Dr. Fernando Mendes (CRM 142.890/SP)</div>
+            <div><strong>Diagnóstico / CID-10:</strong> J06.9 (Infecção aguda do trato respiratório)</div>
+            <div><strong>Período de Afastamento:</strong> 05/10/2026 a 06/10/2026 (2 dias sem perda DSR)</div>
+            <div class="col-span-2"><strong>Arquivo do Atestado:</strong> <span class="font-mono text-blue-700">atestado_medico_joao_out2026.pdf (420 KB)</span></div>
+          </div>
+          <p class="text-[10px] text-emerald-700 font-mono">
+            * Consulta autorizada registrada no Log de Auditoria Imutável (Ação: CONSULTAR_DADO_SAUDE).
+          </p>
+        `;
+        adicionarLog('CONSULTAR_DADO_SAUDE', `Consulta autorizada ao Atestado #204 do colaborador João Pereira por ${perfilAtivo.email}`);
+      }
+    }
+
+    // CENTRAL DE ALERTAS (US-06)
+    function renderizarAlertas() {
+      const container = document.getElementById('painelAlertas');
+      container.innerHTML = '';
+      let listaAlertas = [];
+
+      // 1. Alertas de Documentos vencendo em até 30 dias (RN-52)
+      documentos.forEach(doc => {
+        if (doc.dataValidade) {
+          const dias = calcularDiferencaDias(DATA_HOJE, doc.dataValidade);
+          if (dias >= 0 && dias <= 30) {
+            listaAlertas.push({
+              tipo: 'DOC',
+              cor: 'amber',
+              icone: '📄',
+              titulo: `Documento a vencer em ${dias} dias`,
+              desc: `${doc.nomeArquivo} (${doc.tipo}) de ${doc.colaboradorNome} vence em ${doc.dataValidade}.`,
+              regra: 'RN-52'
+            });
+          }
+        }
+      });
+
+      // 2. Alertas de Exames ocupacionais a vencer em até 30 dias (RN-53)
+      exames.forEach(ex => {
+        const dias = calcularDiferencaDias(DATA_HOJE, ex.dataProximoVencimento);
+        if (dias >= 0 && dias <= 30) {
+          listaAlertas.push({
+            tipo: 'EXAME',
+            cor: 'orange',
+            icone: '🩺',
+            titulo: `Exame ocupacional a vencer em ${dias} dias`,
+            desc: `Exame ${ex.tipo} de ${ex.colaboradorNome} vence em ${ex.dataProximoVencimento}.`,
+            regra: 'RN-53'
+          });
+        }
+      });
+
+      // 3. Alertas de Retenção LGPD (RN-56)
+      colaboradoresLGPD.forEach(c => {
+        if (c.statusDescarte === 'PENDENTE') {
+          listaAlertas.push({
+            tipo: 'LGPD',
+            cor: 'purple',
+            icone: '⚖️',
+            titulo: 'Dados fora do prazo de guarda (LGPD)',
+            desc: `${c.nome} está desligado desde ${c.desligamento} (> 5 anos). Sinalizado para eliminação/anonimização.`,
+            regra: 'RN-56'
+          });
+        }
+      });
+
+      // Atualiza badge
+      document.getElementById('totalAlertasBadge').innerText = `${listaAlertas.length} alertas`;
+
+      if (listaAlertas.length === 0) {
+        container.innerHTML = '<div class="p-3 text-center text-slate-400 bg-slate-50 rounded-xl">Nenhum alerta pendente no momento.</div>';
+        return;
+      }
+
+      listaAlertas.forEach(a => {
+        const div = document.createElement('div');
+        div.className = `p-2.5 rounded-xl border text-xs flex items-start gap-2 ${obterEstiloAlerta(a.cor)}`;
+        div.innerHTML = `
+          <span class="text-base">${a.icone}</span>
+          <div class="flex-1">
+            <div class="font-bold flex justify-between items-center">
+              <span>${a.titulo}</span>
+              <span class="text-[9px] font-mono px-1.5 py-0.2 bg-white/70 rounded border">${a.regra}</span>
+            </div>
+            <div class="text-[11px] mt-0.5 leading-snug">${a.desc}</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function obterEstiloAlerta(cor) {
+      if (cor === 'amber') return 'bg-amber-50 border-amber-200 text-amber-950';
+      if (cor === 'orange') return 'bg-orange-50 border-orange-200 text-orange-950';
+      if (cor === 'purple') return 'bg-purple-50 border-purple-200 text-purple-950';
+      return 'bg-blue-50 border-blue-200 text-blue-950';
+    }
+
+    // RETENÇÃO E DESCARTE LGPD (RN-56 / RN-76)
+    function solicitarEliminacaoDados() {
+      if (perfilAtivo.perfil !== 'RH') {
+        alert('Apenas o perfil RH pode homologar a eliminação ou anonimização de dados.');
+        adicionarLog('TENTATIVA_NEGADA', `Tentativa de anonimização negada para perfil ${perfilAtivo.perfil}`);
+        return;
+      }
+      document.getElementById('modalEliminacao').classList.remove('hidden');
+      document.getElementById('modalEliminacao').classList.add('flex');
+    }
+
+    function fecharModalEliminacao() {
+      document.getElementById('modalEliminacao').classList.add('hidden');
+      document.getElementById('modalEliminacao').classList.remove('flex');
+    }
+
+    function confirmarEliminacaoDados() {
+      const just = document.getElementById('justificativaDescarte').value.trim();
+      if (!just) {
+        alert('Informe a justificativa legal do descarte.');
+        return;
+      }
+
+      colaboradoresLGPD[0].statusDescarte = 'ELIMINADO';
+      fecharModalEliminacao();
+
+      adicionarLog('ELIMINACAO_DADOS_LGPD', `Termo de eliminação/anonimização executado pelo RH (${perfilAtivo.email}) para colaborador Marcos Oliveira. Justificativa: "${just}". Exames NR-7 retidos.`);
+      renderizarAlertas();
+
+      alert('✅ Processo de eliminação e anonimização concluído com sucesso!\nO termo de descarte foi gravado no Log de Auditoria Imutável (RNF-55).');
+    }
+
+    // LOGS DE AUDITORIA
+    function adicionarLog(acao, detalhes) {
+      const hora = new Date().toLocaleTimeString('pt-BR');
+      logs.unshift({
+        data: `01/10/2026 ${hora}`,
+        usuario: perfilAtivo.email,
+        acao,
+        detalhes
+      });
+      renderizarLogs();
+    }
+
+    function renderizarLogs() {
+      const container = document.getElementById('containerLogs');
+      container.innerHTML = '';
+      logs.forEach(l => {
+        const item = document.createElement('div');
+        item.className = 'border-b pb-1 mb-1';
+        item.innerHTML = `
+          <div class="text-[10px] text-slate-400 flex justify-between">
+            <span>${l.data} &bull; ${l.usuario}</span>
+            <span class="font-bold text-slate-700">${l.acao}</span>
+          </div>
+          <div class="text-slate-800 text-[10px] truncate">${l.detalhes}</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function calcularDiferencaDias(dataRef, dataAlvo) {
+      const d1 = new Date(dataRef);
+      const d2 = new Date(dataAlvo);
+      const diffMs = d2.getTime() - d1.getTime();
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    // PRESETS DE CENÁRIOS RÁPIDOS
+    function carregarCenario(tipo) {
+      if (tipo === 'DOC_COM_VALIDADE') {
+        mudarPerfil('RH');
+        document.getElementById('docColaborador').value = '1';
+        document.getElementById('docTipo').value = 'CNH';
+        document.getElementById('docArquivo').value = 'cnh_carlos_vence20dias.pdf';
+        const d = new Date(DATA_HOJE);
+        d.setDate(d.getDate() + 20);
+        document.getElementById('docValidade').value = d.toISOString().slice(0, 10);
+        salvarDocumento();
+      } else if (tipo === 'DOC_SEM_VALIDADE') {
+        mudarPerfil('RH');
+        document.getElementById('docColaborador').value = '2';
+        document.getElementById('docTipo').value = 'CERTIFICADO_RESERVISTA';
+        document.getElementById('docArquivo').value = 'reservista_sem_validade.pdf';
+        document.getElementById('docValidade').value = '';
+        salvarDocumento();
+      } else if (tipo === 'EXAME_VENCENDO') {
+        mudarPerfil('RH');
+        document.getElementById('exameColaborador').value = '2';
+        document.getElementById('exameTipo').value = 'Periódico Anual (ASO)';
+        const dUltimo = new Date(DATA_HOJE);
+        dUltimo.setFullYear(dUltimo.getFullYear() - 1);
+        dUltimo.setDate(dUltimo.getDate() + 15);
+        document.getElementById('exameDataUltimo').value = dUltimo.toISOString().slice(0, 10);
+        document.getElementById('examePeriodicidade').value = '12';
+        recalcularVencimentoExame();
+        cadastrarExame();
+      } else if (tipo === 'LGPD_DIRETORIA_NEGADA') {
+        mudarPerfil('DIRETORIA');
+        tentarConsultarAtestado();
+      } else if (tipo === 'LGPD_RH_AUTORIZADO') {
+        mudarPerfil('RH');
+        tentarConsultarAtestado();
+      } else if (tipo === 'RETENCAO_5_ANOS') {
+        mudarPerfil('RH');
+        solicitarEliminacaoDados();
+      }
+    }
+  </script>
+</body>
+</html>
+

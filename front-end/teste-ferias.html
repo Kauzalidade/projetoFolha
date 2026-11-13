@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Simples: Gestão e Controle de Férias (Etapa 4)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Cabeçalho Simples -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md">
+          Simulador Rápido de Homologação &bull; Etapa 4
+        </span>
+        <h1 class="text-xl md:text-2xl font-black text-slate-900 mt-1">
+          🏖️ Gestão, Concessão e Cálculo de Férias
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Validação interativa dos critérios: RN-40 a RN-49, RN-79 e Tabela 7.2 (CLT)
+        </p>
+      </div>
+
+      <a href="index.html" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg border transition">
+        &larr; Voltar ao Sistema
+      </a>
+    </div>
+
+    <!-- PASSO 1: BOTOES DE ATALHO RÁPIDO PARA TESTAR OS CRITÉRIOS -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+      <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center justify-between">
+        <span>⚡ Testar Critérios com 1 Clique (Carregar Casos Prontos):</span>
+        <span class="text-[11px] text-teal-700 font-semibold">Tabela CLT e Regras Vigentes</span>
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+        <button onclick="carregarCaso('NORMAL')" class="p-2.5 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-950 font-bold rounded-xl text-left transition">
+          1. Férias Padrão (30 dias + 1/3)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Salário R$ 3.000 &rarr; R$ 4.000 brutos.</span>
+        </button>
+
+        <button onclick="carregarCaso('BLOQUEIO_AQUISITIVO')" class="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          2. Bloqueio Aquisitivo (&lt; 12 meses)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Admitido há 8 meses &rarr; Rejeição na hora!</span>
+        </button>
+
+        <button onclick="carregarCaso('FRACIONAMENTO_INVALIDO')" class="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          3. Fracionamento Inválido (10, 10, 10)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Exige período $\ge$ 14 dias &rarr; Rejeitado!</span>
+        </button>
+
+        <button onclick="carregarCaso('FRACIONAMENTO_VALIDO')" class="p-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-950 font-bold rounded-xl text-left transition">
+          4. Fracionamento Válido (14, 8, 8)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">14 dias + 8 dias + 8 dias &rarr; Aprovado!</span>
+        </button>
+
+        <button onclick="carregarCaso('ABONO_PECUNIARIO')" class="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950 font-bold rounded-xl text-left transition">
+          5. Abono Pecuniário (Venda 10 dias)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Abono ISENTO de INSS/IRRF (RN-43).</span>
+        </button>
+
+        <button onclick="carregarCaso('REDUCAO_FALTAS')" class="p-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 font-bold rounded-xl text-left transition">
+          6. Redução por Faltas (Art. 130 CLT)
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">7 faltas injustificadas &rarr; Reduz para 24 dias.</span>
+        </button>
+
+        <button onclick="carregarCaso('BLOQUEIO_DSR_FERIADO')" class="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          7. Veto Início Pré-DSR/Feriado
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Início no sábado ou 2 dias antes de feriado.</span>
+        </button>
+
+        <button onclick="carregarCaso('CRUZA_MESES')" class="p-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-950 font-bold rounded-xl text-left transition">
+          8. Férias Cruzando Dois Meses
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Início dia 20 &rarr; Salário proporcional (RN-49).</span>
+        </button>
+
+        <button onclick="carregarCaso('FERIAS_DOBRO')" class="p-2.5 bg-red-100 hover:bg-red-200 border border-red-300 text-red-950 font-bold rounded-xl text-left transition">
+          9. Férias Vencidas em Dobro
+          <span class="block text-[10px] font-normal text-slate-500 mt-0.5">Período vencido (Art. 137 CLT / RN-79).</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PASSO 2: FORMULÁRIO DE SIMULAÇÃO -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center justify-between border-b pb-2">
+        <span>⚙️ Parâmetros do Pedido de Férias:</span>
+        <button onclick="limparCampos()" class="text-xs text-indigo-600 hover:underline">Restaurar Padrão</button>
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Data de Admissão do Colaborador</label>
+          <input type="date" id="inpAdmissao" value="2023-01-01" onchange="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg bg-slate-50 font-semibold">
+          <span id="txtMesesAdmissao" class="text-[10px] text-slate-500 mt-0.5 block">Tempo de empresa: 45 meses</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Data de Início do Gozo das Férias</label>
+          <input type="date" id="inpInicio" value="2026-10-15" onchange="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg bg-slate-50 font-semibold">
+          <span id="txtDiaSemana" class="text-[10px] text-slate-500 mt-0.5 block">Dia da semana: Quinta-feira</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Salário-Base Mensal (R$)</label>
+          <input type="number" id="inpSalario" value="3000.00" step="0.01" oninput="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg bg-slate-50 font-semibold">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Dias de Gozo Efetivo</label>
+          <input type="number" id="inpDiasGozo" value="30" min="1" max="30" oninput="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg font-semibold">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Dias de Abono Pecuniário (Venda)</label>
+          <input type="number" id="inpDiasAbono" value="0" min="0" max="10" oninput="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg font-semibold">
+          <span class="text-[10px] text-slate-400">Até 10 dias (1/3)</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Faltas Injustificadas no Período</label>
+          <input type="number" id="inpFaltas" value="0" min="0" max="50" oninput="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg font-semibold">
+          <span id="txtDiasDireito" class="text-[10px] text-emerald-600 font-semibold">Direito: 30 dias</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Média Horas Extras (RN-48)</label>
+          <input type="number" id="inpMediaHE" value="0.00" step="0.01" oninput="simularCalculo()" class="w-full px-2.5 py-1.5 border rounded-lg font-semibold">
+        </div>
+      </div>
+
+      <!-- Configurações Avançadas: Fracionamento e Férias em Dobro -->
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <label class="flex items-center gap-1.5 font-semibold text-slate-700">
+            <input type="checkbox" id="chkFracionar" onchange="simularCalculo()" class="rounded text-indigo-600">
+            Fracionar em Períodos (RN-42 - Reforma Trabalhista)
+          </label>
+
+          <label class="flex items-center gap-1.5 font-semibold text-rose-800">
+            <input type="checkbox" id="chkDobro" onchange="simularCalculo()" class="rounded text-rose-600">
+            Calcular em Dobro por Concessivo Vencido (Art. 137 CLT / RN-79)
+          </label>
+        </div>
+
+        <div id="boxFracionamento" class="hidden grid grid-cols-3 gap-2 pt-1 border-t">
+          <div>
+            <span class="text-[11px] text-slate-500">1º Período (dias):</span>
+            <input type="number" id="inpP1" value="14" min="1" max="30" oninput="simularCalculo()" class="w-full px-2 py-1 border rounded text-center font-bold">
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-500">2º Período (dias):</span>
+            <input type="number" id="inpP2" value="8" min="0" max="30" oninput="simularCalculo()" class="w-full px-2 py-1 border rounded text-center font-bold">
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-500">3º Período (dias):</span>
+            <input type="number" id="inpP3" value="8" min="0" max="30" oninput="simularCalculo()" class="w-full px-2 py-1 border rounded text-center font-bold">
+          </div>
+        </div>
+      </div>
+
+      <!-- Mensagens de Alerta ou Bloqueio -->
+      <div id="boxAlertaFerias" class="hidden p-3.5 rounded-xl text-xs font-semibold border transition"></div>
+    </div>
+
+    <!-- PASSO 3: DEMONSTRATIVO DO CÁLCULO E MEMÓRIA DE FÉRIAS -->
+    <div id="painelResultado" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+          📊 Demonstrativo Oficial do Recibo de Férias
+        </h3>
+        <span id="badgePrazoPagamento" class="text-xs bg-indigo-50 text-indigo-900 px-3 py-1 rounded-lg border border-indigo-200 font-bold">
+          Data Limite Pagamento (Art. 145 CLT): <strong>--/--/----</strong>
+        </span>
+      </div>
+
+      <!-- Cards de Valores -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <span class="text-[10px] text-slate-500 uppercase font-bold block">Férias Gozadas</span>
+          <div class="text-lg font-bold text-slate-900 mt-0.5" id="resValorGozo">R$ 3.000,00</div>
+          <span class="text-[10px] text-slate-400" id="resDiasGozoLabel">30 dias de gozo</span>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <span class="text-[10px] text-slate-500 uppercase font-bold block">1/3 Constitucional</span>
+          <div class="text-lg font-bold text-indigo-900 mt-0.5" id="resValorTerco">R$ 1.000,00</div>
+          <span class="text-[10px] text-indigo-600 font-semibold">Art. 7º, XVII da CF</span>
+        </div>
+
+        <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+          <span class="text-[10px] text-emerald-800 uppercase font-bold block">Abono Pecuniário (Isento)</span>
+          <div class="text-lg font-bold text-emerald-800 mt-0.5" id="resValorAbono">R$ 0,00</div>
+          <span class="text-[10px] text-emerald-700" id="resDiasAbonoLabel">0 dias de abono</span>
+        </div>
+
+        <div class="p-3 bg-teal-50 rounded-xl border border-teal-300">
+          <span class="text-[10px] text-teal-800 uppercase font-bold block">Líquido a Pagar</span>
+          <div class="text-xl font-black text-teal-900 mt-0.5" id="resValorLiquido">R$ 3.631,40</div>
+          <span class="text-[10px] text-teal-700" id="resDescontosLabel">Descontos: INSS R$ 368,60</span>
+        </div>
+      </div>
+
+      <!-- Memória Detalhada com Verbas e Incidências (RN-02) -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b">
+              <th class="p-2">Rubrica / Verba</th>
+              <th class="p-2 text-center">Incidência INSS / IRRF</th>
+              <th class="p-2 text-right">Base de Cálculo</th>
+              <th class="p-2">Regra Legal Aplicada</th>
+              <th class="p-2 text-right">Valor Final</th>
+            </tr>
+          </thead>
+          <tbody id="corpoMemoriaFerias" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+      <!-- Detalhamento de Férias que Cruzam Meses (RN-49) -->
+      <div id="boxCruzaMeses" class="hidden p-3.5 bg-purple-50 border border-purple-200 rounded-xl text-xs space-y-1.5 text-purple-950">
+        <strong class="block text-purple-900 flex items-center gap-1.5">
+          🗓️ Efeito Contábil: Férias que Cruzam Dois Meses (RN-49)
+        </strong>
+        <p class="text-[11px] leading-relaxed text-purple-900/90" id="txtDetalhamentoMeses"></p>
+      </div>
+
+    </div>
+
+    <!-- Rodapé -->
+    <div class="text-center text-xs text-slate-400 pt-2">
+      projetoFolha &bull; Simulador Oficial de Férias (Etapa 4 / Spec v1.7) &bull; <a href="index.html" class="text-indigo-600 font-semibold hover:underline">Voltar ao Sistema Completo</a>
+    </div>
+
+  </div>
+
+  <!-- Script do Motor de Cálculo de Férias -->
+  <script>
+    function roundHalfUp(val) {
+      return Math.round(val * 100) / 100;
+    }
+
+    function formatMoeda(val) {
+      return 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calcularINSS(base) {
+      if (base >= 8475.55) return 988.09;
+      let soma = 0;
+      const f1 = Math.min(base, 1621.00);
+      soma += f1 * 0.075;
+      if (base > 1621.00) {
+        const f2 = Math.min(base - 1621.00, 1281.84);
+        soma += f2 * 0.09;
+      }
+      if (base > 2902.84) {
+        const f3 = Math.min(base - 2902.84, 1451.43);
+        soma += f3 * 0.12;
+      }
+      if (base > 4354.27) {
+        const f4 = Math.min(base - 4354.27, 4121.28);
+        soma += f4 * 0.14;
+      }
+      return roundHalfUp(soma);
+    }
+
+    function calcularIRRF(rendimento, inss) {
+      const baseTrad = Math.max(0, rendimento - inss);
+      const baseSimp = Math.max(0, rendimento - 607.20);
+      function calcFaixa(b) {
+        if (b <= 2428.80) return 0;
+        if (b <= 2826.65) return (b * 0.075) - 182.16;
+        if (b <= 3751.05) return (b * 0.15) - 394.16;
+        if (b <= 4664.68) return (b * 0.225) - 675.49;
+        return (b * 0.275) - 908.73;
+      }
+      const imp = Math.min(calcFaixa(baseTrad), calcFaixa(baseSimp));
+      let reducao = 0;
+      if (rendimento <= 5000.00) reducao = Math.min(imp, 312.89);
+      else if (rendimento <= 7350.00) reducao = Math.max(0, Math.min(imp, 978.62 - (0.133145 * rendimento)));
+      return roundHalfUp(Math.max(0, imp - reducao));
+    }
+
+    function simularCalculo() {
+      const dtAdm = new Date(document.getElementById('inpAdmissao').value + 'T00:00:00');
+      const dtIni = new Date(document.getElementById('inpInicio').value + 'T00:00:00');
+      const salarioBase = parseFloat(document.getElementById('inpSalario').value) || 0;
+      const faltas = parseInt(document.getElementById('inpFaltas').value) || 0;
+      const mediaHE = parseFloat(document.getElementById('inpMediaHE').value) || 0;
+      const diasGozo = parseInt(document.getElementById('inpDiasGozo').value) || 0;
+      const diasAbono = parseInt(document.getElementById('inpDiasAbono').value) || 0;
+      const chkFracionar = document.getElementById('chkFracionar').checked;
+      const chkDobro = document.getElementById('chkDobro').checked;
+
+      const boxFrac = document.getElementById('boxFracionamento');
+      if (chkFracionar) boxFrac.classList.remove('hidden');
+      else boxFrac.classList.add('hidden');
+
+      // 1. Validação de tempo de admissão (RN-40 e RN-45)
+      const diffMeses = (dtIni.getFullYear() - dtAdm.getFullYear()) * 12 + (dtIni.getMonth() - dtAdm.getMonth());
+      document.getElementById('txtMesesAdmissao').innerText = `Tempo de empresa: ${diffMeses} meses`;
+
+      const diasSemanaNomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+      const diaSemana = dtIni.getDay();
+      document.getElementById('txtDiaSemana').innerText = `Dia da semana: ${diasSemanaNomes[diaSemana]}`;
+
+      // Alerta / Bloqueio
+      const boxAlerta = document.getElementById('boxAlertaFerias');
+      const painelRes = document.getElementById('painelResultado');
+
+      function bloquear(msg) {
+        boxAlerta.className = 'p-3.5 rounded-xl text-xs font-semibold border bg-rose-50 border-rose-300 text-rose-900';
+        boxAlerta.innerHTML = '🚫 ' + msg;
+        boxAlerta.classList.remove('hidden');
+        painelRes.classList.add('opacity-40', 'pointer-events-none');
+      }
+
+      function liberar() {
+        boxAlerta.classList.add('hidden');
+        painelRes.classList.remove('opacity-40', 'pointer-events-none');
+      }
+
+      // CRITÉRIO 1: Aquisitivo Incompleto (RN-40)
+      if (diffMeses < 12) {
+        bloquear('REJEIÇÃO LEGAL (RN-40 / RN-45): O período aquisitivo ainda não foi completado (mínimo 12 meses de vigência contratual). Solicitação rejeitada.');
+        return;
+      }
+
+      // CRITÉRIO 5: Veto de Início nos 2 dias que antecedem DSR ou Feriado (RN-47 / Art. 134, § 3º CLT)
+      // Se dia for Sexta (5) ou Sábado (6) que antecede o DSR de Domingo
+      if (diaSemana === 5 || diaSemana === 6) {
+        bloquear(`REJEIÇÃO LEGAL (RN-47 / Art. 134 CLT): O início das férias é VEDADO nos 2 dias que antecedem feriado ou descanso semanal remunerado. ${diasSemanaNomes[diaSemana]} não é permitido.`);
+        return;
+      }
+
+      // Feriado próximo (simulação do feriado de 07/09 ou 12/10)
+      const dataIso = document.getElementById('inpInicio').value;
+      if (dataIso === '2026-09-05' || dataIso === '2026-09-06') {
+        bloquear('REJEIÇÃO LEGAL (RN-47): O início em 05/09 ou 06/09 antecede o Feriado Nacional de 07/09 (Independência). Veto legal do Art. 134, § 3º da CLT.');
+        return;
+      }
+
+      // CRITÉRIO 3: Fracionamento (RN-42)
+      if (chkFracionar) {
+        const p1 = parseInt(document.getElementById('inpP1').value) || 0;
+        const p2 = parseInt(document.getElementById('inpP2').value) || 0;
+        const p3 = parseInt(document.getElementById('inpP3').value) || 0;
+        const periodos = [p1, p2, p3].filter(p => p > 0);
+
+        if (periodos.length > 3) {
+          bloquear('REJEIÇÃO LEGAL (RN-42): O fracionamento de férias permite no máximo 3 períodos.');
+          return;
+        }
+        const tem14 = periodos.some(p => p >= 14);
+        const todos5 = periodos.every(p => p >= 5);
+        if (!tem14 || !todos5) {
+          bloquear('REJEIÇÃO LEGAL (RN-42 / CLT): Fracionamento inválido! Um dos períodos deve ter no mínimo 14 dias corridos e nenhum pode ser inferior a 5 dias.');
+          return;
+        }
+      }
+
+      // CRITÉRIO 2: Redução por faltas (Art. 130 CLT / RN-44)
+      let diasDireito = 30;
+      if (faltas > 32) diasDireito = 0;
+      else if (faltas >= 24) diasDireito = 12;
+      else if (faltas >= 15) diasDireito = 18;
+      else if (faltas >= 6) diasDireito = 24;
+
+      document.getElementById('txtDiasDireito').innerText = `Direito apurado: ${diasDireito} dias (${faltas} faltas)`;
+
+      if (diasGozo + diasAbono > diasDireito) {
+        bloquear(`DIREITO EXCEDIDO (RN-44): A soma de dias de gozo (${diasGozo}) e abono (${diasAbono}) ultrapassa os ${diasDireito} dias de direito devido às ${faltas} faltas injustificadas registradas.`);
+        return;
+      }
+
+      liberar();
+
+      // Data limite de pagamento (RN-47): 2 dias antes do início
+      const dtPag = new Date(dtIni);
+      dtPag.setDate(dtPag.getDate() - 2);
+      const dtPagStr = dtPag.toLocaleDateString('pt-BR');
+      document.getElementById('badgePrazoPagamento').innerHTML = `Data Limite Pagamento (Art. 145 CLT): <strong>${dtPagStr}</strong>`;
+
+      // CÁLCULO MONETÁRIO
+      const remuneracaoBase = salarioBase + mediaHE;
+      const valorDia = remuneracaoBase / 30;
+
+      let vGozo = roundHalfUp(valorDia * diasGozo);
+      let vTercoGozo = roundHalfUp(vGozo / 3);
+
+      // Férias em dobro (RN-79)
+      if (chkDobro) {
+        vGozo = roundHalfUp(vGozo * 2);
+        vTercoGozo = roundHalfUp(vTercoGozo * 2);
+      }
+
+      // Abono Pecuniário (RN-43)
+      let vAbono = 0;
+      let vTercoAbono = 0;
+      if (diasAbono > 0) {
+        vAbono = roundHalfUp(valorDia * diasAbono);
+        vTercoAbono = roundHalfUp(vAbono / 3);
+      }
+
+      // Incidências: Tributa apenas Gozo + 1/3 (Abono é ISENTO)
+      const baseTributavel = roundHalfUp(vGozo + vTercoGozo);
+      const inss = calcularINSS(baseTributavel);
+      const irrf = calcularIRRF(baseTributavel, inss);
+
+      const totalBruto = roundHalfUp(vGozo + vTercoGozo + vAbono + vTercoAbono);
+      const totalDescontos = roundHalfUp(inss + irrf);
+      const liquidoFinal = roundHalfUp(totalBruto - totalDescontos);
+
+      // Atualiza interface
+      document.getElementById('resValorGozo').innerText = formatMoeda(vGozo);
+      document.getElementById('resDiasGozoLabel').innerText = `${diasGozo} dias de gozo ${chkDobro ? '(EM DOBRO)' : ''}`;
+      document.getElementById('resValorTerco').innerText = formatMoeda(vTercoGozo);
+      document.getElementById('resValorAbono').innerText = formatMoeda(vAbono + vTercoAbono);
+      document.getElementById('resDiasAbonoLabel').innerText = `${diasAbono} dias de abono + 1/3 isentos`;
+      document.getElementById('resValorLiquido').innerText = formatMoeda(liquidoFinal);
+      document.getElementById('resDescontosLabel').innerText = `INSS: ${formatMoeda(inss)} | IRRF: ${formatMoeda(irrf)}`;
+
+      // Renderiza Tabela de Memória
+      const tbody = document.getElementById('corpoMemoriaFerias');
+      tbody.innerHTML = `
+        <tr>
+          <td class="p-2 font-bold text-slate-900">Férias Gozadas (${diasGozo} dias)</td>
+          <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">INCIDE INSS/IRRF</span></td>
+          <td class="p-2 text-right font-mono">${formatMoeda(remuneracaoBase)}</td>
+          <td class="p-2 text-slate-600">(R$ ${remuneracaoBase.toFixed(2)} / 30) × ${diasGozo} dias ${chkDobro ? '× 2 (Art. 137 CLT)' : ''}</td>
+          <td class="p-2 text-right font-mono font-bold text-slate-900">${formatMoeda(vGozo)}</td>
+        </tr>
+        <tr>
+          <td class="p-2 font-bold text-slate-900">1/3 Constitucional de Férias</td>
+          <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">INCIDE INSS/IRRF</span></td>
+          <td class="p-2 text-right font-mono">${formatMoeda(vGozo)}</td>
+          <td class="p-2 text-slate-600">1/3 constitucional sobre o gozo (RN-41)</td>
+          <td class="p-2 text-right font-mono font-bold text-indigo-900">${formatMoeda(vTercoGozo)}</td>
+        </tr>
+        ${diasAbono > 0 ? `
+        <tr class="bg-emerald-50/50">
+          <td class="p-2 font-bold text-emerald-950">Abono Pecuniário (${diasAbono} dias) + 1/3</td>
+          <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded font-bold text-[10px]">TOTALMENTE ISENTO</span></td>
+          <td class="p-2 text-right font-mono">${formatMoeda(remuneracaoBase)}</td>
+          <td class="p-2 text-emerald-800">Conversão de até 1/3 em dinheiro. Art. 28, § 9º da Lei 8.212/91 (RN-43)</td>
+          <td class="p-2 text-right font-mono font-bold text-emerald-800">${formatMoeda(vAbono + vTercoAbono)}</td>
+        </tr>
+        ` : ''}
+        <tr class="bg-rose-50/40">
+          <td class="p-2 font-bold text-rose-900">INSS sobre Férias (Progressivo 2026)</td>
+          <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px]">DESCONTO</span></td>
+          <td class="p-2 text-right font-mono">${formatMoeda(baseTributavel)}</td>
+          <td class="p-2 text-slate-600">Alíquotas progressivas conforme Portaria MPS/MF 13/2026</td>
+          <td class="p-2 text-right font-mono font-bold text-rose-700">- ${formatMoeda(inss)}</td>
+        </tr>
+        <tr class="bg-rose-50/40">
+          <td class="p-2 font-bold text-rose-900">IRRF na Fonte sobre Férias</td>
+          <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px]">DESCONTO</span></td>
+          <td class="p-2 text-right font-mono">${formatMoeda(baseTributavel - inss)}</td>
+          <td class="p-2 text-slate-600">Tabela mensal + Redução da Lei 15.270/2025</td>
+          <td class="p-2 text-right font-mono font-bold text-rose-700">- ${formatMoeda(irrf)}</td>
+        </tr>
+      `;
+
+      // CRITÉRIO 6: Férias cruzando meses (RN-49)
+      const diaIni = dtIni.getDate();
+      const dtFimGozo = new Date(dtIni);
+      dtFimGozo.setDate(dtFimGozo.getDate() + diasGozo - 1);
+
+      const boxCruza = document.getElementById('boxCruzaMeses');
+      if (dtIni.getMonth() !== dtFimGozo.getMonth()) {
+        const diasMes1 = diaIni - 1; // dias trabalhados no mês 1
+        const diaFim = dtFimGozo.getDate();
+        const diasMes2 = Math.max(0, 30 - diaFim); // dias trabalhados no mês 2
+
+        const salMes1 = roundHalfUp((salarioBase / 30) * diasMes1);
+        const salMes2 = roundHalfUp((salarioBase / 30) * diasMes2);
+
+        document.getElementById('txtDetalhamentoMeses').innerHTML = `
+          As férias iniciam em <strong>${dtIni.toLocaleDateString('pt-BR')}</strong> e encerram em <strong>${dtFimGozo.toLocaleDateString('pt-BR')}</strong> (cruzando dois meses civis).<br>
+          &bull; <strong>Competência de Início (${(dtIni.getMonth()+1).toString().padStart(2,'0')}/${dtIni.getFullYear()}):</strong> O colaborador recebe o valor integral das férias (${formatMoeda(liquidoFinal)}) e na folha salarial recebe apenas os <strong>${diasMes1} dias trabalhados</strong> (${formatMoeda(salMes1)}).<br>
+          &bull; <strong>Competência Seguinte (${(dtFimGozo.getMonth()+1).toString().padStart(2,'0')}/${dtFimGozo.getFullYear()}):</strong> A folha salarial pagará apenas os <strong>${diasMes2} dias trabalhados</strong> (${formatMoeda(salMes2)}) após o retorno.
+        `;
+        boxCruza.classList.remove('hidden');
+      } else {
+        boxCruza.classList.add('hidden');
+      }
+    }
+
+    function carregarCaso(tipo) {
+      limparCampos();
+
+      if (tipo === 'NORMAL') {
+        document.getElementById('inpAdmissao').value = '2023-01-01';
+        document.getElementById('inpInicio').value = '2026-10-15'; // Quinta
+        document.getElementById('inpSalario').value = '3000.00';
+        document.getElementById('inpDiasGozo').value = '30';
+      } else if (tipo === 'BLOQUEIO_AQUISITIVO') {
+        document.getElementById('inpAdmissao').value = '2026-03-01'; // 7 meses de casa
+        document.getElementById('inpInicio').value = '2026-10-15';
+      } else if (tipo === 'FRACIONAMENTO_INVALIDO') {
+        document.getElementById('chkFracionar').checked = true;
+        document.getElementById('inpP1').value = '10';
+        document.getElementById('inpP2').value = '10';
+        document.getElementById('inpP3').value = '10';
+      } else if (tipo === 'FRACIONAMENTO_VALIDO') {
+        document.getElementById('chkFracionar').checked = true;
+        document.getElementById('inpP1').value = '14';
+        document.getElementById('inpP2').value = '8';
+        document.getElementById('inpP3').value = '8';
+      } else if (tipo === 'ABONO_PECUNIARIO') {
+        document.getElementById('inpDiasGozo').value = '20';
+        document.getElementById('inpDiasAbono').value = '10';
+      } else if (tipo === 'REDUCAO_FALTAS') {
+        document.getElementById('inpFaltas').value = '7'; // Reduz direito para 24
+        document.getElementById('inpDiasGozo').value = '24';
+      } else if (tipo === 'BLOQUEIO_DSR_FERIADO') {
+        document.getElementById('inpInicio').value = '2026-10-17'; // Sábado (2 dias antes do DSR de domingo)
+      } else if (tipo === 'CRUZA_MESES') {
+        document.getElementById('inpInicio').value = '2026-10-20'; // Início dia 20 de outubro (termina em novembro)
+        document.getElementById('inpDiasGozo').value = '30';
+      } else if (tipo === 'FERIAS_DOBRO') {
+        document.getElementById('chkDobro').checked = true;
+      }
+
+      simularCalculo();
+    }
+
+    function limparCampos() {
+      document.getElementById('inpAdmissao').value = '2023-01-01';
+      document.getElementById('inpInicio').value = '2026-10-15';
+      document.getElementById('inpSalario').value = '3000.00';
+      document.getElementById('inpDiasGozo').value = '30';
+      document.getElementById('inpDiasAbono').value = '0';
+      document.getElementById('inpFaltas').value = '0';
+      document.getElementById('inpMediaHE').value = '0.00';
+      document.getElementById('chkFracionar').checked = false;
+      document.getElementById('chkDobro').checked = false;
+      simularCalculo();
+    }
+
+    window.onload = function() {
+      simularCalculo();
+    };
+  </script>
+
+</body>
+</html>
+

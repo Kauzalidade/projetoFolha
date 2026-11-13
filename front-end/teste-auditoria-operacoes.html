@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Interativo: Rastreamento, Auditoria e Operações Críticas (US-07 / v1.7)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Cabeçalho -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md">
+          Visão da Diretoria & TI &bull; Transversal às Etapas
+        </span>
+        <h1 class="text-xl md:text-2xl font-black text-slate-900 mt-1">
+          🛡️ Rastreamento, Auditoria e Operações Críticas (US-07)
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Validação interativa dos critérios da especificação v1.7: <strong>RN-04, RN-07, RN-54, RN-71, RN-75 e RNF-01 a RNF-04</strong>
+        </p>
+      </div>
+
+      <a href="index.html" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg border transition">
+        &larr; Voltar ao Sistema
+      </a>
+    </div>
+
+    <!-- ATALHOS RÁPIDOS DE CENÁRIOS (1 CLIQUE) -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+      <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center justify-between">
+        <span>⚡ Testar Critérios com 1 Clique (Carregar Cenários da Especificação):</span>
+        <span class="text-[11px] text-purple-700 font-semibold">Critérios de Aceite v1.7</span>
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 text-xs">
+        <button onclick="carregarCenario('ALTERACAO_SALARIAL')" class="p-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-950 font-bold rounded-xl text-left transition">
+          1. Alteração Salarial (RN-07)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Registra valor anterior (R$ 3.000) e novo (R$ 3.500) com usuário e hora.</span>
+        </button>
+
+        <button onclick="carregarCenario('TENTATIVA_DADO_SAUDE')" class="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          2. Tentativa Acesso Saúde Negada
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Diretoria tenta ver atestado &rarr; Bloqueio e log de infração (RN-54).</span>
+        </button>
+
+        <button onclick="carregarCenario('PARAMETRO_FONTE_RESPONSAVEL')" class="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-950 font-bold rounded-xl text-left transition">
+          3. Parâmetro c/ Fonte (RN-75)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Grava norma/publicação, vigência e responsável obrigatórios no log.</span>
+        </button>
+
+        <button onclick="carregarCenario('OPERACAO_CRITICA_CALCULO')" class="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950 font-bold rounded-xl text-left transition">
+          4. Operação Concluída (RN-71)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">ID da operação, cálculo da folha, status CONCLUÍDA e tempo de execução.</span>
+        </button>
+
+        <button onclick="carregarCenario('OPERACAO_INTERROMPIDA')" class="p-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 font-bold rounded-xl text-left transition">
+          5. Falha & Reversão Segura (RN-71)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Interrupção simulada &rarr; Registrado como CANCELADA no log sem corrupção.</span>
+        </button>
+
+        <button onclick="carregarCenario('TESTE_IMUTABILIDADE')" class="p-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-bold rounded-xl text-left transition">
+          6. Teste Imutabilidade (RNF-03)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Tentativa de UPDATE / DELETE abortada por Triggers SQLite.</span>
+        </button>
+
+        <button onclick="carregarCenario('ADMIN_BLOQUEADO_FOLHA')" class="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold rounded-xl text-left transition">
+          7. Admin sem Acesso à Folha
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Admin pode auditar logs, mas é rejeitado ao tentar ver contracheques.</span>
+        </button>
+
+        <button onclick="carregarCenario('REABERTURA_COM_JUSTIFICATIVA')" class="p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-950 font-bold rounded-xl text-left transition">
+          8. Reabertura pelo RH (RN-04)
+          <span class="block text-[10px] font-normal text-slate-600 mt-1">Reabre folha com justificativa no log e notificação à Diretoria.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SELETOR DE PERFIL DE AUDITORIA (RBAC) -->
+    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🕵️</span>
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-400 font-bold">Perfil em Sessão (Controle de Acesso / Tabela 4.1)</div>
+          <div class="text-sm font-black flex items-center gap-2 mt-0.5">
+            <span id="perfilLabel" class="text-purple-400">Diretoria Geral (diretoria@empresa.com)</span>
+            <span id="perfilBadge" class="bg-purple-500/20 text-purple-300 text-[10px] px-2 py-0.5 rounded font-mono">AUDITORIA E CONSULTA COMPLETA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-slate-400 font-medium">Trocar perfil ativo:</span>
+        <button onclick="mudarPerfil('DIRETORIA')" id="btnPerfilDiretoria" class="px-3 py-1.5 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-500 transition">
+          Diretoria
+        </button>
+        <button onclick="mudarPerfil('ADMIN')" id="btnPerfilAdmin" class="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition">
+          Admin (TI)
+        </button>
+        <button onclick="mudarPerfil('RH')" id="btnPerfilRH" class="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition">
+          Analista de RH
+        </button>
+      </div>
+    </div>
+
+    <!-- SEÇÃO PRINCIPAL DE CONTEÚDO (DUAS COLUNAS OU ABAS) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- COLUNA DA ESQUERDA: OPERAÇÕES CRÍTICAS E TESTES DE AUDITORIA (2 COLUNAS) -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- PAINEL 1: OPERAÇÕES CRÍTICAS (RN-71 & RNF-39) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>⚙️</span> Rastreamento de Operações Críticas (RN-71)
+              </h2>
+              <p class="text-xs text-slate-500">Cálculo, fechamento, reabertura e exportação com ID único e status (Concluída, Cancelada ou Pendente).</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">RN-71 / RNF-39</span>
+          </div>
+
+          <!-- SIMULADOR DE NOVA OPERAÇÃO CRÍTICA -->
+          <div class="bg-slate-50 p-3.5 rounded-xl border space-y-3 text-xs">
+            <span class="font-bold text-slate-800">Simular Execução de Operação Crítica:</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Tipo de Operação:</label>
+                <select id="opTipo" class="w-full p-2 border rounded-lg bg-white font-medium">
+                  <option value="CALCULO">Cálculo da Folha</option>
+                  <option value="FECHAMENTO">Fechamento da Competência</option>
+                  <option value="REABERTURA">Reabertura de Folha</option>
+                  <option value="EXPORTACAO">Exportação Contábil / Bancária</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Competência:</label>
+                <input type="text" id="opCompetencia" value="2026-10" class="w-full p-2 border rounded-lg bg-white font-mono text-xs">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Resultado da Tentativa:</label>
+                <select id="opResultado" class="w-full p-2 border rounded-lg bg-white font-medium">
+                  <option value="CONCLUIDA">Concluída com Sucesso</option>
+                  <option value="CANCELADA">Cancelada / Interrompida (Rollback)</option>
+                  <option value="PENDENTE">Pendente / Em Processamento</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div class="flex items-center gap-2">
+                <label class="font-semibold text-slate-600">Tempo de Execução (ms):</label>
+                <input type="number" id="opTempoMs" value="1250" class="w-24 p-1.5 border rounded-lg bg-white font-mono text-xs text-right">
+                <span class="text-[10px] text-slate-400">(&gt; 5000 ms gera alerta RNF-39)</span>
+              </div>
+              <button onclick="executarSimulacaoOperacao()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm">
+                + Executar e Gravar no Log
+              </button>
+            </div>
+          </div>
+
+          <!-- LISTA DE OPERAÇÕES CRÍTICAS REGISTRADAS -->
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-800 flex justify-between">
+              <span>Operações Monitoradas no Histórico:</span>
+              <span id="totalOperacoesBadge" class="text-[11px] text-slate-500 font-normal">3 operações</span>
+            </div>
+            <div id="listaOperacoesCriticas" class="space-y-2">
+              <!-- Preenchido via JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- PAINEL 2: REGISTRO DE PARÂMETROS COM FONTE E RESPONSÁVEL (RN-75) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>⚖️</span> Parâmetros Legais com Fonte e Responsável (RN-75)
+              </h2>
+              <p class="text-xs text-slate-500">Toda atualização exige fonte legal (norma ou publicação), vigência e usuário responsável gravados no log.</p>
+            </div>
+            <span class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">RN-75 / RN-01</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nome do Parâmetro:</label>
+              <input type="text" id="paramNome" value="piso_salarial_convencao" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Novo Valor:</label>
+              <input type="text" id="paramValor" value="2350.00" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Início da Vigência:</label>
+              <input type="date" id="paramVigencia" value="2026-01-01" class="w-full p-2 border rounded-lg bg-slate-50 font-mono text-xs">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Fonte Legal / Publicação (RN-75):</label>
+              <input type="text" id="paramFonte" value="Convenção Coletiva de Trabalho 2026 - Cláusula 3ª" class="w-full p-2 border rounded-lg bg-slate-50 font-medium text-xs">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <span class="text-[11px] text-slate-500">
+              * Responsável registrado compulsoriamente: <strong id="responsavelParamText" class="font-mono">diretoria@empresa.com</strong>
+            </span>
+            <button onclick="salvarParametroTeste()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-sm">
+              + Atualizar Parâmetro e Gerar Log
+            </button>
+          </div>
+        </div>
+
+        <!-- PAINEL 3: BLINDAGEM DE INTEGRIDADE (TRIGGERS IMUTÁVEIS RNF-03) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>🔒</span> Teste de Imutabilidade do Log de Auditoria (RNF-03)
+              </h2>
+              <p class="text-xs text-slate-500">Logs só aceitam inclusão. Nenhum usuário (nem o Administrador) pode alterar ou apagar registros.</p>
+            </div>
+            <span class="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">RNF-03 / Triggers</span>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs space-y-3">
+            <p class="text-amber-950 font-medium">
+              No banco SQLite, os triggers <code class="font-mono bg-amber-100 px-1 py-0.5 rounded">impede_update_log</code> e <code class="font-mono bg-amber-100 px-1 py-0.5 rounded">impede_delete_log</code> bloqueiam operações destrutivas via SQL direto:
+            </p>
+
+            <div class="flex flex-wrap gap-3">
+              <button onclick="testarAdulteracaoLog()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                💥 Tentar Editar Log (UPDATE)
+              </button>
+              <button onclick="testarExclusaoLog()" class="px-3.5 py-2 bg-rose-800 hover:bg-rose-900 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                🗑️ Tentar Apagar Log (DELETE)
+              </button>
+            </div>
+
+            <!-- RESULTADO DO TESTE DE BLINDAGEM -->
+            <div id="resultadoBlindagem" class="hidden p-3 rounded-lg text-xs font-mono border">
+              <!-- Preenchido via JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUNA DA DIREITA: LOG DE AUDITORIA COMPLETO & EXPORTAÇÕES (1 COLUNA) -->
+      <div class="space-y-6">
+
+        <!-- PAINEL DE CONTROLE DE LOGS E EXPORTAÇÃO (US-07 / US-08) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+              <span>📋</span> Trilha de Auditoria Geral
+            </h2>
+            <span id="contadorLogsBadge" class="bg-purple-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+              6 logs
+            </span>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="space-y-2 text-xs">
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Filtrar por Entidade:</label>
+              <select id="filtroEntidade" onchange="renderizarLogs()" class="w-full p-1.5 border rounded-lg bg-slate-50 font-medium text-xs">
+                <option value="TODAS">Todas as Entidades</option>
+                <option value="OPERACAO_CRITICA">Operações Críticas (RN-71)</option>
+                <option value="COLABORADOR">Colaboradores (RN-07)</option>
+                <option value="ATESTADO">Dados de Saúde (RN-54)</option>
+                <option value="PARAMETRO">Parâmetros (RN-75)</option>
+                <option value="COMPETENCIA">Fechamento / Reabertura (RN-04)</option>
+                <option value="SEGURANCA">Segurança / Login / Tentativas</option>
+              </select>
+            </div>
+
+            <div>
+              <input type="text" id="filtroTexto" oninput="renderizarLogs()" placeholder="Buscar nos detalhes..." class="w-full p-1.5 border rounded-lg bg-slate-50 text-xs">
+            </div>
+          </div>
+
+          <!-- BOTÕES DE EXPORTAÇÃO (US-08) -->
+          <div class="pt-1 flex gap-2 border-t text-xs">
+            <button onclick="exportarLogs('EXCEL')" class="flex-1 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 rounded-lg transition text-center">
+              📊 Exportar Excel
+            </button>
+            <button onclick="exportarLogs('PDF')" class="flex-1 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 font-bold border border-rose-300 rounded-lg transition text-center">
+              📑 Exportar PDF
+            </button>
+          </div>
+
+          <!-- CONTAINER DOS LOGS -->
+          <div id="containerLogsAuditoria" class="space-y-2 max-h-[550px] overflow-y-auto pr-1 text-xs">
+            <!-- Inserido dinamicamente -->
+          </div>
+        </div>
+
+        <!-- QUADRO DE RESUMO DE PERMISSÕES DA TABELA 4.1 -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-xs space-y-2 text-slate-600">
+          <div class="font-bold text-slate-800 border-b pb-1 flex justify-between">
+            <span>Matriz de Acesso (Tabela 4.1):</span>
+            <span class="text-purple-700 font-mono">RBAC</span>
+          </div>
+          <div class="space-y-1 text-[11px]">
+            <div>&bull; <strong>Diretoria:</strong> Consulta logs, relatórios e versões; não vê dados de saúde nem altera folha.</div>
+            <div>&bull; <strong>Admin (TI):</strong> Cria usuários, consulta logs técnicos; estritamente sem acesso à folha/salários.</div>
+            <div>&bull; <strong>RH:</strong> Lança eventos, fecha/reabre folha, acessa saúde com log de cada consulta.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ESTADO LOCAL DE DADOS EM MEMÓRIA
+    let perfilAtivo = {
+      id: 3,
+      email: 'diretoria@empresa.com',
+      perfil: 'DIRETORIA',
+      nome: 'Diretoria Geral'
+    };
+
+    let operacoesCriticas = [
+      {
+        operacaoId: 'OP-CALC-2026-10-001',
+        tipo: 'CALCULO',
+        competencia: '2026-10',
+        usuarioEmail: 'rh@empresa.com',
+        resultado: 'CONCLUIDA',
+        tempoExecucaoMs: 1420,
+        detalhes: 'Cálculo de 15 colaboradores executado com sucesso.',
+        dataHora: '01/10/2026 09:30:15'
+      },
+      {
+        operacaoId: 'OP-CALC-2026-10-002',
+        tipo: 'CALCULO',
+        competencia: '2026-10',
+        usuarioEmail: 'rh@empresa.com',
+        resultado: 'CANCELADA',
+        tempoExecucaoMs: 450,
+        detalhes: 'Falha de conexão durante o processamento. Transação revertida por inteiro (RN-64/RN-71).',
+        dataHora: '01/10/2026 09:32:00'
+      },
+      {
+        operacaoId: 'OP-FECH-2026-09-089',
+        tipo: 'FECHAMENTO',
+        competencia: '2026-09',
+        usuarioEmail: 'rh@empresa.com',
+        resultado: 'CONCLUIDA',
+        tempoExecucaoMs: 2100,
+        detalhes: 'Fechamento seguro gerou versão V1 com hash SHA-256 e conferência exata R$ 0,00.',
+        dataHora: '30/09/2026 18:00:22'
+      }
+    ];
+
+    let logsAuditoria = [
+      {
+        id: 1,
+        dataHora: '01/10/2026 08:15:10',
+        usuarioId: 2,
+        usuarioEmail: 'rh@empresa.com',
+        usuarioPerfil: 'RH',
+        acao: 'ALTERAR_COLABORADOR_SALARIO',
+        entidade: 'COLABORADOR',
+        registroId: '101',
+        detalhes: 'Reajuste de salário-base por promoção (RN-07)',
+        valorAnterior: 'R$ 3.000,00',
+        valorNovo: 'R$ 3.500,00'
+      },
+      {
+        id: 2,
+        dataHora: '01/10/2026 08:45:00',
+        usuarioId: 3,
+        usuarioEmail: 'diretoria@empresa.com',
+        usuarioPerfil: 'DIRETORIA',
+        acao: 'TENTATIVA_ACESSO_DADO_SAUDE_NEGADA',
+        entidade: 'ATESTADO',
+        registroId: '204',
+        detalhes: 'Usuário tentou consultar detalhes clínicos do Atestado #204. Rejeitado pelo servidor (RN-54)',
+        valorAnterior: null,
+        valorNovo: 'NEGADO'
+      },
+      {
+        id: 3,
+        dataHora: '01/10/2026 09:00:25',
+        usuarioId: 2,
+        usuarioEmail: 'rh@empresa.com',
+        usuarioPerfil: 'RH',
+        acao: 'CONSULTAR_DADO_SAUDE',
+        entidade: 'ATESTADO',
+        registroId: '204',
+        detalhes: 'Consulta autorizada de saúde do colaborador João Pereira pelo analista de RH',
+        valorAnterior: null,
+        valorNovo: 'CONSULTADO'
+      },
+      {
+        id: 4,
+        dataHora: '01/10/2026 09:10:40',
+        usuarioId: 2,
+        usuarioEmail: 'rh@empresa.com',
+        usuarioPerfil: 'RH',
+        acao: 'CADASTRAR_PARAMETRO',
+        entidade: 'PARAMETRO',
+        registroId: 'piso_salarial_convencao',
+        detalhes: 'Parâmetro cadastrado com vigência 2026-01-01. Fonte: Convenção Coletiva 2026 Cláusula 3ª. Responsável: rh@empresa.com (RN-75)',
+        valorAnterior: null,
+        valorNovo: '2350.00'
+      },
+      {
+        id: 5,
+        dataHora: '01/10/2026 09:30:15',
+        usuarioId: 2,
+        usuarioEmail: 'rh@empresa.com',
+        usuarioPerfil: 'RH',
+        acao: 'OPERACAO_CALCULO',
+        entidade: 'OPERACAO_CRITICA',
+        registroId: 'OP-CALC-2026-10-001',
+        detalhes: 'Operação OP-CALC-2026-10-001 (CALCULO) [CONCLUIDA]. Cálculo finalizado sem inconsistências (Tempo: 1420ms)',
+        valorAnterior: 'PENDENTE',
+        valorNovo: 'CONCLUIDA'
+      },
+      {
+        id: 6,
+        dataHora: '01/10/2026 09:32:00',
+        usuarioId: 2,
+        usuarioEmail: 'rh@empresa.com',
+        usuarioPerfil: 'RH',
+        acao: 'OPERACAO_CALCULO',
+        entidade: 'OPERACAO_CRITICA',
+        registroId: 'OP-CALC-2026-10-002',
+        detalhes: 'Operação OP-CALC-2026-10-002 (CALCULO) [CANCELADA]. Rollback executado com sucesso (Tempo: 450ms)',
+        valorAnterior: 'PENDENTE',
+        valorNovo: 'CANCELADA'
+      }
+    ];
+
+    window.onload = function() {
+      renderizarOperacoes();
+      renderizarLogs();
+    };
+
+    // TROCA DE PERFIL (RBAC)
+    function mudarPerfil(tipo) {
+      if (tipo === 'DIRETORIA') {
+        perfilAtivo = { id: 3, email: 'diretoria@empresa.com', perfil: 'DIRETORIA', nome: 'Diretoria Geral' };
+        document.getElementById('perfilLabel').innerText = 'Diretoria Geral (diretoria@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-purple-400';
+        document.getElementById('perfilBadge').innerText = 'AUDITORIA E CONSULTA COMPLETA';
+        document.getElementById('perfilBadge').className = 'bg-purple-500/20 text-purple-300 text-[10px] px-2 py-0.5 rounded font-mono';
+
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-500 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+      } else if (tipo === 'ADMIN') {
+        perfilAtivo = { id: 1, email: 'admin@empresa.com', perfil: 'ADMIN', nome: 'Administrador de TI' };
+        document.getElementById('perfilLabel').innerText = 'Administrador de TI (admin@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-blue-400';
+        document.getElementById('perfilBadge').innerText = 'LOGS TÉCNICOS / SEM ACESSO À FOLHA';
+        document.getElementById('perfilBadge').className = 'bg-blue-500/20 text-blue-300 text-[10px] px-2 py-0.5 rounded font-mono';
+
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 transition';
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+      } else if (tipo === 'RH') {
+        perfilAtivo = { id: 2, email: 'rh@empresa.com', perfil: 'RH', nome: 'Analista de RH' };
+        document.getElementById('perfilLabel').innerText = 'Analista de RH (rh@empresa.com)';
+        document.getElementById('perfilLabel').className = 'text-emerald-400';
+        document.getElementById('perfilBadge').innerText = 'OPERAÇÃO DA FOLHA / ACESSO A SAÚDE';
+        document.getElementById('perfilBadge').className = 'bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono';
+
+        document.getElementById('btnPerfilDiretoria').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilAdmin').className = 'px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-lg hover:bg-slate-700 transition';
+        document.getElementById('btnPerfilRH').className = 'px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 transition';
+      }
+      document.getElementById('responsavelParamText').innerText = perfilAtivo.email;
+      adicionarLog('TROCA_SESSAO', 'SEGURANCA', 'SESSAO', `Sessão ativa alterada para usuário ${perfilAtivo.email} (${perfilAtivo.perfil})`);
+    }
+
+    // OPERAÇÕES CRÍTICAS (RN-71)
+    function executarSimulacaoOperacao() {
+      const tipo = document.getElementById('opTipo').value;
+      const comp = document.getElementById('opCompetencia').value.trim();
+      const resultado = document.getElementById('opResultado').value;
+      const tempo = Number(document.getElementById('opTempoMs').value) || 1000;
+      const randId = Math.floor(100000 + Math.random() * 900000);
+      const opId = `OP-${tipo.slice(0, 4)}-${comp}-${randId}`;
+      const agora = formatarDataHora();
+
+      let detalhes = '';
+      if (resultado === 'CONCLUIDA') {
+        detalhes = `Operação ${opId} (${tipo}) finalizada com integridade garantida.`;
+      } else if (resultado === 'CANCELADA') {
+        detalhes = `Operação ${opId} (${tipo}) interrompida e revertida com integridade mantida.`;
+      } else {
+        detalhes = `Operação ${opId} (${tipo}) em processamento... bloqueio ativo para outros usuários.`;
+      }
+
+      const novaOp = {
+        operacaoId: opId,
+        tipo,
+        competencia: comp,
+        usuarioEmail: perfilAtivo.email,
+        resultado,
+        tempoExecucaoMs: tempo,
+        detalhes,
+        dataHora: agora
+      };
+
+      operacoesCriticas.unshift(novaOp);
+
+      // Adiciona no log de auditoria
+      const alertaRNF39 = tempo > 5000 ? ' [ALERTA RNF-39: Tempo > 5s]' : '';
+      adicionarLog(
+        `OPERACAO_${tipo}`,
+        'OPERACAO_CRITICA',
+        opId,
+        `Operação ${opId} (${tipo}) [${resultado}]. ${detalhes} (Tempo: ${tempo}ms)${alertaRNF39}`,
+        resultado === 'CONCLUIDA' ? 'PENDENTE' : null,
+        resultado
+      );
+
+      renderizarOperacoes();
+      alert(`✅ Operação Crítica Registrada!\nID: ${opId}\nResultado: ${resultado}\nTempo: ${tempo} ms`);
+    }
+
+    function renderizarOperacoes() {
+      const container = document.getElementById('listaOperacoesCriticas');
+      container.innerHTML = '';
+      document.getElementById('totalOperacoesBadge').innerText = `${operacoesCriticas.length} registradas`;
+
+      operacoesCriticas.forEach(op => {
+        let badgeResultado = '';
+        if (op.resultado === 'CONCLUIDA') {
+          badgeResultado = '<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">CONCLUÍDA</span>';
+        } else if (op.resultado === 'CANCELADA') {
+          badgeResultado = '<span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[10px]">CANCELADA (ROLLBACK)</span>';
+        } else {
+          badgeResultado = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">PENDENTE</span>';
+        }
+
+        const alertaTempo = op.tempoExecucaoMs > 5000 
+          ? '<span class="ml-2 text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded text-[10px]">⚠️ Tempo &gt; 5s (RNF-39)</span>' 
+          : '';
+
+        const div = document.createElement('div');
+        div.className = 'p-3 bg-slate-50 border rounded-xl text-xs space-y-1';
+        div.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-mono font-bold text-slate-800">${op.operacaoId} &bull; ${op.tipo}</span>
+            <div>${badgeResultado}</div>
+          </div>
+          <div class="text-[11px] text-slate-600">${op.detalhes}</div>
+          <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t">
+            <span>Operador: <strong class="text-slate-600">${op.usuarioEmail}</strong> &bull; Comp: ${op.competencia} &bull; ${op.dataHora}</span>
+            <span>Duração: <strong class="text-slate-700">${op.tempoExecucaoMs} ms</strong>${alertaTempo}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // REGISTRO DE PARÂMETROS COM FONTE (RN-75)
+    function salvarParametroTeste() {
+      if (perfilAtivo.perfil !== 'RH' && perfilAtivo.perfil !== 'DIRETORIA') {
+        alert('Apenas RH ou Diretoria podem gerenciar parâmetros legais.');
+        return;
+      }
+
+      const nome = document.getElementById('paramNome').value.trim();
+      const valor = document.getElementById('paramValor').value.trim();
+      const vigencia = document.getElementById('paramVigencia').value;
+      const fonte = document.getElementById('paramFonte').value.trim();
+
+      if (!nome || !valor || !vigencia || !fonte) {
+        alert('Preencha todos os campos obrigatórios (inclusive Fonte Legal e Vigência).');
+        return;
+      }
+
+      adicionarLog(
+        'CADASTRAR_PARAMETRO',
+        'PARAMETRO',
+        nome,
+        `Parâmetro ${nome} atualizado para ${valor} com vigência a partir de ${vigencia}. Fonte: ${fonte}. Responsável: ${perfilAtivo.email} (RN-75)`,
+        null,
+        valor
+      );
+
+      alert(`✅ Parâmetro Cadastrado com Sucesso!\nNome: ${nome}\nValor: ${valor}\nVigência: ${vigencia}\nFonte Legal: ${fonte}\nResponsável: ${perfilAtivo.email}`);
+    }
+
+    // TESTE DE IMUTABILIDADE (TRIGGERS RNF-03)
+    function testarAdulteracaoLog() {
+      const res = document.getElementById('resultadoBlindagem');
+      res.classList.remove('hidden');
+      res.className = 'p-3 rounded-lg text-xs font-mono border bg-rose-50 border-rose-200 text-rose-900 space-y-1';
+      res.innerHTML = `
+        <div class="font-bold text-rose-800">🛑 OPERAÇÃO ABORTADA PELO TRIGGER DO BANCO DE DADOS:</div>
+        <div>SQL: UPDATE logs_auditoria SET detalhes = 'adulterado' WHERE id = 1;</div>
+        <div class="text-rose-700 font-black">SQLite Error: Logs de auditoria são imutáveis e não podem ser alterados (Trigger: impede_update_log).</div>
+      `;
+      adicionarLog('TENTATIVA_ADULTERACAO_LOG_NEGADA', 'SEGURANCA', 'LOG_1', `Tentativa de UPDATE no log de auditoria bloqueada pelo trigger imutável.`);
+    }
+
+    function testarExclusaoLog() {
+      const res = document.getElementById('resultadoBlindagem');
+      res.classList.remove('hidden');
+      res.className = 'p-3 rounded-lg text-xs font-mono border bg-rose-50 border-rose-200 text-rose-900 space-y-1';
+      res.innerHTML = `
+        <div class="font-bold text-rose-800">🛑 OPERAÇÃO ABORTADA PELO TRIGGER DO BANCO DE DADOS:</div>
+        <div>SQL: DELETE FROM logs_auditoria WHERE id = 1;</div>
+        <div class="text-rose-700 font-black">SQLite Error: Logs de auditoria são imutáveis e não podem ser apagados (Trigger: impede_delete_log).</div>
+      `;
+      adicionarLog('TENTATIVA_EXCLUSAO_LOG_NEGADA', 'SEGURANCA', 'LOG_1', `Tentativa de DELETE no log de auditoria bloqueada pelo trigger imutável.`);
+    }
+
+    // LOGS DE AUDITORIA
+    function adicionarLog(acao, entidade, registroId, detalhes, valorAnterior = null, valorNovo = null) {
+      const agora = formatarDataHora();
+      const novoLog = {
+        id: logsAuditoria.length + 1,
+        dataHora: agora,
+        usuarioId: perfilAtivo.id,
+        usuarioEmail: perfilAtivo.email,
+        usuarioPerfil: perfilAtivo.perfil,
+        acao,
+        entidade,
+        registroId,
+        detalhes,
+        valorAnterior,
+        valorNovo
+      };
+      logsAuditoria.unshift(novoLog);
+      renderizarLogs();
+    }
+
+    function renderizarLogs() {
+      const container = document.getElementById('containerLogsAuditoria');
+      container.innerHTML = '';
+
+      // Verifica permissão (apenas Diretoria e Admin podem ver o log irrestrito)
+      if (perfilAtivo.perfil === 'RH') {
+        container.innerHTML = `
+          <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+            <strong>Acesso Restrito:</strong> O perfil <strong>Analista de RH</strong> não possui permissão para consultar o Log de Auditoria Irrestrito do Sistema (RNF-03 e Tabela 4.1). Apenas <strong>Diretoria</strong> e <strong>Admin</strong> possuem acesso a esta tela.
+          </div>
+        `;
+        document.getElementById('contadorLogsBadge').innerText = 'Restrito ao RH';
+        return;
+      }
+
+      const filtroEnt = document.getElementById('filtroEntidade').value;
+      const filtroTxt = document.getElementById('filtroTexto').value.trim().toLowerCase();
+
+      const logsFiltrados = logsAuditoria.filter(l => {
+        if (filtroEnt !== 'TODAS' && l.entidade !== filtroEnt) return false;
+        if (filtroTxt && !l.detalhes.toLowerCase().includes(filtroTxt) && !l.acao.toLowerCase().includes(filtroTxt)) return false;
+        return true;
+      });
+
+      document.getElementById('contadorLogsBadge').innerText = `${logsFiltrados.length} registros`;
+
+      if (logsFiltrados.length === 0) {
+        container.innerHTML = '<div class="p-3 text-center text-slate-400 bg-slate-50 rounded-xl">Nenhum log encontrado para os filtros selecionados.</div>';
+        return;
+      }
+
+      logsFiltrados.forEach(log => {
+        let mudancaValores = '';
+        if (log.valorAnterior || log.valorNovo) {
+          mudancaValores = `
+            <div class="mt-1 pt-1 border-t text-[10px] flex gap-2 font-mono">
+              <span class="text-slate-400">Antes: <strong class="text-rose-700">${log.valorAnterior || '(nenhum)'}</strong></span>
+              <span class="text-slate-400">&rarr; Depois: <strong class="text-emerald-700">${log.valorNovo || '(nenhum)'}</strong></span>
+            </div>
+          `;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'p-2.5 bg-slate-50 border rounded-xl text-xs space-y-1 hover:bg-white transition';
+        div.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="font-bold text-slate-900">${log.acao}</span>
+              <span class="ml-1 text-[10px] font-mono px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded">${log.entidade}</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">${log.dataHora}</span>
+          </div>
+          <div class="text-[11px] text-slate-600 leading-snug">${log.detalhes}</div>
+          ${mudancaValores}
+          <div class="text-[10px] text-slate-400 font-mono pt-0.5">
+            Operador: <strong>${log.usuarioEmail}</strong> (${log.usuarioPerfil}) &bull; Ref ID: ${log.registroId || '-'}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function exportarLogs(formato) {
+      if (perfilAtivo.perfil !== 'DIRETORIA' && perfilAtivo.perfil !== 'ADMIN') {
+        alert('Apenas Diretoria e Admin podem exportar relatórios de auditoria.');
+        return;
+      }
+      alert(`📥 Relatório de Logs de Auditoria exportado em ${formato} com sucesso!\nForam exportados ${logsAuditoria.length} registros com integridade imutável garantida.`);
+      adicionarLog(`EXPORTAR_RELATORIO_${formato}`, 'OPERACAO_CRITICA', `REL-LOG-${Date.now()}`, `Exportação de Relatório de Logs em ${formato} realizada pelo usuário ${perfilAtivo.email}`);
+    }
+
+    function formatarDataHora() {
+      const d = new Date();
+      return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR')}`;
+    }
+
+    // PRESETS DE CENÁRIOS
+    function carregarCenario(tipo) {
+      if (tipo === 'ALTERACAO_SALARIAL') {
+        mudarPerfil('RH');
+        adicionarLog(
+          'ALTERAR_COLABORADOR_SALARIO',
+          'COLABORADOR',
+          '101',
+          'Salário-base do colaborador Carlos Silva alterado de R$ 3.000,00 para R$ 3.500,00 (RN-07)',
+          'R$ 3.000,00',
+          'R$ 3.500,00'
+        );
+        mudarPerfil('DIRETORIA');
+      } else if (tipo === 'TENTATIVA_DADO_SAUDE') {
+        mudarPerfil('DIRETORIA');
+        adicionarLog(
+          'TENTATIVA_ACESSO_DADO_SAUDE_NEGADA',
+          'ATESTADO',
+          '204',
+          'Usuário diretoria@empresa.com (DIRETORIA) tentou acessar dados clínicos confidenciais. Rejeitado pelo servidor (RN-54)',
+          null,
+          'NEGADO'
+        );
+      } else if (tipo === 'PARAMETRO_FONTE_RESPONSAVEL') {
+        mudarPerfil('RH');
+        document.getElementById('paramNome').value = 'auxilio_creche_2026';
+        document.getElementById('paramValor').value = '450.00';
+        document.getElementById('paramVigencia').value = '2026-01-01';
+        document.getElementById('paramFonte').value = 'Acordo Coletivo 2026 Cláusula 12';
+        salvarParametroTeste();
+        mudarPerfil('DIRETORIA');
+      } else if (tipo === 'OPERACAO_CRITICA_CALCULO') {
+        mudarPerfil('RH');
+        document.getElementById('opTipo').value = 'CALCULO';
+        document.getElementById('opCompetencia').value = '2026-10';
+        document.getElementById('opResultado').value = 'CONCLUIDA';
+        document.getElementById('opTempoMs').value = '1450';
+        executarSimulacaoOperacao();
+        mudarPerfil('DIRETORIA');
+      } else if (tipo === 'OPERACAO_INTERROMPIDA') {
+        mudarPerfil('RH');
+        document.getElementById('opTipo').value = 'CALCULO';
+        document.getElementById('opCompetencia').value = '2026-10';
+        document.getElementById('opResultado').value = 'CANCELADA';
+        document.getElementById('opTempoMs').value = '520';
+        executarSimulacaoOperacao();
+        mudarPerfil('DIRETORIA');
+      } else if (tipo === 'TESTE_IMUTABILIDADE') {
+        testarAdulteracaoLog();
+      } else if (tipo === 'ADMIN_BLOQUEADO_FOLHA') {
+        mudarPerfil('ADMIN');
+        alert('🚫 Acesso Negado: O Administrador de TI não possui permissão para acessar os dados deste colaborador ou da folha de pagamento (Tabela 4.1).');
+        adicionarLog('TENTATIVA_ACESSO_FOLHA_NEGADA', 'SEGURANCA', 'COLABORADOR_1', 'Usuário admin@empresa.com (ADMIN) tentou acessar dados da folha/colaborador. Rejeitado no servidor.');
+      } else if (tipo === 'REABERTURA_COM_JUSTIFICATIVA') {
+        mudarPerfil('RH');
+        adicionarLog(
+          'REABRIR_COMPETENCIA',
+          'COMPETENCIA',
+          '2026-09',
+          'Competência 2026-09 reaberta pelo RH. Justificativa: "Correção de horas extras retroativas da Matriz". Notificação enviada à Diretoria (RN-04/RN-82).',
+          'FECHADA',
+          'ABERTA'
+        );
+        mudarPerfil('DIRETORIA');
+      }
+    }
+  </script>
+</body>
+</html>
+

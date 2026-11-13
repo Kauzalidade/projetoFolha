@@ -54,7 +54,7 @@ export function inicializarFeriadosEParametros(db: DatabaseSync): void {
 export function cadastrarParametro(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
-  dados: { nome: string; valor: string; dataInicio?: string; dataFim?: string; versao?: string }
+  dados: { nome: string; valor: string; dataInicio?: string; dataFim?: string; versao?: string; fonte?: string }
 ): void {
   // Somente RH cadastra parâmetros (Seção 4)
   if (usuarioSolicitante.perfil !== 'RH') {
@@ -74,11 +74,12 @@ export function cadastrarParametro(
 
   const dataFim = dados.dataFim || '2099-12-31';
   const agora = new Date().toISOString();
+  const fonte = dados.fonte ? dados.fonte.trim() : null;
 
   db.prepare(`
-    INSERT INTO parametros (nome, valor, data_inicio, data_fim, versao, criado_em)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(dados.nome.trim(), dados.valor.trim(), dados.dataInicio.trim(), dataFim.trim(), dados.versao || '1.0', agora);
+    INSERT INTO parametros (nome, valor, data_inicio, data_fim, versao, fonte, criado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(dados.nome.trim(), dados.valor.trim(), dados.dataInicio.trim(), dataFim.trim(), dados.versao || '1.0', fonte, agora);
 
   registrarLog(db, {
     usuarioId: usuarioSolicitante.id,
@@ -86,7 +87,7 @@ export function cadastrarParametro(
     usuarioPerfil: usuarioSolicitante.perfil,
     acao: 'CADASTRAR_PARAMETRO',
     entidade: 'PARAMETRO',
-    detalhes: `Parâmetro ${dados.nome} cadastrado com vigência a partir de ${dados.dataInicio}`,
+    detalhes: `Parâmetro ${dados.nome} cadastrado com vigência a partir de ${dados.dataInicio}. Fonte: ${fonte || 'Não informada'}. Responsável: ${usuarioSolicitante.email}`,
     valorNovo: JSON.stringify(dados),
   });
 }
