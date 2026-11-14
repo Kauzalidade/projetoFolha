@@ -50,7 +50,17 @@ import {
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
 } from '../src/services/documentosAlertasService.js';
-import { gerarFichaColaboradorPDF } from '../src/services/relatoriosService.js';
+import {
+  gerarContrachequeEstruturado,
+  gerarContrachequePDF,
+  gerarFichaColaboradorPDF,
+  gerarRelatorioFolhaMes,
+  gerarRelatorioDadosPagamento,
+  gerarRelatorioConferencia,
+  gerarRelatorioConferenciaPDF,
+  exportarRelatorioPDF,
+  exportarRelatorioExcel,
+} from '../src/services/relatoriosService.js';
 import { limparTodasSessoes } from '../src/security.js';
 
 describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-85)', () => {
@@ -551,6 +561,279 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
     assert.throws(
       () => consultarColaborador(db, adminUser, colab.id),
       { message: 'Você não tem permissão para acessar os dados deste colaborador.' }
+    );
+  });
+
+  // --- US-08: CONSULTA E EXPORTAÇÃO DE RELATÓRIOS CONFIÁVEIS PELA DIRETORIA ---
+
+  it('Cenário US-08 / RN-68: Relatório Folha do Mês exibe os mesmos valores e versão quando fechada (V1)', () => {
+    // 1. Cria colaborador e calcula folha
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Diretoria Relatorio Colab',
+      cpf: '52998224725',
+      nascimento: '1988-04-12',
+      admissao: '2023-01-01',
+      cargo: 'Analista Financeiro',
+      setor: 'Financeiro',
+      salarioBase: '4000.00',
+      banco: '237',
+      agencia: '1234',
+      conta: '56789',
+    });
+
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-05');
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: comp.id });
+    confirmarConferenciaFolha(db, rhUser, comp.id, 'Conferência confirmada pelo analista');
+    fecharFolhaSegura(db, rhUser, comp.id);
+
+    // 2. Diretoria gera o relatório da folha do mês
+    const relFolha = gerarRelatorioFolhaMes(db, diretoriaUser, comp.id);
+    assert.strictEqual(relFolha.situacao, 'FECHADA');
+    assert.strictEqual(relFolha.versao, 'V1');
+    assert.ok(relFolha.hashSha256, 'Deve conter hash SHA-256');
+    assert.strictEqual(relFolha.totalColaboradores, 1);
+    assert.strictEqual(relFolha.totaisGerais.proventos, 4000.00);
+
+    // 3. Exporta para PDF e Excel
+    const pdf = exportarRelatorioPDF(relFolha, { usuarioEmail: diretoriaUser.email });
+    assert.ok(pdf.toString('utf-8', 0, 4) === '%PDF');
+
+    const excel = exportarRelatorioExcel(relFolha);
+    assert.ok(excel.toString('utf-8').includes('Relatório da Folha do Mês (V1)'));
+  });
+
+  it('Cenário US-08 / RN-60: Relatório Dados de Pagamento exige competência fechada e total igual à soma dos líquidos', () => {
+    const compAberta = abrirOuObterCompetencia(db, rhUser, '2026-06');
+
+    // Tentativa em competência aberta com validação ativada (RN-60)
+    assert.throws(
+      () => gerarRelatorioDadosPagamento(db, diretoriaUser, compAberta.id, undefined, { exigirFechada: true }),
+      /O relatório Dados de Pagamento só pode ser gerado para competências fechadas/
+    );
+
+    // Competência fechada
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Pagamento Teste',
+      cpf: '52998224725',
+      nascimento: '1992-02-15',
+      admissao: '2023-01-01',
+      cargo: 'Assistente',
+      setor: 'Operações',
+      salarioBase: '3000.00',
+      banco: '001',
+      agencia: '4321',
+      conta: '9876',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: compAberta.id });
+    confirmarConferenciaFolha(db, rhUser, compAberta.id, 'Conferência confirmada pelo analista');
+    fecharFolhaSegura(db, rhUser, compAberta.id);
+
+    const relPag = gerarRelatorioDadosPagamento(db, diretoriaUser, compAberta.id, undefined, { exigirFechada: true });
+    assert.strictEqual(relPag.situacao, 'FECHADA');
+
+    // Total do lote é exatamente igual à soma dos líquidos
+    const somaLinhas = relPag.linhas.reduce((acc: number, l: any) => acc + l.liquido, 0);
+    assert.strictEqual(relPag.totalLiquido, Math.round(somaLinhas * 100) / 100);
+    assert.strictEqual(relPag.linhas[0].banco, '001');
+    assert.strictEqual(relPag.linhas[0].agencia, '4321');
+    assert.strictEqual(relPag.linhas[0].conta, '9876');
+  });
+
+  it('Cenário US-08 / RN-73: Relatório de Conferência em PDF lista pendências críticas com colaborador e item', () => {
+    const compPend = abrirOuObterCompetencia(db, rhUser, '2026-07');
+
+    // Cria colaborador e remove conta para gerar pendência bancária (RN-73)
+    const colabSemConta = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Sem Conta Bancaria',
+      cpf: '52998224725',
+      nascimento: '1990-01-01',
+      admissao: '2023-01-01',
+      cargo: 'Operador',
+      setor: 'Geral',
+      salarioBase: '2500.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '5678',
+    });
+    db.prepare("UPDATE colaboradores SET conta = '' WHERE id = ?").run(colabSemConta.id);
+
+    const relConf = gerarRelatorioConferencia(db, diretoriaUser, compPend.id);
+    assert.strictEqual(relConf.aptoParaFechamento, false);
+    assert.ok(relConf.totalPendencias > 0);
+
+    const pendBanco = relConf.pendencias.find((p: any) => p.item.includes('banco'));
+    assert.ok(pendBanco, 'Deve identificar dados bancários ausentes');
+    assert.strictEqual(pendBanco.colaborador, 'Sem Conta Bancaria');
+
+    // Emite PDF de conferência (RN-73)
+    const pdfConf = gerarRelatorioConferenciaPDF(db, diretoriaUser, compPend.id);
+    assert.ok(pdfConf.toString('utf-8', 0, 4) === '%PDF');
+    assert.ok(pdfConf.length > 500);
+  });
+
+  it('Cenário US-08 / Tabela 4.1: Diretoria consulta relatórios, mas não pode fechar folha nem lançar eventos', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-08');
+
+    // Diretoria consulta folha
+    const rel = gerarRelatorioFolhaMes(db, diretoriaUser, comp.id);
+    assert.ok(rel.titulo.includes('Folha do Mês'));
+
+    // Diretoria tentando fechar folha -> Bloqueio total
+    assert.throws(
+      () => fecharFolhaSegura(db, diretoriaUser, comp.id),
+      /Você não tem permissão para esta ação/
+    );
+  });
+
+  // --- US-09 / RN-55 / RN-68: GERAÇÃO DE CONTRACHEQUE EM PDF POR COLABORADOR E COMPETÊNCIA ---
+
+  it('Cenário US-09 / RN-55: Contracheque em PDF apresenta proventos, descontos, líquido e memória resumida', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-09');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Juliana Costa',
+      cpf: '52998224725',
+      nascimento: '1992-04-10',
+      admissao: '2023-03-01',
+      cargo: 'Analista Financeiro',
+      setor: 'Controladoria',
+      salarioBase: '4000.00',
+      banco: '237',
+      agencia: '1122',
+      conta: '334456',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: comp.id });
+
+    // Contracheque estruturado com memória resumida (RN-55)
+    const dados = gerarContrachequeEstruturado(db, rhUser, colab.id, comp.id);
+    assert.strictEqual(dados.colaborador.nome, 'Juliana Costa');
+    assert.strictEqual(dados.totais.totalProventos, 4000.00);
+    assert.ok(dados.totais.totalDescontos > 0);
+    assert.ok(dados.totais.liquido > 0);
+    assert.strictEqual(dados.totais.liquido, dados.totais.totalProventos - dados.totais.totalDescontos);
+
+    // Valida memória resumida em cada verba
+    const inssVerba = dados.verbas.find((v: any) => v.descricao.includes('INSS'));
+    assert.ok(inssVerba, 'Deve conter verba de desconto do INSS');
+    assert.ok(inssVerba.memoriaResumida, 'Deve conter memória resumida com alíquotas e faixas');
+
+    // Emissão do PDF (RN-55)
+    const pdfBuf = gerarContrachequePDF(db, rhUser, colab.id, comp.id);
+    assert.strictEqual(pdfBuf.toString('utf-8', 0, 8), '%PDF-1.4');
+
+    const pdfTexto = pdfBuf.toString('binary');
+    assert.ok(pdfTexto.includes('Juliana Costa'));
+    assert.ok(pdfTexto.includes('DEMONSTRATIVO DE PAGAMENTO'));
+    assert.ok(pdfTexto.includes('VALOR LIQUIDO A RECEBER'));
+    assert.ok(pdfTexto.includes('Regra/Memoria:'));
+  });
+
+  it('Cenário US-09 / RN-68: Contracheque emitido a partir de folha fechada preserva valores e versão (V1/V2)', () => {
+    const compFechada = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Roberto Firmino',
+      cpf: '52998224725',
+      nascimento: '1989-10-02',
+      admissao: '2022-01-15',
+      cargo: 'Gerente Operacional',
+      setor: 'Operações',
+      salarioBase: '7000.00',
+      banco: '033',
+      agencia: '0099',
+      conta: '887765',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: compFechada.id });
+    confirmarConferenciaFolha(db, rhUser, compFechada.id, 'Conferência pré-fechamento OK');
+    fecharFolhaSegura(db, rhUser, compFechada.id);
+
+    const dados = gerarContrachequeEstruturado(db, rhUser, colab.id, compFechada.id);
+    assert.strictEqual(dados.cabecalho.versao, 'V1', 'Contracheque de folha fechada deve exibir versão V1 (RN-68)');
+    assert.ok(dados.cabecalho.hashSha256, 'Deve conter hash SHA-256 criptográfico da folha');
+
+    const pdfBuf = gerarContrachequePDF(db, rhUser, colab.id, compFechada.id);
+    const pdfTexto = pdfBuf.toString('binary');
+    assert.ok(pdfTexto.includes('Versao: V1'), 'PDF deve indicar explicitamente a versão da folha fechada');
+    assert.ok(pdfTexto.includes('Hash SHA-256'), 'PDF deve conter identificador criptográfico do fechamento');
+  });
+
+  it('Cenário US-09: Contracheque consulta dados da competência e não altera a folha (somente leitura)', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-11');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Aline Barros',
+      cpf: '52998224725',
+      nascimento: '1995-07-20',
+      admissao: '2024-05-10',
+      cargo: 'Supervisora',
+      setor: 'Atendimento',
+      salarioBase: '3500.00',
+      banco: '104',
+      agencia: '0101',
+      conta: '123456',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: comp.id });
+
+    // Snapshot antes de gerar contracheque
+    const folhaAntes = db.prepare('SELECT * FROM folhas WHERE colaborador_id = ? AND competencia_id = ?').get(colab.id, comp.id) as any;
+    const qtdVerbasAntes = (db.prepare('SELECT COUNT(*) as count FROM folha_verbas WHERE folha_id = ?').get(folhaAntes.id) as any).count;
+
+    // Gera PDF e estruturado múltiplas vezes
+    gerarContrachequeEstruturado(db, rhUser, colab.id, comp.id);
+    gerarContrachequePDF(db, rhUser, colab.id, comp.id);
+    gerarContrachequePDF(db, rhUser, colab.id, comp.id);
+
+    // Valida que nada foi alterado na folha
+    const folhaDepois = db.prepare('SELECT * FROM folhas WHERE colaborador_id = ? AND competencia_id = ?').get(colab.id, comp.id) as any;
+    const qtdVerbasDepois = (db.prepare('SELECT COUNT(*) as count FROM folha_verbas WHERE folha_id = ?').get(folhaDepois.id) as any).count;
+
+    assert.strictEqual(folhaAntes.liquido_centavos, folhaDepois.liquido_centavos);
+    assert.strictEqual(folhaAntes.total_proventos_centavos, folhaDepois.total_proventos_centavos);
+    assert.strictEqual(folhaAntes.total_descontos_centavos, folhaDepois.total_descontos_centavos);
+    assert.strictEqual(qtdVerbasAntes, qtdVerbasDepois);
+  });
+
+  it('Cenário US-09 / Tabela 4.1: Acesso de RH e consulta da Diretoria; Admin é bloqueado', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-12');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Patricia Leite',
+      cpf: '52998224725',
+      nascimento: '1991-12-12',
+      admissao: '2023-08-01',
+      cargo: 'Assistente',
+      setor: 'Administrativo',
+      salarioBase: '2400.00',
+      banco: '341',
+      agencia: '0222',
+      conta: '998871',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: comp.id });
+
+    // RH acessa com sucesso
+    const pdfRH = gerarContrachequePDF(db, rhUser, colab.id, comp.id);
+    assert.ok(pdfRH.length > 500);
+
+    // Diretoria consulta com sucesso (Tabela 4.1: Contracheques - Sim (consulta))
+    const pdfDiretoria = gerarContrachequePDF(db, diretoriaUser, colab.id, comp.id);
+    assert.ok(pdfDiretoria.length > 500);
+
+    // Admin é bloqueado (Tabela 4.1: Contracheques - Não)
+    assert.throws(
+      () => gerarContrachequePDF(db, adminUser, colab.id, comp.id),
+      /Você não tem permissão para esta ação/
+    );
+    assert.throws(
+      () => gerarContrachequeEstruturado(db, adminUser, colab.id, comp.id),
+      /Você não tem permissão para esta ação/
     );
   });
 });

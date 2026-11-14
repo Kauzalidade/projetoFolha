@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Executivo da Diretoria: Relatórios e Dados de Pagamento (US-08)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Estilo de costura tracejada inspirado na imagem */
+    .stitch-border {
+      border-left: 2px dashed #cbd5e1;
+    }
+  </style>
+</head>
+<body class="bg-[#9f75a6] min-h-screen p-3 sm:p-6 md:p-10 flex flex-col items-center justify-center font-sans antialiased">
+
+  <!-- Container de Toasts para Notificações Flutuantes -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Título Superior Externo -->
+  <div class="text-center mb-4 text-white">
+    <span class="text-xs font-bold uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+      Template Executivo &bull; Diretoria Geral
+    </span>
+    <h1 class="text-lg md:text-xl font-bold mt-1 text-white/90">
+      Portal de Relatórios Financeiros e Homologação (US-08 / v1.7)
+    </h1>
+  </div>
+
+  <!-- CONTAINER PRINCIPAL DO TEMPLATE (Inspirado fielmente na imagem) -->
+  <div class="w-full max-w-6xl bg-white rounded-[2.5rem] shadow-2xl border border-white/60 overflow-hidden relative">
+
+    <!-- BARRA LATERAL FLUTUANTE PRETA (Inspirada no dock social da imagem) -->
+    <div class="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col items-center bg-slate-900 text-white py-4 px-2 rounded-r-2xl shadow-xl space-y-4 text-sm">
+      <button onclick="trocarSecao('folha')" title="Folha do Mês" class="hover:text-pink-400 transition p-1 cursor-pointer">
+        📄
+      </button>
+      <button onclick="trocarSecao('pagamentos')" title="Dados de Pagamento (RN-60)" class="hover:text-sky-400 transition p-1 cursor-pointer">
+        💳
+      </button>
+      <button onclick="trocarSecao('conferencia')" title="Conferência (RN-73)" class="hover:text-emerald-400 transition p-1 cursor-pointer">
+        ⚖️
+      </button>
+      <button onclick="trocarSecao('outros')" title="Relatórios Seção 13" class="hover:text-amber-400 transition p-1 cursor-pointer">
+        📈
+      </button>
+    </div>
+
+    <div class="flex flex-col">
+
+      <!-- CABEÇALHO / HEADER -->
+      <header class="px-6 md:px-12 pt-6 pb-4 flex flex-wrap justify-between items-center border-b border-slate-100 gap-4">
+        <!-- Logo e Carteira -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center text-lg shadow-md">
+            👛
+          </div>
+          <div>
+            <div class="text-sm font-black tracking-tight text-slate-900">PROJETO FOLHA</div>
+            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Painel da Diretoria</div>
+          </div>
+        </div>
+
+        <!-- Links de Navegação -->
+        <nav class="hidden lg:flex items-center space-x-6 text-xs font-semibold text-slate-600">
+          <button onclick="trocarSecao('hero')" class="hover:text-slate-900 transition cursor-pointer">Home</button>
+          <button onclick="trocarSecao('folha')" class="hover:text-slate-900 transition cursor-pointer">Folha do Mês</button>
+          <button onclick="trocarSecao('pagamentos')" class="hover:text-slate-900 transition cursor-pointer">Dados de Pagamento</button>
+          <button onclick="trocarSecao('conferencia')" class="hover:text-slate-900 transition cursor-pointer">Conferência (RN-73)</button>
+          <button onclick="trocarSecao('outros')" class="hover:text-slate-900 transition cursor-pointer">Férias & HE</button>
+        </nav>
+
+        <!-- Perfil e Troca Rápida de Usuário -->
+        <div class="flex items-center gap-3">
+          <button onclick="mudarPerfil('RH')" class="text-xs font-semibold text-slate-500 hover:text-slate-900 transition hidden sm:inline cursor-pointer">
+            Modo RH
+          </button>
+          <div class="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md cursor-pointer select-none" onclick="togglePerfil()">
+            <span class="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center text-[10px]">👤</span>
+            <span id="labelUsuarioAtivo">Diretoria Geral</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- CORPO PRINCIPAL COM COSTURA TRACEJADA -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[500px]">
+
+        <!-- COLUNA ESQUERDA: HERO CONTENT COM TIPOGRAFIA GRADIENTE -->
+        <div class="lg:col-span-7 p-6 md:p-12 md:pl-16 stitch-border flex flex-col justify-between relative">
+
+          <!-- Rastro do aviãozinho de papel -->
+          <div class="relative max-w-lg mb-6">
+            <!-- Linha pontilhada curva e avião -->
+            <div class="hidden sm:block absolute -top-4 left-36 text-slate-400">
+              <svg width="120" height="40" viewBox="0 0 120 40" fill="none">
+                <path d="M10 30 C 40 5, 80 5, 110 20" stroke="#94a3b8" stroke-dasharray="4 4" stroke-width="2"/>
+              </svg>
+              <span class="absolute top-0 right-0 -translate-y-2 translate-x-2 text-base rotate-12">✈️</span>
+            </div>
+
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 leading-[1.1] tracking-tight">
+              Relatórios &<br>
+              <span class="bg-gradient-to-r from-pink-500 via-rose-500 to-sky-500 bg-clip-text text-transparent">
+                Finanças Claras
+              </span><br>
+              para a Diretoria.
+            </h2>
+
+            <p class="text-xs sm:text-sm text-slate-500 mt-4 leading-relaxed max-w-md">
+              Consulte e exporte relatórios consolidados em <strong>PDF e Excel</strong> com valores 100% confiáveis e idênticos à tela. Versionamento seguro <strong>V1/V2 (RN-68)</strong>, dados de pagamento (RN-60) e relatório de conferência (RN-73).
+            </p>
+
+            <!-- Botões de Ação Principais (Pill Buttons) -->
+            <div class="flex flex-wrap items-center gap-3 mt-6">
+              <button onclick="carregarCenario('FOLHA_FECHADA')" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-full text-xs transition shadow-lg hover:shadow-xl cursor-pointer">
+                📊 Folha do Mês (PDF/Excel)
+              </button>
+              <button onclick="carregarCenario('RELATORIO_CONFERENCIA')" class="px-6 py-3 bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-900 font-bold rounded-full text-xs transition cursor-pointer">
+                🔍 Conferência da Folha (RN-73)
+              </button>
+            </div>
+          </div>
+
+          <!-- PONTINHOS DO CAROUSEL (Inspirados na imagem) -->
+          <div class="flex items-center gap-2 pt-4">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span class="text-[10px] text-slate-400 font-mono ml-2">Competência ativa: 2026-10 &bull; Folha Fechada V1</span>
+          </div>
+        </div>
+
+        <!-- COLUNA DIREITA: DESTAQUE CIRCULAR COM VISUAL MOCKUP SMARTPHONE (Fiel à imagem de referência) -->
+        <div class="lg:col-span-5 p-6 md:p-10 flex items-center justify-center relative bg-gradient-to-br from-slate-50 via-purple-50/50 to-pink-50/30 overflow-hidden min-h-[460px]">
+
+          <!-- Recortes decorativos brancos de borda (fiel ao template da imagem) -->
+          <div class="absolute -top-3 left-1/4 w-16 h-8 bg-white rounded-b-full shadow-sm pointer-events-none hidden md:block"></div>
+          <div class="absolute top-1/3 -left-3 w-8 h-16 bg-white rounded-r-full shadow-sm pointer-events-none hidden md:block"></div>
+
+          <!-- WRAPPER RELATIVO PARA O CÍRCULO E ELEMENTOS FLUTUANTES -->
+          <div class="relative flex items-center justify-center">
+
+            <!-- PÍLULA FLUTUANTE SUPERIOR DIREITA (Roxa com 2 barrinhas - Fiel ao template) -->
+            <div class="absolute -top-3 -right-2 sm:-right-4 bg-white shadow-xl border border-purple-100 rounded-full px-4 py-2 flex items-center gap-2.5 z-20 hover:scale-105 transition-transform cursor-pointer" onclick="carregarCenario('FOLHA_FECHADA')" title="Versão V1 Fechada (RN-68)">
+              <div class="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                ✓
+              </div>
+              <div class="flex flex-col gap-1">
+                <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
+                <div class="w-7 h-1.5 bg-slate-200 rounded-full"></div>
+              </div>
+            </div>
+
+            <!-- PÍLULA FLUTUANTE INFERIOR ESQUERDA (Azul com 2 barrinhas - Fiel ao template) -->
+            <div class="absolute -bottom-2 -left-4 sm:-left-6 bg-white shadow-xl border border-sky-100 rounded-full px-4 py-2 flex items-center gap-2.5 z-20 hover:scale-105 transition-transform cursor-pointer" onclick="carregarCenario('DADOS_PAGAMENTO_FECHADA')" title="Lote Conferido (RN-60)">
+              <div class="w-6 h-6 rounded-full bg-sky-400 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                💳
+              </div>
+              <div class="flex flex-col gap-1">
+                <div class="w-14 h-1.5 bg-slate-300 rounded-full"></div>
+                <div class="w-8 h-1.5 bg-slate-200 rounded-full"></div>
+              </div>
+            </div>
+
+            <!-- CÍRCULO BRANCO SÓLIDO FLUTUANTE INFERIOR DIREITO (Fiel ao template) -->
+            <div class="absolute -bottom-4 -right-4 sm:-bottom-3 sm:-right-3 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-2xl z-20 pointer-events-none border border-slate-100/50"></div>
+
+            <!-- CÍRCULO PRINCIPAL COM BORDA BRANCA GROSSA (MÁSCARA DA LENTE) -->
+            <div class="w-72 h-72 sm:w-84 sm:h-84 md:w-92 md:h-92 rounded-full border-[10px] sm:border-[14px] border-white shadow-2xl relative overflow-hidden flex items-center justify-center bg-gradient-to-tr from-slate-950 via-purple-950 to-indigo-950 select-none">
+
+              <!-- Efeito de iluminação suave no fundo circular -->
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-500/30 via-transparent to-transparent pointer-events-none"></div>
+
+              <!-- SMARTPHONE MOCKUP EM PERSPECTIVA (Inspirado no celular na mão da imagem) -->
+              <div class="w-48 sm:w-52 h-[340px] sm:h-[370px] bg-slate-950 rounded-[38px] p-2.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] border-[3px] border-slate-700/60 relative transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col justify-between shrink-0">
+                
+                <!-- Reflexo suave do vidro do celular -->
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent rounded-[35px] pointer-events-none z-20"></div>
+
+                <!-- TELA DO SMARTPHONE -->
+                <div class="w-full h-full bg-gradient-to-b from-[#8b5cf6] via-[#7c3aed] to-[#c026d3] rounded-[30px] p-3 text-white flex flex-col justify-between items-center relative overflow-hidden">
+                  
+                  <!-- Topo do iPhone: Status Bar & Dynamic Island -->
+                  <div class="w-full flex items-center justify-between px-1 text-[8px] text-white/80 font-mono z-10">
+                    <span>09:41</span>
+                    <div class="w-14 h-3 bg-black/90 rounded-full flex items-center justify-center gap-1 shadow-inner">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    </div>
+                    <span>5G 🔋</span>
+                  </div>
+
+                  <!-- Área Central de Pagamento / NFC Sem Contato -->
+                  <div class="flex flex-col items-center my-auto space-y-2 z-10 text-center">
+                    <!-- Ícone Contactless / Wifi em círculo translúcido -->
+                    <div class="w-13 h-13 sm:w-14 sm:h-14 rounded-full border-2 border-white/40 bg-white/15 backdrop-blur-md flex items-center justify-center shadow-lg relative mx-auto">
+                      <span class="text-2xl">📶</span>
+                      <!-- Badge do Carrinho / Pagamento -->
+                      <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white text-purple-900 flex items-center justify-center text-[10px] font-black shadow">
+                        🛒
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="text-[8px] sm:text-[9px] uppercase tracking-wider text-purple-200 font-bold">Lote de Pagamento (RN-60)</div>
+                      <div class="text-xl sm:text-2xl font-black font-mono tracking-tight text-white drop-shadow-md mt-0.5">
+                        R$ 39.978,60
+                      </div>
+                      <div class="text-[8px] sm:text-[9px] text-white/80 font-medium mt-0.5">
+                        15 colaboradores &bull; Tolerância R$ 0,00
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Botão de Ação "EXPORTAR LOTE" no Smartphone (Estilo PAY do Template) -->
+                  <div class="w-full z-10 space-y-1">
+                    <button onclick="baixarDadosPagamento()" class="w-full py-2 bg-white text-slate-950 hover:bg-slate-100 active:scale-95 font-black rounded-xl text-[11px] shadow-xl transition tracking-wider flex items-center justify-center gap-1.5 uppercase cursor-pointer">
+                      <span>💳</span> EXPORTAR LOTE
+                    </button>
+                    <div class="text-[8px] text-center text-white/70">
+                      Competência Fechada &bull; Hash SHA-256
+                    </div>
+                  </div>
+
+                  <!-- Barra de Navegação Inferior (Home Indicator) -->
+                  <div class="w-16 h-1 bg-white/60 rounded-full mx-auto mt-1 z-10"></div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SEÇÃO INFERIOR: TESTES INTERATIVOS DOS CRITÉRIOS DE ACEITE -->
+      <div class="border-t border-slate-200 bg-slate-50 p-6 md:p-8 space-y-6">
+
+        <!-- BARRA DE CASOS RÁPIDOS 1-CLIQUE -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+              <span>⚡</span> Cenários Prontos para Teste Imediato:
+            </h3>
+            <p class="text-[11px] text-slate-500">Clique para testar cada regra da US-08 e RN-59/60/68/73</p>
+          </div>
+
+          <div class="flex flex-wrap gap-2 text-xs">
+            <button onclick="carregarCenario('FOLHA_FECHADA')" class="px-3 py-1.5 bg-white border border-slate-300 hover:border-slate-900 rounded-lg font-bold text-slate-800 transition cursor-pointer">
+              1. Folha do Mês (V1 / SHA-256)
+            </button>
+            <button onclick="carregarCenario('DADOS_PAGAMENTO_ABERTA')" class="px-3 py-1.5 bg-white border border-rose-300 hover:bg-rose-50 text-rose-900 rounded-lg font-bold transition cursor-pointer">
+              2. Pagamento em Folha Aberta (Bloqueio RN-60)
+            </button>
+            <button onclick="carregarCenario('DADOS_PAGAMENTO_FECHADA')" class="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-900 rounded-lg font-bold transition cursor-pointer">
+              3. Pagamento em Folha Fechada (RN-60)
+            </button>
+            <button onclick="carregarCenario('RELATORIO_CONFERENCIA')" class="px-3 py-1.5 bg-white border border-purple-300 hover:bg-purple-50 text-purple-900 rounded-lg font-bold transition cursor-pointer">
+              4. Conferência em PDF (RN-73)
+            </button>
+            <button onclick="carregarCenario('DIRETORIA_TENTA_FECHAR')" class="px-3 py-1.5 bg-white border border-amber-300 hover:bg-amber-50 text-amber-900 rounded-lg font-bold transition cursor-pointer">
+              5. Diretoria Tenta Fechar Folha
+            </button>
+          </div>
+        </div>
+
+        <!-- PAINEL DE VISUALIZAÇÃO DO RELATÓRIO SELECIONADO -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+            <div>
+              <span id="relatorioBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                RELATÓRIO ATIVO
+              </span>
+              <h4 id="relatorioTitulo" class="text-base font-black text-slate-900 mt-1">
+                Relatório da Folha do Mês (Versão V1 - Competência 2026-10)
+              </h4>
+              <p id="relatorioSubtitulo" class="text-xs text-slate-500">
+                Valores consolidados por colaborador e totais gerais idênticos à tela da folha (RN-03 e RN-59).
+              </p>
+            </div>
+
+            <!-- BOTÕES REAIS DE EXPORTAÇÃO (EXCEL E PDF) -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <button onclick="baixarRelatorio('EXCEL')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer active:scale-95">
+                <span>📊</span> Exportar Excel (.xls)
+              </button>
+              <button onclick="baixarRelatorio('PDF')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer active:scale-95">
+                <span>📑</span> Exportar PDF (.pdf)
+              </button>
+              <button onclick="imprimirRelatorio()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Visualizar ou Imprimir">
+                <span>🖨️</span> Imprimir
+              </button>
+            </div>
+          </div>
+
+          <!-- MENSAGEM / ALERTA DO TESTE -->
+          <div id="boxAlerta" class="hidden p-3.5 rounded-xl text-xs"></div>
+
+          <!-- TABELA DE DADOS DO RELATÓRIO -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead id="tabelaCabecalho" class="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b">
+                <!-- Cabeçalho dinâmico -->
+              </thead>
+              <tbody id="tabelaCorpo" class="divide-y divide-slate-100 font-medium">
+                <!-- Linhas dinâmicas -->
+              </tbody>
+              <tfoot id="tabelaRodape" class="bg-slate-50 font-bold border-t text-slate-900">
+                <!-- Totais dinâmicos -->
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // DADOS MOCKADOS E REGRAS PARA O SIMULADOR
+    let perfilAtivo = 'DIRETORIA'; // DIRETORIA ou RH
+    let cenarioAtivo = 'FOLHA_FECHADA';
+
+    const DADOS_FOLHA = [
+      { colaborador: 'Carlos Silva', filial: 'Matriz São Paulo', proventos: 3500.00, descontos: 375.40, liquido: 3124.60, fgts: 280.00 },
+      { colaborador: 'Mariana Santos', filial: 'Filial Campinas', proventos: 2200.00, descontos: 182.20, liquido: 2017.80, fgts: 176.00 },
+      { colaborador: 'João Pereira', filial: 'Matriz São Paulo', proventos: 4500.00, descontos: 580.10, liquido: 3919.90, fgts: 360.00 },
+      { colaborador: 'Ana Souza', filial: 'Matriz São Paulo', proventos: 6000.00, descontos: 980.50, liquido: 5019.50, fgts: 480.00 },
+      { colaborador: 'Lucas Mendes', filial: 'Filial Santos', proventos: 28600.00, descontos: 2703.20, liquido: 25896.80, fgts: 2288.00 }
+    ];
+
+    const DADOS_PAGAMENTO = [
+      { colaborador: 'Carlos Silva', banco: '001 (BB)', agencia: '1234', conta: '56789-0', liquido: 3124.60 },
+      { colaborador: 'Mariana Santos', banco: '237 (Bradesco)', agencia: '0001', conta: '98765-4', liquido: 2017.80 },
+      { colaborador: 'João Pereira', banco: '033 (Santander)', agencia: '4321', conta: '11223-3', liquido: 3919.90 },
+      { colaborador: 'Ana Souza', banco: '341 (Itaú)', agencia: '0890', conta: '44556-7', liquido: 5019.50 },
+      { colaborador: 'Lucas Mendes', banco: '001 (BB)', agencia: '1234', conta: '77889-1', liquido: 25896.80 }
+    ];
+
+    const PENDENCIAS_CONFERENCIA = [
+      { gravidade: 'BLOQUEANTE', colaborador: 'Marcos Oliveira', item: 'Dados bancários obrigatórios ausentes (conta não informada)' },
+      { gravidade: 'BLOQUEANTE', colaborador: 'Geral', item: 'Competência anterior (2026-09) ainda não está fechada (RN-63)' },
+      { gravidade: 'AVISO', colaborador: 'Geral', item: 'Conferência interna aguardando confirmação do RH com justificativa (RN-67)' }
+    ];
+
+    window.onload = function() {
+      carregarCenario('FOLHA_FECHADA');
+    };
+
+    function mostrarToast(mensagem, tipo = 'sucesso') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const corBg = tipo === 'sucesso' ? 'bg-slate-900 text-white border-emerald-500' : 'bg-rose-900 text-white border-rose-500';
+      toast.className = `${corBg} px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<span>${tipo === 'sucesso' ? '✅' : '🛑'}</span> <span>${mensagem}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      }, 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    function togglePerfil() {
+      if (perfilAtivo === 'DIRETORIA') {
+        mudarPerfil('RH');
+      } else {
+        mudarPerfil('DIRETORIA');
+      }
+    }
+
+    function mudarPerfil(perfil) {
+      perfilAtivo = perfil;
+      document.getElementById('labelUsuarioAtivo').innerText = perfil === 'DIRETORIA' ? 'Diretoria Geral' : 'Analista de RH';
+      mostrarToast(`Perfil ativo alterado para: ${perfil === 'DIRETORIA' ? 'DIRETORIA (Apenas Consulta e Relatórios)' : 'RH (Operador da Folha)'}`);
+    }
+
+    function trocarSecao(secao) {
+      if (secao === 'folha') carregarCenario('FOLHA_FECHADA');
+      else if (secao === 'pagamentos') carregarCenario('DADOS_PAGAMENTO_FECHADA');
+      else if (secao === 'conferencia') carregarCenario('RELATORIO_CONFERENCIA');
+      else if (secao === 'outros') carregarCenario('OUTROS_RELATORIOS');
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function carregarCenario(cenario) {
+      cenarioAtivo = cenario;
+      const boxAlerta = document.getElementById('boxAlerta');
+      boxAlerta.classList.add('hidden');
+
+      if (cenario === 'FOLHA_FECHADA') {
+        document.getElementById('relatorioBadge').innerText = 'SEÇÃO 13 & RN-68 (VERSÃO V1)';
+        document.getElementById('relatorioBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800';
+        document.getElementById('relatorioTitulo').innerText = 'Relatório da Folha do Mês (Versão V1 - Competência 2026-10)';
+        document.getElementById('relatorioSubtitulo').innerText = 'Folha Fechada &bull; Hash SHA-256: 7d8f3b2a9e... &bull; Totais exatamente iguais à tela (RN-59)';
+
+        renderizarTabelaFolha();
+      } 
+      else if (cenario === 'DADOS_PAGAMENTO_ABERTA') {
+        document.getElementById('relatorioBadge').innerText = 'BLOQUEIO DE SEGURANÇA (RN-60)';
+        document.getElementById('relatorioBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
+        document.getElementById('relatorioTitulo').innerText = 'Relatório de Dados de Pagamento (Competência 2026-10 - Aberta)';
+        document.getElementById('relatorioSubtitulo').innerText = 'Tentativa de emitir relatório com a competência ainda em aberto.';
+
+        boxAlerta.classList.remove('hidden');
+        boxAlerta.className = 'p-3.5 rounded-xl text-xs bg-rose-50 border border-rose-200 text-rose-900 font-medium';
+        boxAlerta.innerHTML = `
+          <strong>🛑 EMISSÃO BLOQUEADA (RN-60):</strong> O relatório "Dados de Pagamento" só pode ser gerado para competências <strong>FECHADAS</strong>. Não é permitido transferir nem exportar lotes de pagamento enquanto a folha estiver em aberto ou sem conferência concluída.
+        `;
+
+        document.getElementById('tabelaCabecalho').innerHTML = '';
+        document.getElementById('tabelaCorpo').innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Relatório indisponível enquanto a competência não for fechada.</td></tr>';
+        document.getElementById('tabelaRodape').innerHTML = '';
+      }
+      else if (cenario === 'DADOS_PAGAMENTO_FECHADA') {
+        document.getElementById('relatorioBadge').innerText = 'RN-60 & RN-57 (LOTE FECHADO)';
+        document.getElementById('relatorioBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+        document.getElementById('relatorioTitulo').innerText = 'Relatório de Dados de Pagamento (Competência Fechada 2026-10)';
+        document.getElementById('relatorioSubtitulo').innerText = 'Total do Lote: R$ 39.978,60 estritamente igual à soma dos líquidos (RN-60).';
+
+        renderizarTabelaPagamentos();
+      }
+      else if (cenario === 'RELATORIO_CONFERENCIA') {
+        document.getElementById('relatorioBadge').innerText = 'RN-73 (RELATÓRIO DE CONFERÊNCIA)';
+        document.getElementById('relatorioBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800';
+        document.getElementById('relatorioTitulo').innerText = 'Relatório de Conferência da Folha em PDF (RN-73)';
+        document.getElementById('relatorioSubtitulo').innerText = 'Lista detalhada de pendências críticas antes do fechamento com colaborador e item.';
+
+        renderizarTabelaConferencia();
+      }
+      else if (cenario === 'DIRETORIA_TENTA_FECHAR') {
+        boxAlerta.classList.remove('hidden');
+        boxAlerta.className = 'p-3.5 rounded-xl text-xs bg-amber-50 border border-amber-200 text-amber-900 font-medium';
+        boxAlerta.innerHTML = `
+          <strong>🚫 ACESSO REJEITADO (Tabela 4.1):</strong> O perfil <strong>Diretoria</strong> tem permissão apenas para <strong>consultar</strong> e <strong>exportar</strong> relatórios. O fechamento, reabertura e lançamento de eventos são de alçada exclusiva do <strong>RH</strong>.
+        `;
+        alert('Ação Negada: A Diretoria não tem permissão para fechar ou alterar folhas de pagamento (Tabela 4.1).');
+      }
+      else if (cenario === 'OUTROS_RELATORIOS') {
+        document.getElementById('relatorioBadge').innerText = 'SEÇÃO 13 (FÉRIAS & HORAS EXTRAS)';
+        document.getElementById('relatorioBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800';
+        document.getElementById('relatorioTitulo').innerText = 'Relatório Gerencial de Férias e Horas Extras';
+        document.getElementById('relatorioSubtitulo').innerText = 'Acompanhamento de períodos concessivos e horas extras 50% e 100%.';
+
+        document.getElementById('tabelaCabecalho').innerHTML = `
+          <tr>
+            <th class="py-2.5 px-3">Colaborador</th>
+            <th class="py-2.5 px-3">Início Aquisitivo</th>
+            <th class="py-2.5 px-3">Fim Concessivo</th>
+            <th class="py-2.5 px-3">Saldo Dias</th>
+            <th class="py-2.5 px-3 text-right">Situação</th>
+          </tr>
+        `;
+        document.getElementById('tabelaCorpo').innerHTML = `
+          <tr>
+            <td class="py-2 px-3 font-bold text-slate-800">Carlos Silva</td>
+            <td class="py-2 px-3">01/01/2025</td>
+            <td class="py-2 px-3">01/01/2026</td>
+            <td class="py-2 px-3">30 dias</td>
+            <td class="py-2 px-3 text-right"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">A Vencer (60d)</span></td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3 font-bold text-slate-800">Mariana Santos</td>
+            <td class="py-2 px-3">15/05/2025</td>
+            <td class="py-2 px-3">15/05/2026</td>
+            <td class="py-2 px-3">24 dias</td>
+            <td class="py-2 px-3 text-right"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Regular</span></td>
+          </tr>
+        `;
+        document.getElementById('tabelaRodape').innerHTML = '';
+      }
+    }
+
+    function renderizarTabelaFolha() {
+      document.getElementById('tabelaCabecalho').innerHTML = `
+        <tr>
+          <th class="py-2.5 px-3">Colaborador</th>
+          <th class="py-2.5 px-3">Filial</th>
+          <th class="py-2.5 px-3 text-right">Proventos (R$)</th>
+          <th class="py-2.5 px-3 text-right">Descontos (R$)</th>
+          <th class="py-2.5 px-3 text-right">Líquido (R$)</th>
+          <th class="py-2.5 px-3 text-right">FGTS (R$)</th>
+        </tr>
+      `;
+
+      let totalP = 0, totalD = 0, totalL = 0, totalF = 0;
+      let html = '';
+
+      DADOS_FOLHA.forEach(row => {
+        totalP += row.proventos;
+        totalD += row.descontos;
+        totalL += row.liquido;
+        totalF += row.fgts;
+
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3 font-bold text-slate-800">${row.colaborador}</td>
+            <td class="py-2 px-3 text-slate-500">${row.filial}</td>
+            <td class="py-2 px-3 text-right font-mono">${row.proventos.toFixed(2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-rose-600">${row.descontos.toFixed(2)}</td>
+            <td class="py-2 px-3 text-right font-mono font-bold text-indigo-700">${row.liquido.toFixed(2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-slate-500">${row.fgts.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tabelaCorpo').innerHTML = html;
+      document.getElementById('tabelaRodape').innerHTML = `
+        <tr>
+          <td colspan="2" class="py-2.5 px-3 uppercase tracking-wide">TOTAIS GERAIS (Tolerância R$ 0,00)</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold">${totalP.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold text-rose-600">${totalD.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-black text-indigo-800">R$ ${totalL.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold">${totalF.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+
+    function renderizarTabelaPagamentos() {
+      document.getElementById('tabelaCabecalho').innerHTML = `
+        <tr>
+          <th class="py-2.5 px-3">Colaborador</th>
+          <th class="py-2.5 px-3">Banco</th>
+          <th class="py-2.5 px-3">Agência</th>
+          <th class="py-2.5 px-3">Conta Corrente</th>
+          <th class="py-2.5 px-3 text-right">Valor Líquido (R$)</th>
+        </tr>
+      `;
+
+      let total = 0;
+      let html = '';
+
+      DADOS_PAGAMENTO.forEach(row => {
+        total += row.liquido;
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3 font-bold text-slate-800">${row.colaborador}</td>
+            <td class="py-2 px-3 font-mono">${row.banco}</td>
+            <td class="py-2 px-3 font-mono">${row.agencia}</td>
+            <td class="py-2 px-3 font-mono">${row.conta}</td>
+            <td class="py-2 px-3 text-right font-mono font-bold text-emerald-700">${row.liquido.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tabelaCorpo').innerHTML = html;
+      document.getElementById('tabelaRodape').innerHTML = `
+        <tr>
+          <td colspan="4" class="py-2.5 px-3 uppercase tracking-wide">TOTAL DO LOTE DE PAGAMENTO (RN-60)</td>
+          <td class="py-2.5 px-3 text-right font-mono font-black text-emerald-800 text-sm">R$ ${total.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+
+    function renderizarTabelaConferencia() {
+      document.getElementById('tabelaCabecalho').innerHTML = `
+        <tr>
+          <th class="py-2.5 px-3">Gravidade</th>
+          <th class="py-2.5 px-3">Colaborador</th>
+          <th class="py-2.5 px-3">Descrição da Pendência Crítica (RN-73)</th>
+          <th class="py-2.5 px-3 text-right">Ação Requerida</th>
+        </tr>
+      `;
+
+      let html = '';
+      PENDENCIAS_CONFERENCIA.forEach(p => {
+        const badge = p.gravidade === 'BLOQUEANTE' 
+          ? '<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold text-[10px]">BLOQUEANTE</span>'
+          : '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold text-[10px]">AVISO</span>';
+
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3">${badge}</td>
+            <td class="py-2 px-3 font-bold text-slate-800">${p.colaborador}</td>
+            <td class="py-2 px-3 text-slate-700">${p.item}</td>
+            <td class="py-2 px-3 text-right text-slate-500 font-mono text-[10px]">Regularizar antes do fechamento</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tabelaCorpo').innerHTML = html;
+      document.getElementById('tabelaRodape').innerHTML = `
+        <tr>
+          <td colspan="4" class="py-2.5 px-3 text-slate-500 text-[11px]">
+            * O fechamento seguro fica estritamente bloqueado enquanto houver pendências bloqueantes ativas (RN-73).
+          </td>
+        </tr>
+      `;
+    }
+
+    // ==========================================
+    // EXPORTAÇÃO REAL DE ARQUIVOS (EXCEL E PDF)
+    // ==========================================
+
+    function escapeXML(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function sanitizarTextoPDF(str) {
+      return String(str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\x20-\x7E]/g, ' ')
+        .replace(/\\/g, '\\\\')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)');
+    }
+
+    function downloadBlob(conteudo, nomeArquivo, mimeType) {
+      const blob = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function gerarExcelXML(titulo, cabecalhos, linhas, totais) {
+      let xml = '<?xml version="1.0"?>\n';
+      xml += '<?mso-application progid="Excel.Sheet"?>\n';
+      xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n';
+      xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"\n';
+      xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"\n';
+      xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
+      xml += ' <Styles>\n';
+      xml += '  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/></Style>\n';
+      xml += '  <Style ss:ID="Title"><Font ss:Bold="1" ss:Size="13" ss:Color="#0F172A"/></Style>\n';
+      xml += '  <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F172A" ss:Pattern="Solid"/></Style>\n';
+      xml += '  <Style ss:ID="Currency"><NumberFormat ss:Format="#,##0.00"/></Style>\n';
+      xml += '  <Style ss:ID="Total"><Font ss:Bold="1"/><Interior ss:Color="#E2E8F0" ss:Pattern="Solid"/></Style>\n';
+      xml += '  <Style ss:ID="TotalCurrency"><Font ss:Bold="1"/><Interior ss:Color="#E2E8F0" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0.00"/></Style>\n';
+      xml += ' </Styles>\n';
+      xml += ' <Worksheet ss:Name="Relatorio">\n  <Table>\n';
+      xml += `   <Row><Cell ss:StyleID="Title"><Data ss:Type="String">${escapeXML(titulo)}</Data></Cell></Row>\n`;
+      xml += `   <Row><Cell><Data ss:Type="String">Data de Emissao: ${new Date().toLocaleString('pt-BR')} | Perfil: Diretoria Geral (Apenas Consulta e Relatorios)</Data></Cell></Row>\n`;
+      xml += '   <Row></Row>\n';
+      xml += '   <Row>\n';
+      cabecalhos.forEach(c => {
+        xml += `    <Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXML(c)}</Data></Cell>\n`;
+      });
+      xml += '   </Row>\n';
+      linhas.forEach(row => {
+        xml += '   <Row>\n';
+        row.forEach(val => {
+          if (typeof val === 'number') {
+            xml += `    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${val.toFixed(2)}</Data></Cell>\n`;
+          } else {
+            xml += `    <Cell><Data ss:Type="String">${escapeXML(String(val))}</Data></Cell>\n`;
+          }
+        });
+        xml += '   </Row>\n';
+      });
+      if (totais && totais.length) {
+        xml += '   <Row>\n';
+        totais.forEach(val => {
+          if (typeof val === 'number') {
+            xml += `    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${val.toFixed(2)}</Data></Cell>\n`;
+          } else {
+            xml += `    <Cell ss:StyleID="Total"><Data ss:Type="String">${escapeXML(String(val))}</Data></Cell>\n`;
+          }
+        });
+        xml += '   </Row>\n';
+      }
+      xml += '  </Table>\n </Worksheet>\n</Workbook>';
+      return xml;
+    }
+
+    function montarPDF(linhas) {
+      let stream = 'BT\n';
+      let y = 800;
+      for (const l of linhas) {
+        const font = l.negrito ? '/F2' : '/F1';
+        const size = l.tamanho || 10;
+        const dy = l.dy || 14;
+        y -= dy;
+        if (y < 40) y = 40;
+        const txt = sanitizarTextoPDF(l.texto);
+        stream += `${font} ${size} Tf\n50 ${y} Td\n(${txt}) Tj\n-50 -${y} Td\n`;
+      }
+      stream += 'ET';
+
+      const streamBytes = new TextEncoder().encode(stream);
+      const streamLen = streamBytes.length;
+
+      let body = '%PDF-1.4\n';
+      const offsets = [];
+      function add(content) {
+        offsets.push(new TextEncoder().encode(body).length);
+        body += content + '\n';
+      }
+
+      add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
+      add('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj');
+      add('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj');
+      add(`4 0 obj\n<< /Length ${streamLen} >>\nstream\n${stream}\nendstream\nendobj`);
+      add('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj');
+      add('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj');
+
+      const startxref = new TextEncoder().encode(body).length;
+      let xref = 'xref\n0 7\n0000000000 65535 f \n';
+      for (let i = 0; i < 6; i++) {
+        xref += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+      }
+      const trailer = `trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${startxref}\n%%EOF\n`;
+
+      return new TextEncoder().encode(body + xref + trailer);
+    }
+
+    function obterDadosCenarioAtivo() {
+      if (cenarioAtivo === 'FOLHA_FECHADA') {
+        return {
+          titulo: 'Relatorio da Folha de Pagamento do Mes - Versao V1 (RN-68)',
+          arquivo: 'relatorio_folha_mensal_2026-10_V1',
+          cabecalhos: ['Colaborador', 'Filial', 'Proventos (R$)', 'Descontos (R$)', 'Liquido (R$)', 'FGTS Empresa (R$)'],
+          linhas: DADOS_FOLHA.map(r => [r.colaborador, r.filial, r.proventos, r.descontos, r.liquido, r.fgts]),
+          totais: ['TOTAIS GERAIS (Tolerancia R$ 0,00)', '', 44800.00, 4821.40, 39978.60, 3584.00],
+          pdfLinhas: [
+            { texto: 'CORRESPONDENTE BANCARIO S.A. - PROJETO FOLHA', negrito: true, tamanho: 14, dy: 18 },
+            { texto: 'RELATORIO DA FOLHA MENSAL (VERSAO V1 - FECHADA)', negrito: true, tamanho: 12, dy: 16 },
+            { texto: 'Competencia: 2026-10 | Status: Fechada | Hash SHA-256: 7d8f3b2a9e4c1029384756abcdef...', tamanho: 9, dy: 14 },
+            { texto: 'Perfil Solicitante: DIRETORIA GERAL (Apenas Consulta e Relatorios - Tabela 4.1)', tamanho: 9, dy: 12 },
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'COLABORADOR                 FILIAL             PROVENTOS      DESCONTOS        LIQUIDO          FGTS', negrito: true, tamanho: 9, dy: 14 },
+            ...DADOS_FOLHA.map(r => ({
+              texto: `${r.colaborador.padEnd(26)} ${r.filial.padEnd(18)} R$ ${r.proventos.toFixed(2).padStart(8)}  R$ ${r.descontos.toFixed(2).padStart(8)}  R$ ${r.liquido.toFixed(2).padStart(8)}  R$ ${r.fgts.toFixed(2).padStart(6)}`,
+              tamanho: 8.5,
+              dy: 12
+            })),
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'TOTAIS GERAIS: PROVENTOS R$ 44.800,00 | DESCONTOS R$ 4.821,40 | LIQUIDO TOTAL R$ 39.978,60', negrito: true, tamanho: 9.5, dy: 16 },
+            { texto: 'Total FGTS Empresa: R$ 3.584,00 | Tolerancia de Divergencia: R$ 0,00 (RN-59)', tamanho: 9, dy: 13 },
+            { texto: 'Certificacao: Valores 100% identicos a tela e a demonstracao financeira oficial.', tamanho: 8.5, dy: 13 }
+          ]
+        };
+      }
+      else if (cenarioAtivo === 'DADOS_PAGAMENTO_FECHADA') {
+        return {
+          titulo: 'Relatorio de Dados de Pagamento do Lote (RN-60)',
+          arquivo: 'dados_pagamento_lote_2026-10',
+          cabecalhos: ['Colaborador', 'Banco', 'Agencia', 'Conta Corrente', 'Valor Liquido (R$)'],
+          linhas: DADOS_PAGAMENTO.map(r => [r.colaborador, r.banco, r.agencia, r.conta, r.liquido]),
+          totais: ['TOTAL DO LOTE DE PAGAMENTO (RN-60)', '', '', '', 39978.60],
+          pdfLinhas: [
+            { texto: 'CORRESPONDENTE BANCARIO S.A. - PROJETO FOLHA', negrito: true, tamanho: 14, dy: 18 },
+            { texto: 'RELATORIO DE DADOS DE PAGAMENTO (RN-60)', negrito: true, tamanho: 12, dy: 16 },
+            { texto: 'Competencia: 2026-10 (Fechada) | Lote Bancario Homologado', tamanho: 9, dy: 14 },
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'COLABORADOR                 BANCO              AGENCIA     CONTA CORRENTE        VALOR LIQUIDO', negrito: true, tamanho: 9, dy: 14 },
+            ...DADOS_PAGAMENTO.map(r => ({
+              texto: `${r.colaborador.padEnd(26)} ${r.banco.padEnd(18)} ${r.agencia.padEnd(10)}  ${r.conta.padEnd(18)}  R$ ${r.liquido.toFixed(2).padStart(10)}`,
+              tamanho: 8.5,
+              dy: 12
+            })),
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'TOTAL DO LOTE BANCARIO: R$ 39.978,60 (Igual a soma dos liquidos - RN-60)', negrito: true, tamanho: 10, dy: 16 },
+            { texto: 'Integridade Bancaria Garantida: 15 colaboradores auditados com conta validada.', tamanho: 8.5, dy: 13 }
+          ]
+        };
+      }
+      else if (cenarioAtivo === 'RELATORIO_CONFERENCIA') {
+        return {
+          titulo: 'Relatorio de Conferencia da Folha de Pagamento em PDF (RN-73)',
+          arquivo: 'relatorio_conferencia_folha_2026-10',
+          cabecalhos: ['Gravidade', 'Colaborador', 'Descricao da Pendencia Critica (RN-73)', 'Acao Requerida'],
+          linhas: PENDENCIAS_CONFERENCIA.map(p => [p.gravidade, p.colaborador, p.item, 'Regularizar antes do fechamento']),
+          totais: ['TOTAL DE PENDENCIAS', '2 BLOQUEANTES', '1 AVISO', 'Fechamento impedido enquanto houver bloqueante'],
+          pdfLinhas: [
+            { texto: 'CORRESPONDENTE BANCARIO S.A. - RELATORIO DE AUDITORIA', negrito: true, tamanho: 14, dy: 18 },
+            { texto: 'RELATORIO DE CONFERENCIA DA FOLHA DE PAGAMENTO (RN-73)', negrito: true, tamanho: 12, dy: 16 },
+            { texto: 'Competencia: 2026-10 | Finalidade: Apontamento de Inconsistencias e Pendencias Criticas', tamanho: 9, dy: 14 },
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'GRAVIDADE    COLABORADOR           PENDENCIA REGISTRADA', negrito: true, tamanho: 9, dy: 14 },
+            ...PENDENCIAS_CONFERENCIA.map(p => ({
+              texto: `[${p.gravidade.padEnd(10)}] ${(p.colaborador).padEnd(20)} ${p.item}`,
+              tamanho: 8.5,
+              dy: 13
+            })),
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'RESULTADO DA CONFERENCIA: FECHAMENTO BLOQUEADO POR REGRAS RN-63 E RN-73', negrito: true, tamanho: 9.5, dy: 16 },
+            { texto: 'Exigencias: Competencia anterior fechada, contas bancarias cadastradas e saldo justificado.', tamanho: 8.5, dy: 13 }
+          ]
+        };
+      }
+      else if (cenarioAtivo === 'OUTROS_RELATORIOS') {
+        return {
+          titulo: 'Relatorio Gerencial de Ferias e Horas Extras (Secao 13)',
+          arquivo: 'relatorio_ferias_horas_extras_2026-10',
+          cabecalhos: ['Colaborador', 'Inicio Aquisitivo', 'Fim Concessivo', 'Saldo Dias', 'Situacao'],
+          linhas: [
+            ['Carlos Silva', '01/01/2025', '01/01/2026', '30 dias', 'A Vencer (60d)'],
+            ['Mariana Santos', '15/05/2025', '15/05/2026', '24 dias', 'Regular']
+          ],
+          totais: ['TOTAL ANALISADO', '2 Colaboradores', '', '54 dias saldo', 'Alertas ativos'],
+          pdfLinhas: [
+            { texto: 'CORRESPONDENTE BANCARIO S.A. - GESTAO DE PESSOAS', negrito: true, tamanho: 14, dy: 18 },
+            { texto: 'RELATORIO GERENCIAL DE FERIAS E HORAS EXTRAS (SECAO 13)', negrito: true, tamanho: 12, dy: 16 },
+            { texto: 'Competencia de Referencia: 2026-10', tamanho: 9, dy: 14 },
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'COLABORADOR             AQUISITIVO   CONCESSIVO   SALDO    SITUACAO', negrito: true, tamanho: 9, dy: 14 },
+            { texto: 'Carlos Silva            01/01/2025   01/01/2026   30 dias  A Vencer (60d - Alerta RN-45)', tamanho: 8.5, dy: 13 },
+            { texto: 'Mariana Santos          15/05/2025   15/05/2026   24 dias  Regular', tamanho: 8.5, dy: 13 },
+            { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+            { texto: 'CONCESSIVO PROXIMO DO FIM: 1 colaborador com alerta de risco de calculo em dobro (RN-79).', negrito: true, tamanho: 9, dy: 16 }
+          ]
+        };
+      }
+      return null;
+    }
+
+    function baixarRelatorio(formato) {
+      if (cenarioAtivo === 'DADOS_PAGAMENTO_ABERTA') {
+        const msg = '🛑 BLOQUEIO DE SEGURANÇA (RN-60): Relatório de Dados de Pagamento só pode ser emitido em competência FECHADA. A folha atual está em aberto.';
+        alert(msg);
+        mostrarToast(msg, 'erro');
+        return;
+      }
+
+      const dados = obterDadosCenarioAtivo();
+      if (!dados) {
+        alert('Nenhum relatório selecionado para exportação.');
+        return;
+      }
+
+      if (formato === 'EXCEL') {
+        const xml = gerarExcelXML(dados.titulo, dados.cabecalhos, dados.linhas, dados.totais);
+        downloadBlob(xml, `${dados.arquivo}.xls`, 'application/vnd.ms-excel;charset=utf-8');
+        mostrarToast(`Planilha Excel baixada com sucesso: ${dados.arquivo}.xls`, 'sucesso');
+      }
+      else if (formato === 'PDF') {
+        const pdfBytes = montarPDF(dados.pdfLinhas);
+        downloadBlob(pdfBytes, `${dados.arquivo}.pdf`, 'application/pdf');
+        mostrarToast(`Documento PDF baixado com sucesso: ${dados.arquivo}.pdf`, 'sucesso');
+      }
+    }
+
+    function baixarDadosPagamento() {
+      if (cenarioAtivo === 'DADOS_PAGAMENTO_ABERTA') {
+        const msg = '🛑 BLOQUEIO DE SEGURANÇA (RN-60): Relatório de dados de pagamento só pode ser exportado para competências FECHADAS.';
+        alert(msg);
+        mostrarToast(msg, 'erro');
+        return;
+      }
+
+      // Se não estiver no cenário de pagamentos fechados, carrega-o
+      if (cenarioAtivo !== 'DADOS_PAGAMENTO_FECHADA') {
+        carregarCenario('DADOS_PAGAMENTO_FECHADA');
+      }
+
+      const dados = obterDadosCenarioAtivo();
+      const xml = gerarExcelXML(dados.titulo, dados.cabecalhos, dados.linhas, dados.totais);
+      downloadBlob(xml, `${dados.arquivo}.xls`, 'application/vnd.ms-excel;charset=utf-8');
+
+      const pdfBytes = montarPDF(dados.pdfLinhas);
+      downloadBlob(pdfBytes, `${dados.arquivo}.pdf`, 'application/pdf');
+
+      mostrarToast('Lote de Pagamento exportado em Excel e PDF com sucesso (RN-60)!', 'sucesso');
+    }
+
+    function imprimirRelatorio() {
+      if (cenarioAtivo === 'DADOS_PAGAMENTO_ABERTA') {
+        alert('Impressão bloqueada: a competência está aberta (RN-60).');
+        return;
+      }
+
+      const dados = obterDadosCenarioAtivo();
+      if (!dados) return;
+
+      const printWin = window.open('', '_blank', 'width=900,height=650');
+      if (!printWin) {
+        alert('Por favor, permita pop-ups para visualizar a impressão.');
+        return;
+      }
+
+      let tabelaHtml = '<table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 12px; margin-top: 15px;">';
+      tabelaHtml += '<thead><tr style="background:#0f172a; color:#fff;">';
+      dados.cabecalhos.forEach(c => {
+        tabelaHtml += `<th style="padding: 8px; text-align: left; border: 1px solid #cbd5e1;">${escapeXML(c)}</th>`;
+      });
+      tabelaHtml += '</tr></thead><tbody>';
+      dados.linhas.forEach(row => {
+        tabelaHtml += '<tr>';
+        row.forEach(val => {
+          const formatted = typeof val === 'number' ? `R$ ${val.toFixed(2)}` : escapeXML(String(val));
+          tabelaHtml += `<td style="padding: 6px 8px; border: 1px solid #e2e8f0;">${formatted}</td>`;
+        });
+        tabelaHtml += '</tr>';
+      });
+      tabelaHtml += '</tbody>';
+      if (dados.totais && dados.totais.length) {
+        tabelaHtml += '<tfoot><tr style="background:#f1f5f9; font-weight:bold;">';
+        dados.totais.forEach(val => {
+          const formatted = typeof val === 'number' ? `R$ ${val.toFixed(2)}` : escapeXML(String(val));
+          tabelaHtml += `<td style="padding: 8px; border: 1px solid #cbd5e1;">${formatted}</td>`;
+        });
+        tabelaHtml += '</tr></tfoot>';
+      }
+      tabelaHtml += '</table>';
+
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${escapeXML(dados.titulo)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #1e293b; }
+            h2 { margin: 0 0 4px; font-size: 18px; color: #0f172a; }
+            p { margin: 2px 0; font-size: 11px; color: #64748b; }
+            .header-box { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 12px; }
+            .footer-box { margin-top: 24px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #64748b; }
+            @media print {
+              button { display: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-box">
+            <h2>CORRESPONDENTE BANCÁRIO S.A. - PROJETO FOLHA</h2>
+            <p><strong>Relatório:</strong> ${escapeXML(dados.titulo)}</p>
+            <p><strong>Competência:</strong> 2026-10 | <strong>Perfil Solicitante:</strong> Diretoria Geral | <strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+          ${tabelaHtml}
+          <div class="footer-box">
+            Documento auditado conforme regras de negócio RN-59, RN-60, RN-68 e RN-73. Tolerância financeira: R$ 0,00.
+          </div>
+          <div style="margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 8px 16px; background:#0f172a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">
+              🖨️ Confirmar Impressão / Salvar PDF
+            </button>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+  </script>
+</body>
+</html>
