@@ -37,6 +37,7 @@ import {
   lancarValeTransporte,
   lancarVerbaAvulsa,
   listarEventosCompetencia,
+  listarEventos,
 } from './services/eventoService.js';
 import {
   calcularFolhaColaborador,
@@ -389,6 +390,17 @@ const server = http.createServer(async (req, res) => {
       return enviarJSON(res, 201, resAvulso);
     }
 
+    if (method === 'GET' && pathname === '/api/eventos') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      if (!compId) {
+        return enviarJSON(res, 400, { erro: 'Parâmetro competenciaId é obrigatório.' });
+      }
+      const colabId = parsedUrl.query.colaboradorId ? parseInt(parsedUrl.query.colaboradorId as string, 10) : undefined;
+      const eventos = listarEventos(db, usuario, { competenciaId: compId, colaboradorId: colabId });
+      return enviarJSON(res, 200, eventos);
+    }
+
     // Folha: Calcular, Conferência, Fechar, Registrar Pagamento, Versões
     if (method === 'POST' && pathname === '/api/folha/calcular') {
       const usuario = autenticarRequisicao(req);
@@ -451,6 +463,22 @@ const server = http.createServer(async (req, res) => {
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
       const versoes = consultarVersoesFolha(db, compId);
       return enviarJSON(res, 200, versoes);
+    }
+
+    if (method === 'GET' && pathname === '/api/folha/memoria') {
+      autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const colabId = parseInt(parsedUrl.query.colaboradorId as string, 10);
+      if (!compId || !colabId) {
+        return enviarJSON(res, 400, { erro: 'Parâmetros competenciaId e colaboradorId são obrigatórios.' });
+      }
+      const folha = db.prepare('SELECT id, total_proventos_centavos, total_descontos_centavos, liquido_centavos, fgts_centavos FROM folhas WHERE colaborador_id = ? AND competencia_id = ?')
+        .get(colabId, compId) as any;
+      if (!folha) {
+        return enviarJSON(res, 404, { erro: 'Folha não encontrada para este colaborador na competência.' });
+      }
+      const verbas = db.prepare('SELECT * FROM folha_verbas WHERE folha_id = ? ORDER BY id ASC').all(folha.id);
+      return enviarJSON(res, 200, { folha, verbas });
     }
 
     // Férias e 13º
@@ -1023,6 +1051,78 @@ function renderizarInterfaceWebHTML(): string {
             <input type="number" id="evtFaltaQtd" value="1" min="1">
             <button class="btn btn-danger" style="width:100%;" onclick="lancarFaltaForm()">Lançar Falta (Com Perda DSR)</button>
           </div>
+
+          <!-- Verbas Avulsas (RN-25 / US-10) -->
+          <div class="test-box" style="border: 2px solid #6366f1;">
+            <div class="test-box-title" style="margin-bottom:6px; color:#4f46e5;">✍️ Verbas Avulsas Manuais (RN-25 / US-10)</div>
+            <small style="color:var(--text-muted); display:block; margin-bottom:8px;">Lançamento de proventos ou descontos avulsos com marcações de incidência.</small>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+              <div>
+                <label>Natureza</label>
+                <select id="evtAvulsoTipo">
+                  <option value="PROVENTO">➕ Provento (Crédito)</option>
+                  <option value="DESCONTO">➖ Desconto (Débito)</option>
+                </select>
+              </div>
+              <div>
+                <label>Valor (R$)</label>
+                <input type="number" id="evtAvulsoValor" step="0.01" min="0.01" placeholder="0.00" value="350.00">
+              </div>
+            </div>
+            <label style="margin-top:6px;">Descrição da Verba</label>
+            <input type="text" id="evtAvulsoDesc" list="sugestoesVerbas" placeholder="Ex: Adicional Noturno, Pensão..." value="Adicional Noturno (Manual)">
+            <datalist id="sugestoesVerbas">
+              <option value="Adicional Noturno (Manual)">
+              <option value="Adicional de Insalubridade">
+              <option value="Adicional de Periculosidade">
+              <option value="Pensão Alimentícia Judicial">
+              <option value="Empréstimo Consignado Caixa">
+              <option value="Adiantamento Quinzenal">
+              <option value="Assistência Médica Coparticipação">
+              <option value="Bônus por Desempenho">
+              <option value="Ajuda de Custo Alimentação">
+            </datalist>
+
+            <div style="margin: 8px 0; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <span style="font-weight: 600; font-size: 0.82rem; display:block; margin-bottom:4px;">Incidências Legais (RN-25 / Tabela 7.4):</span>
+              <label style="display:inline-flex; align-items:center; margin-right:12px; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" id="evtIncideINSS" checked style="margin-right:4px;"> INSS
+              </label>
+              <label style="display:inline-flex; align-items:center; margin-right:12px; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" id="evtIncideIRRF" checked style="margin-right:4px;"> IRRF
+              </label>
+              <label style="display:inline-flex; align-items:center; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" id="evtIncideFGTS" checked style="margin-right:4px;"> FGTS (8%)
+              </label>
+            </div>
+            <label>Observação (Opcional)</label>
+            <input type="text" id="evtAvulsoObs" placeholder="Ex: Autorizado pela coordenação..." style="margin-bottom:8px;">
+            <button class="btn btn-primary" style="width:100%; background:#4f46e5; border-color:#4f46e5;" onclick="lancarVerbaAvulsaForm()">Lançar Verba Avulsa (RN-25)</button>
+          </div>
+        </div>
+
+        <!-- TABELA DE EVENTOS DA COMPETÊNCIA SELECIONADA -->
+        <div style="margin-top: 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="margin:0; font-size:1.05rem; color:#1e293b;">📋 Eventos e Verbas Lançadas na Competência</h3>
+            <button class="btn btn-outline btn-sm" onclick="carregarTabelaEventos()">🔄 Atualizar Lista</button>
+          </div>
+          <table id="tblEventosCompetencia" style="width:100%; font-size:0.85rem;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th>ID</th>
+                <th>Colaborador</th>
+                <th>Tipo / Natureza</th>
+                <th>Descrição</th>
+                <th style="text-align:right;">Valor (R$)</th>
+                <th style="text-align:center;">Incidências (INSS / IRRF / FGTS)</th>
+                <th>Registrado Em</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Selecione uma competência para listar os eventos...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1069,6 +1169,27 @@ function renderizarInterfaceWebHTML(): string {
         </table>
 
         <div id="painelVersoesFechadas" style="margin-top:24px;"></div>
+
+        <!-- Painel / Card de Memória de Cálculo Detalhada por Verba (RN-02 / US-10) -->
+        <div id="painelMemoriaCalculo" class="card" style="display:none; margin-top:24px; border: 2px solid #6366f1; background:#ffffff;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="tituloMemoriaCalculo" style="margin:0; color:#4f46e5;">📋 Memória de Cálculo Detalhada por Verba (RN-02)</h2>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('painelMemoriaCalculo').style.display='none'">✖ Fechar Memória</button>
+          </div>
+          <p id="subtituloMemoriaCalculo" class="desc" style="margin:6px 0 12px 0; font-weight:600; color:#334155;"></p>
+          <table id="tblVerbasMemoria" style="margin-top:8px; font-size:0.85rem;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th>Verba / Descrição</th>
+                <th>Natureza</th>
+                <th style="text-align:right;">Base de Cálculo</th>
+                <th style="text-align:right;">Valor Calculado</th>
+                <th>Regra Legal Aplicada / Parâmetro</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1772,6 +1893,67 @@ function renderizarInterfaceWebHTML(): string {
       const selComp = document.getElementById('evtCompId');
       selComp.innerHTML = '';
       comps.forEach(cp => selComp.innerHTML += '<option value="' + cp.id + '">' + cp.mes_ano + ' (' + cp.situacao + ')</option>');
+      selComp.onchange = carregarTabelaEventos;
+      carregarTabelaEventos();
+    }
+
+    async function lancarVerbaAvulsaForm() {
+      const colabId = parseInt(document.getElementById('evtColabId').value, 10);
+      const compId = parseInt(document.getElementById('evtCompId').value, 10);
+      const tipo = document.getElementById('evtAvulsoTipo').value;
+      const valor = parseFloat(document.getElementById('evtAvulsoValor').value);
+      const desc = document.getElementById('evtAvulsoDesc').value;
+      const incINSS = document.getElementById('evtIncideINSS').checked;
+      const incIRRF = document.getElementById('evtIncideIRRF').checked;
+      const incFGTS = document.getElementById('evtIncideFGTS').checked;
+      const obs = document.getElementById('evtAvulsoObs').value;
+
+      const res = await fetch('/api/eventos/verba-avulsa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+          colaboradorId: colabId,
+          competenciaId: compId,
+          tipo,
+          descricao: desc,
+          valor,
+          incideINSS: incINSS,
+          incideIRRF: incIRRF,
+          incideFGTS: incFGTS,
+          observacao: obs,
+        })
+      });
+      const d = await res.json();
+      if (!res.ok) toast('erro', d.erro);
+      else {
+        toast('sucesso', 'Verba avulsa lançada com sucesso! ' + d.descricao + ' (R$ ' + d.valor.toFixed(2) + ')');
+        carregarTabelaEventos();
+      }
+    }
+
+    async function carregarTabelaEventos() {
+      const compId = document.getElementById('evtCompId').value;
+      if (!compId) return;
+      const res = await fetch('/api/eventos?competenciaId=' + compId, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const eventos = await res.json();
+      const tbody = document.querySelector('#tblEventosCompetencia tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!eventos || eventos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Nenhum evento registrado nesta competência.</td></tr>';
+        return;
+      }
+      eventos.forEach(e => {
+        const val = ((e.valor_centavos || 0) / 100).toFixed(2);
+        const inssTxt = e.incide_inss ? '<span style="color:#15803d; font-weight:bold;">Sim</span>' : '<span style="color:#64748b;">Não</span>';
+        const irrfTxt = e.incide_irrf ? '<span style="color:#15803d; font-weight:bold;">Sim</span>' : '<span style="color:#64748b;">Não</span>';
+        const fgtsTxt = e.incide_fgts ? '<span style="color:#15803d; font-weight:bold;">Sim</span>' : '<span style="color:#64748b;">Não</span>';
+        const isDesc = e.tipo.includes('DESCONTO') || e.tipo === 'FALTA_INJUSTIFICADA' || e.tipo === 'ATRASO_SAIDA_ANTECIPADA';
+        const natColor = isDesc ? '#b91c1c' : '#15803d';
+        tbody.innerHTML += '<tr><td>#' + e.id + '</td><td><strong>' + (e.colaborador_nome || 'Colab #' + e.colaborador_id) + '</strong></td><td><span style="color:' + natColor + '; font-weight:600;">' + e.tipo + '</span></td><td>' + (e.descricao || '-') + '</td><td style="text-align:right; font-weight:bold; color:' + natColor + ';">R$ ' + val + '</td><td style="text-align:center; font-size:0.75rem;">INSS: ' + inssTxt + ' | IRRF: ' + irrfTxt + ' | FGTS: ' + fgtsTxt + '</td><td>' + (e.criado_em ? e.criado_em.slice(0, 19).replace('T', ' ') : '-') + '</td></tr>';
+      });
     }
 
     async function lancarHeForm() {
@@ -1787,7 +1969,10 @@ function renderizarInterfaceWebHTML(): string {
       });
       const d = await res.json();
       if (!res.ok) toast('erro', d.erro);
-      else toast('sucesso', 'Horas extras lançadas! Valor: R$ ' + d.valorCalculado.toFixed(2) + (d.alerta ? ' (Alerta: ' + d.alerta + ')' : ''));
+      else {
+        toast('sucesso', 'Horas extras lançadas! Valor: R$ ' + d.valorCalculado.toFixed(2) + (d.alerta ? ' (Alerta: ' + d.alerta + ')' : ''));
+        carregarTabelaEventos();
+      }
     }
 
     async function lancarAtrasoForm() {
@@ -1802,7 +1987,10 @@ function renderizarInterfaceWebHTML(): string {
       });
       const d = await res.json();
       if (!res.ok) toast('erro', d.erro);
-      else toast('sucesso', 'Atraso RN-80 lançado! Desconto: R$ ' + d.descontoAtraso.toFixed(2));
+      else {
+        toast('sucesso', 'Atraso RN-80 lançado! Desconto: R$ ' + d.descontoAtraso.toFixed(2));
+        carregarTabelaEventos();
+      }
     }
 
     async function lancarFaltaForm() {
@@ -1817,7 +2005,10 @@ function renderizarInterfaceWebHTML(): string {
       });
       const d = await res.json();
       if (!res.ok) toast('erro', d.erro);
-      else toast('sucesso', 'Falta lançada! Falta: R$ ' + d.descontoFalta.toFixed(2) + ' + Perda DSR: R$ ' + d.descontoDSR.toFixed(2));
+      else {
+        toast('sucesso', 'Falta lançada! Falta: R$ ' + d.descontoFalta.toFixed(2) + ' + Perda DSR: R$ ' + d.descontoDSR.toFixed(2));
+        carregarTabelaEventos();
+      }
     }
 
     // --- FUNÇÕES DA TAB 4 (FOLHA) ---
@@ -1855,7 +2046,7 @@ function renderizarInterfaceWebHTML(): string {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">Nenhum colaborador calculado nesta competência.</td></tr>';
       } else {
         data.linhas.forEach(f => {
-          tbody.innerHTML += '<tr><td><strong>' + f.colaborador + '</strong></td><td>' + f.filial + '</td><td>R$ ' + (f.salario_base || 0).toFixed(2) + '</td><td>R$ ' + f.proventos.toFixed(2) + '</td><td>R$ ' + f.descontos.toFixed(2) + '</td><td><strong style="color:#15803d;">R$ ' + f.liquido.toFixed(2) + '</strong></td><td>R$ ' + f.fgts.toFixed(2) + '</td><td><button class="btn btn-outline btn-sm" onclick="baixarContrachequePDF(' + f.colaborador_id + ')">📥 Contracheque PDF</button></td></tr>';
+          tbody.innerHTML += '<tr><td><strong>' + f.colaborador + '</strong></td><td>' + f.filial + '</td><td>R$ ' + (f.salario_base || 0).toFixed(2) + '</td><td>R$ ' + f.proventos.toFixed(2) + '</td><td>R$ ' + f.descontos.toFixed(2) + '</td><td><strong style="color:#15803d;">R$ ' + f.liquido.toFixed(2) + '</strong></td><td>R$ ' + f.fgts.toFixed(2) + '</td><td style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="verMemoriaCalculo(' + f.colaborador_id + ')">📋 Memória</button><button class="btn btn-outline btn-sm" onclick="baixarContrachequePDF(' + f.colaborador_id + ')">📥 PDF</button></td></tr>';
         });
       }
 
@@ -1868,6 +2059,32 @@ function renderizarInterfaceWebHTML(): string {
       } else {
         divV.innerHTML = '<em style="color:var(--text-muted);">Nenhuma versão fechada nesta competência ainda.</em>';
       }
+    }
+
+    async function verMemoriaCalculo(colabId) {
+      const compId = document.getElementById('selFolhaComp').value;
+      if (!compId) { toast('erro', 'Selecione uma competência.'); return; }
+      const res = await fetch('/api/folha/memoria?colaboradorId=' + colabId + '&competenciaId=' + compId, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const d = await res.json();
+      if (!res.ok) { toast('erro', d.erro); return; }
+      const painel = document.getElementById('painelMemoriaCalculo');
+      painel.style.display = 'block';
+      painel.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('subtituloMemoriaCalculo').innerText = 'Colaborador ID #' + colabId + ' | Competência ID #' + compId + ' | Proventos: R$ ' + (d.folha.total_proventos_centavos / 100).toFixed(2) + ' | Descontos: R$ ' + (d.folha.total_descontos_centavos / 100).toFixed(2) + ' | Líquido: R$ ' + (d.folha.liquido_centavos / 100).toFixed(2) + ' | FGTS Encargo: R$ ' + (d.folha.fgts_centavos / 100).toFixed(2);
+      const tbody = document.querySelector('#tblVerbasMemoria tbody');
+      tbody.innerHTML = '';
+      d.verbas.forEach(v => {
+        const val = (v.valor_centavos / 100).toFixed(2);
+        const base = (v.base_calculo_centavos / 100).toFixed(2);
+        const natBadge = v.natureza === 'PROVENTO'
+          ? '<span style="color:#15803d; font-weight:bold;">➕ PROVENTO</span>'
+          : (v.natureza === 'DESCONTO'
+            ? '<span style="color:#b91c1c; font-weight:bold;">➖ DESCONTO</span>'
+            : '<span style="color:#4338ca; font-weight:bold;">🏢 ENCARGO</span>');
+        tbody.innerHTML += '<tr><td><strong>' + v.descricao + '</strong> <small style="color:var(--text-muted);">(' + v.tipo + ')</small></td><td>' + natBadge + '</td><td style="text-align:right;">R$ ' + base + '</td><td style="text-align:right; font-weight:bold;">R$ ' + val + '</td><td>' + v.regra_aplicada + (v.parametro_utilizado ? ' <span style="font-size:0.75rem; background:#f1f5f9; padding:2px 4px; border-radius:3px;">' + v.parametro_utilizado + '</span>' : '') + '</td></tr>';
+      });
     }
 
     async function executarConferenciaPainel() {

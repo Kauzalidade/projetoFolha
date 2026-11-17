@@ -180,9 +180,15 @@ export function calcularFolhaColaborador(
   let faltasDec = Dec.zero();
   let atrasosDec = Dec.zero();
   let vtDec = Dec.zero();
-  let proventosAvulsosTributaveisDec = Dec.zero();
-  let proventosAvulsosIsentosDec = Dec.zero();
-  let descontosAvulsosDec = Dec.zero();
+  let proventosAvulsosTotaisDec = Dec.zero();
+  let proventosAvulsosINSSDec = Dec.zero();
+  let proventosAvulsosIRRFDec = Dec.zero();
+  let proventosAvulsosFGTSDec = Dec.zero();
+
+  let descontosAvulsosTotaisDec = Dec.zero();
+  let descontosAvulsosINSSDec = Dec.zero();
+  let descontosAvulsosIRRFDec = Dec.zero();
+  let descontosAvulsosFGTSDec = Dec.zero();
 
   for (const ev of eventos) {
     const valDec = new Dec(BigInt(ev.valor_centavos || 0));
@@ -220,21 +226,33 @@ export function calcularFolhaColaborador(
     } else if (ev.tipo === 'VALE_TRANSPORTE') {
       vtDec = vtDec.add(valDec);
     } else if (ev.tipo === 'VERBA_AVULSA_PROVENTO') {
-      if (ev.incide_inss === 1) {
-        proventosAvulsosTributaveisDec = proventosAvulsosTributaveisDec.add(valDec);
-      } else {
-        proventosAvulsosIsentosDec = proventosAvulsosIsentosDec.add(valDec);
-      }
+      proventosAvulsosTotaisDec = proventosAvulsosTotaisDec.add(valDec);
+      if (ev.incide_inss === 1) proventosAvulsosINSSDec = proventosAvulsosINSSDec.add(valDec);
+      if (ev.incide_irrf === 1) proventosAvulsosIRRFDec = proventosAvulsosIRRFDec.add(valDec);
+      if (ev.incide_fgts === 1) proventosAvulsosFGTSDec = proventosAvulsosFGTSDec.add(valDec);
+
       verbasMemoria.push({
         tipo: 'VERBA_AVULSA_PROVENTO',
         descricao: ev.descricao || 'Provento Avulso',
         natureza: 'PROVENTO',
         valor: valDec,
         baseCalculo: valDec,
-        regraAplicada: `Verba avulsa manual (RN-25). Incidências: INSS=${ev.incide_inss}, IRRF=${ev.incide_irrf}, FGTS=${ev.incide_fgts}`,
+        regraAplicada: `Verba avulsa manual (RN-25). Incidências: INSS=${ev.incide_inss === 1 ? 'Sim' : 'Não'}, IRRF=${ev.incide_irrf === 1 ? 'Sim' : 'Não'}, FGTS=${ev.incide_fgts === 1 ? 'Sim' : 'Não'}`,
       });
     } else if (ev.tipo === 'VERBA_AVULSA_DESCONTO') {
-      descontosAvulsosDec = descontosAvulsosDec.add(valDec);
+      descontosAvulsosTotaisDec = descontosAvulsosTotaisDec.add(valDec);
+      if (ev.incide_inss === 1) descontosAvulsosINSSDec = descontosAvulsosINSSDec.add(valDec);
+      if (ev.incide_irrf === 1) descontosAvulsosIRRFDec = descontosAvulsosIRRFDec.add(valDec);
+      if (ev.incide_fgts === 1) descontosAvulsosFGTSDec = descontosAvulsosFGTSDec.add(valDec);
+
+      verbasMemoria.push({
+        tipo: 'VERBA_AVULSA_DESCONTO',
+        descricao: ev.descricao || 'Desconto Avulso Manual',
+        natureza: 'DESCONTO',
+        valor: valDec,
+        baseCalculo: valDec,
+        regraAplicada: `Desconto manual (RN-25). Incidências: INSS=${ev.incide_inss === 1 ? 'Sim' : 'Não'}, IRRF=${ev.incide_irrf === 1 ? 'Sim' : 'Não'}, FGTS=${ev.incide_fgts === 1 ? 'Sim' : 'Não'}`,
+      });
     }
   }
 
@@ -254,16 +272,18 @@ export function calcularFolhaColaborador(
     });
   }
 
-  // 4. Base do INSS e Cálculo Progressivo (RN-22)
-  // Base INSS = Salário + Férias Gozadas/1/3 + HE + DSR + Proventos Tributáveis - Faltas - Atrasos
-  const baseINSS = salarioEfetivoDec
+  // 4. Base do INSS e Cálculo Progressivo (RN-22 / RN-26)
+  // Base INSS = Salário + Férias Gozadas/1/3 + HE + DSR + Proventos com Incidência INSS - Faltas - Atrasos - Descontos com Incidência INSS
+  const baseINSSCalc = salarioEfetivoDec
     .add(feriasGozadasDec)
     .add(tercoFeriasDec)
     .add(horasExtrasDec)
     .add(dsrExtrasDec)
-    .add(proventosAvulsosTributaveisDec)
+    .add(proventosAvulsosINSSDec)
     .sub(faltasDec)
-    .sub(atrasosDec);
+    .sub(atrasosDec)
+    .sub(descontosAvulsosINSSDec);
+  const baseINSS = baseINSSCalc.isNegative() ? Dec.zero() : baseINSSCalc;
 
   const { inssTotal, memoria: memoriaINSS } = calcularINSS(baseINSS);
   verbasMemoria.push({
@@ -280,8 +300,19 @@ export function calcularFolhaColaborador(
   const dependentes = db.prepare('SELECT count(*) as qtd FROM dependentes WHERE colaborador_id = ?').get(dados.colaboradorId) as any;
   const qtdDependentes = dependentes?.qtd || 0;
 
-  // 6. Base e Cálculo do IRRF (RN-23)
-  const rendimentoTributavelIRRF = baseINSS;
+  // 6. Base e Cálculo do IRRF (RN-23 / RN-26)
+  // Rendimento Tributável IRRF = Salário + Férias Gozadas/1/3 + HE + DSR + Proventos com Incidência IRRF - Faltas - Atrasos - Descontos com Incidência IRRF
+  const rendimentoTributavelIRRFCalc = salarioEfetivoDec
+    .add(feriasGozadasDec)
+    .add(tercoFeriasDec)
+    .add(horasExtrasDec)
+    .add(dsrExtrasDec)
+    .add(proventosAvulsosIRRFDec)
+    .sub(faltasDec)
+    .sub(atrasosDec)
+    .sub(descontosAvulsosIRRFDec);
+  const rendimentoTributavelIRRF = rendimentoTributavelIRRFCalc.isNegative() ? Dec.zero() : rendimentoTributavelIRRFCalc;
+
   const { irrfFinal, baseEscolhida, memoria: memoriaIRRF } = calcularIRRF(rendimentoTributavelIRRF, inssTotal, qtdDependentes);
 
   verbasMemoria.push({
@@ -294,14 +325,26 @@ export function calcularFolhaColaborador(
     parametroUtilizado: 'Lei 15.270/2025 e Tabela Receita Federal 2026',
   });
 
-  // 7. FGTS (RN-24) - Encargo da empresa (8%)
-  const fgtsDec = baseINSS.mul(0.08);
+  // 7. FGTS (RN-24 / RN-26) - Encargo da empresa (8%)
+  // Base FGTS = Salário + Férias Gozadas/1/3 + HE + DSR + Proventos com Incidência FGTS - Faltas - Atrasos - Descontos com Incidência FGTS
+  const baseFGTSCalc = salarioEfetivoDec
+    .add(feriasGozadasDec)
+    .add(tercoFeriasDec)
+    .add(horasExtrasDec)
+    .add(dsrExtrasDec)
+    .add(proventosAvulsosFGTSDec)
+    .sub(faltasDec)
+    .sub(atrasosDec)
+    .sub(descontosAvulsosFGTSDec);
+  const baseFGTS = baseFGTSCalc.isNegative() ? Dec.zero() : baseFGTSCalc;
+  const fgtsDec = baseFGTS.mul(0.08);
+
   verbasMemoria.push({
     tipo: 'FGTS',
     descricao: 'FGTS (Encargo Empresa 8%)',
     natureza: 'ENCARGO',
     valor: fgtsDec,
-    baseCalculo: baseINSS,
+    baseCalculo: baseFGTS,
     regraAplicada: '8% sobre remuneração tributável - encargo patronal não descontado do empregado (RN-24)',
   });
 
@@ -331,7 +374,7 @@ export function calcularFolhaColaborador(
     });
   }
 
-  // Adiciona Vale-Transporte e Descontos Avulsos na memória
+  // Adiciona Vale-Transporte na memória
   if (!vtDec.isZero()) {
     verbasMemoria.push({
       tipo: 'VALE_TRANSPORTE',
@@ -343,31 +386,19 @@ export function calcularFolhaColaborador(
     });
   }
 
-  if (!descontosAvulsosDec.isZero()) {
-    verbasMemoria.push({
-      tipo: 'VERBA_AVULSA_DESCONTO',
-      descricao: 'Desconto Avulso Manual',
-      natureza: 'DESCONTO',
-      valor: descontosAvulsosDec,
-      baseCalculo: descontosAvulsosDec,
-      regraAplicada: 'Verba avulsa manual lançada pelo RH (RN-25)',
-    });
-  }
-
   // 9. Totalização e Regra de Proteção ao Líquido (RN-06)
   const totalProventos = salarioEfetivoDec
     .add(feriasGozadasDec)
     .add(tercoFeriasDec)
     .add(horasExtrasDec)
     .add(dsrExtrasDec)
-    .add(proventosAvulsosTributaveisDec)
-    .add(proventosAvulsosIsentosDec);
+    .add(proventosAvulsosTotaisDec);
 
   const descontosMandatorios = inssTotal.add(irrfFinal);
   let outrosDescontosDesejados = faltasDec
     .add(atrasosDec)
     .add(vtDec)
-    .add(descontosAvulsosDec)
+    .add(descontosAvulsosTotaisDec)
     .add(descontoSaldoAnteriorDec);
 
   let saldoGeradoDec = Dec.zero();

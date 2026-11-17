@@ -440,16 +440,36 @@ export function lancarVerbaAvulsa(
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  // RN-25: Só entra em competência aberta
+  // RN-25: Só entra em competência aberta (RN-04 / Tabela 7.5)
   verificarCompetenciaAberta(db, dados.competenciaId);
+  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(dados.competenciaId) as any;
+  if (!comp) {
+    throw new Error('Competência inexistente.');
+  }
+  if (comp.situacao !== 'ABERTA') {
+    throw new Error('Lançamentos de verbas avulsas são permitidos exclusivamente em competência aberta.');
+  }
 
   if (!dados.descricao || !dados.descricao.trim()) {
     throw new Error('Informe a descrição da verba avulsa.');
   }
 
-  const valorDec = typeof dados.valor === 'number'
-    ? Dec.fromMoeda(dados.valor)
-    : Dec.fromMoeda(String(dados.valor));
+  if (dados.tipo !== 'PROVENTO' && dados.tipo !== 'DESCONTO') {
+    throw new Error('Tipo de verba avulsa inválido. Deve ser PROVENTO ou DESCONTO.');
+  }
+
+  if (dados.valor === undefined || dados.valor === null || dados.valor === '') {
+    throw new Error('Informe um valor maior que zero para a verba avulsa.');
+  }
+
+  let valorDec: Dec;
+  try {
+    valorDec = typeof dados.valor === 'number'
+      ? Dec.fromMoeda(dados.valor)
+      : Dec.fromMoeda(String(dados.valor));
+  } catch {
+    throw new Error('Informe um valor maior que zero para a verba avulsa.');
+  }
 
   if (!valorDec.isPositive()) {
     throw new Error('Informe um valor maior que zero para a verba avulsa.');
@@ -483,14 +503,53 @@ export function lancarVerbaAvulsa(
   return {
     id: Number(res.lastInsertRowid),
     tipo: tipoBanco,
+    natureza: dados.tipo,
     descricao: dados.descricao.trim(),
     valor: valorDec.toNumber(),
-    incideINSS: dados.incideINSS,
-    incideIRRF: dados.incideIRRF,
-    incideFGTS: dados.incideFGTS,
+    incideINSS: Boolean(dados.incideINSS),
+    incideIRRF: Boolean(dados.incideIRRF),
+    incideFGTS: Boolean(dados.incideFGTS),
   };
 }
 
 export function listarEventosCompetencia(db: DatabaseSync, colaboradorId: number, competenciaId: number): any[] {
   return db.prepare('SELECT * FROM eventos WHERE colaborador_id = ? AND competencia_id = ?').all(colaboradorId, competenciaId);
+}
+
+export function listarEventos(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  filtros: { competenciaId: number; colaboradorId?: number }
+): any[] {
+  if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Você não tem permissão para consultar eventos.');
+  }
+
+  if (filtros.colaboradorId) {
+    const eventos = db.prepare(`
+      SELECT e.*, c.nome as colaborador_nome, c.cpf as colaborador_cpf
+      FROM eventos e
+      JOIN colaboradores c ON c.id = e.colaborador_id
+      WHERE e.competencia_id = ? AND e.colaborador_id = ?
+      ORDER BY e.id DESC
+    `).all(filtros.competenciaId, filtros.colaboradorId) as any[];
+
+    if (usuarioSolicitante.perfil === 'DIRETORIA') {
+      return eventos.map(ev => ev.tipo === 'ATESTADO' ? { ...ev, descricao: 'Atestado Médico (Protegido RN-54)', anexo_nome: null } : ev);
+    }
+    return eventos;
+  }
+
+  const eventos = db.prepare(`
+    SELECT e.*, c.nome as colaborador_nome, c.cpf as colaborador_cpf
+    FROM eventos e
+    JOIN colaboradores c ON c.id = e.colaborador_id
+    WHERE e.competencia_id = ?
+    ORDER BY e.id DESC
+  `).all(filtros.competenciaId) as any[];
+
+  if (usuarioSolicitante.perfil === 'DIRETORIA') {
+    return eventos.map(ev => ev.tipo === 'ATESTADO' ? { ...ev, descricao: 'Atestado Médico (Protegido RN-54)', anexo_nome: null } : ev);
+  }
+  return eventos;
 }
