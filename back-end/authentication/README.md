@@ -12,7 +12,7 @@ Aplicação de autenticação para o sistema de folha, com front-end acessível,
 
 1. Copie `.env.example` para `.env` e ajuste as configurações desejadas.
 2. Execute `npm start`.
-3. Abra `http://localhost:3000`.
+3. Abra `http://localhost:3000`. A rota `/` serve `front-end/index.html`; os recursos da autenticação ficam em `front-end/authentication/`.
 
 No primeiro início em desenvolvimento, o servidor cria uma conta de demonstração. Se `DEMO_PASSWORD` estiver vazio, ele gera uma senha temporária aleatória e a imprime no terminal. A primeira entrada exige a troca da senha. O código `123456` é aceito como segundo fator somente para essa conta e somente em acesso local, fora de produção. Para outras contas, o servidor valida TOTP.
 
