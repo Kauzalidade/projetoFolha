@@ -59,6 +59,8 @@ import {
   registrarIncidenteSeguranca,
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
+  avaliarRetencaoColaborador,
+  executarEliminacaoAnonimizacaoLGPD,
 } from './services/documentosAlertasService.js';
 import {
   gerarRelatorioFolhaMes,
@@ -67,6 +69,8 @@ import {
   exportarRelatorioPDF,
   exportarRelatorioExcel,
   gerarFichaColaboradorPDF,
+  obterFichaColaboradorLGPD,
+  gerarTermoEliminacaoPDF,
 } from './services/relatoriosService.js';
 import { validarSessao } from './security.js';
 
@@ -559,6 +563,43 @@ const server = http.createServer(async (req, res) => {
       const cpf = pathname.split('/')[4];
       const pdf = gerarFichaColaboradorPDF(db, usuario, cpf);
       return enviarArquivo(res, 200, 'application/pdf', `ficha_colaborador_${cpf}.pdf`, pdf);
+    }
+
+    // US-17 / RN-76: Obtenção estruturada da ficha completa do colaborador para LGPD
+    if (method === 'GET' && pathname.startsWith('/api/lgpd/ficha/')) {
+      const usuario = autenticarRequisicao(req);
+      const cpf = pathname.split('/')[4];
+      const ficha = obterFichaColaboradorLGPD(db, usuario, cpf);
+      return enviarJSON(res, 200, ficha);
+    }
+
+    // US-17 / RN-56 / RNF-29: Avaliação de retenção e prazos de guarda por categoria
+    if (method === 'GET' && pathname.startsWith('/api/lgpd/retencao/')) {
+      autenticarRequisicao(req);
+      const colabId = parseInt(pathname.split('/')[4], 10);
+      const dataRef = parsedUrl.query.dataReferencia as string | undefined;
+      const retencao = avaliarRetencaoColaborador(db, colabId, dataRef);
+      return enviarJSON(res, 200, retencao);
+    }
+
+    // US-17 / RN-56 / RNF-55: Eliminação e anonimização de dados com confirmação expressa do RH
+    if (method === 'POST' && pathname === '/api/lgpd/eliminar') {
+      const usuario = autenticarRequisicao(req);
+      const body = await parseJSONBody(req);
+      const resultado = executarEliminacaoAnonimizacaoLGPD(db, usuario, body.colaboradorId, {
+        confirmacaoRH: body.confirmacaoRH,
+        justificativa: body.justificativa,
+        dataReferencia: body.dataReferencia,
+      });
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // US-17 / RNF-55: Emissão do Termo de Eliminação de Dados em PDF
+    if (method === 'POST' && pathname === '/api/lgpd/termo/pdf') {
+      autenticarRequisicao(req);
+      const body = await parseJSONBody(req);
+      const pdf = gerarTermoEliminacaoPDF(body.termo);
+      return enviarArquivo(res, 200, 'application/pdf', `termo_eliminacao_${body.termo?.colaboradorId || 'lgpd'}.pdf`, pdf);
     }
 
     // Logs de Auditoria (Restrito à Diretoria e Admin - RNF-03)

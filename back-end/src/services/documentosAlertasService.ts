@@ -315,3 +315,263 @@ export function listarIncidentesSeguranca(
 ): any[] {
   return db.prepare('SELECT * FROM incidentes_seguranca ORDER BY id DESC').all();
 }
+
+// =========================================================================
+// US-17 / RN-56, RNF-29, RNF-55: GESTÃO DE RETENÇÃO E DESCARTE SEGURO LGPD
+// =========================================================================
+
+export interface RetencaoCategoriaInfo {
+  nome: string;
+  prazoAnos: number;
+  fundamentoLegal: string;
+  vencido: boolean;
+  retidoPorMaiorPrazo: boolean;
+}
+
+export interface AvaliacaoRetencaoDTO {
+  colaboradorId: number;
+  nome: string;
+  cpf: string;
+  situacao: string;
+  desligamento: string | null;
+  anosPosDesligamento: number;
+  aptoParaEliminacao: boolean;
+  motivoBloqueio?: string;
+  categorias: {
+    pessoaisEBancarios: RetencaoCategoriaInfo;
+    folhaEContrato: RetencaoCategoriaInfo;
+    saudeOcupacionalNR7: RetencaoCategoriaInfo;
+  };
+}
+
+/**
+ * RN-56 / RNF-29 / Tabela 6.4: Avaliação de Retenção de Dados por Categoria.
+ * Prazos:
+ * - Documentos pessoais e bancários: 5 anos pós-desligamento (prescrição trabalhista CF art. 7º, XXIX).
+ * - Folha, recibos e contratos: 10 anos pós-desligamento (prescrição civil e previdenciária).
+ * - Saúde ocupacional e exames (NR-7): 20 anos pós-desligamento.
+ * Regra do Maior Prazo (RNF-29): Se pertencer a mais de uma categoria, prevalece o maior prazo.
+ */
+export function avaliarRetencaoColaborador(
+  db: DatabaseSync,
+  colaboradorId: number,
+  dataReferencia?: string
+): AvaliacaoRetencaoDTO {
+  const colab = db.prepare('SELECT id, nome, cpf, situacao, desligamento FROM colaboradores WHERE id = ?').get(colaboradorId) as any;
+  if (!colab) {
+    throw new Error('Colaborador não encontrado.');
+  }
+
+  const hoje = dataReferencia ? new Date(dataReferencia) : new Date();
+
+  if (colab.situacao === 'ATIVO' || !colab.desligamento) {
+    return {
+      colaboradorId: colab.id,
+      nome: colab.nome,
+      cpf: colab.cpf,
+      situacao: colab.situacao,
+      desligamento: null,
+      anosPosDesligamento: 0,
+      aptoParaEliminacao: false,
+      motivoBloqueio: 'Colaborador com vínculo ativo ou sem data de desligamento. Dados mantidos para execução do contrato (LGPD art. 7º, V / RN-56).',
+      categorias: {
+        pessoaisEBancarios: {
+          nome: 'Documentos Pessoais e Dados Bancários',
+          prazoAnos: 5,
+          fundamentoLegal: 'Prescrição trabalhista bienal/quinquenal (CF art. 7º, XXIX)',
+          vencido: false,
+          retidoPorMaiorPrazo: false,
+        },
+        folhaEContrato: {
+          nome: 'Dados Cadastrais, Folhas e Recibos',
+          prazoAnos: 10,
+          fundamentoLegal: 'Prescrição civil e previdenciária (Código Civil art. 205)',
+          vencido: false,
+          retidoPorMaiorPrazo: false,
+        },
+        saudeOcupacionalNR7: {
+          nome: 'Saúde Ocupacional e Exames Periódicos',
+          prazoAnos: 20,
+          fundamentoLegal: 'Guarda de prontuários médicos ocupacionais (NR-7 item 7.4.5)',
+          vencido: false,
+          retidoPorMaiorPrazo: false,
+        },
+      },
+    };
+  }
+
+  const dDesl = new Date(colab.desligamento);
+  const anosPosDesligamento = (hoje.getTime() - dDesl.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+
+  const vencPessoais = anosPosDesligamento >= 5;
+  const vencFolha = anosPosDesligamento >= 10;
+  const vencSaude = anosPosDesligamento >= 20;
+
+  const aptoParaEliminacao = vencPessoais;
+  let motivoBloqueio: string | undefined = undefined;
+
+  if (!aptoParaEliminacao) {
+    const faltamAnos = Math.max(0, 5 - anosPosDesligamento).toFixed(1);
+    motivoBloqueio = `Colaborador desligado há ${anosPosDesligamento.toFixed(1)} anos. Dentro do prazo legal mínimo de retenção de 5 anos (faltam aprox. ${faltamAnos} anos). Descarte bloqueado (CF art. 7º / RN-56).`;
+  }
+
+  return {
+    colaboradorId: colab.id,
+    nome: colab.nome,
+    cpf: colab.cpf,
+    situacao: colab.situacao,
+    desligamento: colab.desligamento,
+    anosPosDesligamento: parseFloat(anosPosDesligamento.toFixed(2)),
+    aptoParaEliminacao,
+    motivoBloqueio,
+    categorias: {
+      pessoaisEBancarios: {
+        nome: 'Documentos Pessoais e Dados Bancários',
+        prazoAnos: 5,
+        fundamentoLegal: 'Prescrição trabalhista bienal/quinquenal (CF art. 7º, XXIX)',
+        vencido: vencPessoais,
+        retidoPorMaiorPrazo: false,
+      },
+      folhaEContrato: {
+        nome: 'Dados Cadastrais, Folhas e Recibos',
+        prazoAnos: 10,
+        fundamentoLegal: 'Prescrição civil e previdenciária (Código Civil art. 205)',
+        vencido: vencFolha,
+        retidoPorMaiorPrazo: !vencFolha && vencPessoais,
+      },
+      saudeOcupacionalNR7: {
+        nome: 'Saúde Ocupacional e Exames Periódicos',
+        prazoAnos: 20,
+        fundamentoLegal: 'Guarda de prontuários médicos ocupacionais (NR-7 item 7.4.5)',
+        vencido: vencSaude,
+        retidoPorMaiorPrazo: !vencSaude,
+      },
+    },
+  };
+}
+
+/**
+ * RN-56 / RNF-29 / RNF-55: Eliminação e Anonimização de Dados após prazo de retenção.
+ * - Exige confirmação expressa do RH (nunca elimina automaticamente).
+ * - Exige justificativa e fundamento legal.
+ * - Respeita a regra do maior prazo (RNF-29): exames NR-7 permanecem por 20 anos.
+ * - Gera o Termo de Eliminação com registro detalhado no log de auditoria imutável (RNF-55).
+ */
+export function executarEliminacaoAnonimizacaoLGPD(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  colaboradorId: number,
+  dados: {
+    confirmacaoRH: boolean;
+    justificativa: string;
+    dataReferencia?: string;
+  }
+): {
+  sucesso: boolean;
+  mensagem: string;
+  termo: any;
+} {
+  if (usuarioSolicitante.perfil !== 'RH') {
+    throw new Error('Você não tem permissão para esta ação. Apenas o perfil RH pode homologar a eliminação ou anonimização de dados.');
+  }
+
+  if (!dados.confirmacaoRH) {
+    throw new Error('A eliminação/anonimização exige confirmação expressa do RH (RN-56 / RNF-55).');
+  }
+
+  if (!dados.justificativa || !dados.justificativa.trim()) {
+    throw new Error('Informe a justificativa e o fundamento legal para a eliminação/anonimização dos dados.');
+  }
+
+  const avaliacao = avaliarRetencaoColaborador(db, colaboradorId, dados.dataReferencia);
+  if (!avaliacao.aptoParaEliminacao) {
+    throw new Error(`Eliminação rejeitada: ${avaliacao.motivoBloqueio}`);
+  }
+
+  const agora = new Date().toISOString();
+  const termoId = `TERMO-LGPD-${colaboradorId}-${Date.now()}`;
+
+  const categoriasEliminadas: string[] = [];
+  const categoriasRetidas: string[] = [];
+
+  // 1. Categoria Pessoais e Bancários (5 anos)
+  if (avaliacao.categorias.pessoaisEBancarios.vencido) {
+    categoriasEliminadas.push('Documentos Pessoais e Dados Bancários (5 anos expirados)');
+
+    db.prepare(`
+      UPDATE colaboradores
+      SET nome = 'COLABORADOR ANONIMIZADO #' || id,
+        banco = '***',
+        agencia = '***',
+        conta = '***',
+        titular_conta = 'ANONIMIZADO',
+        cpf = '00000000000',
+        nascimento = '1900-01-01',
+        email = NULL,
+        atualizado_em = ?
+      WHERE id = ?
+    `).run(agora, colaboradorId);
+
+    db.prepare(`
+      DELETE FROM documentos_colaborador
+      WHERE colaborador_id = ?
+    `).run(colaboradorId);
+
+    db.prepare(`
+      UPDATE dependentes
+      SET nome = 'DEPENDENTE ANONIMIZADO', nascimento = '1900-01-01'
+      WHERE colaborador_id = ?
+    `).run(colaboradorId);
+  }
+
+  // 2. Categoria Folha e Contratos (10 anos)
+  if (avaliacao.categorias.folhaEContrato.vencido) {
+    categoriasEliminadas.push('Folhas de Pagamento, Recibos e Contrato (10 anos expirados)');
+  } else {
+    categoriasRetidas.push('Dados Contratuais e Previdenciários (Retidos até completar 10 anos pós-desligamento)');
+  }
+
+  // 3. Categoria Saúde Ocupacional (20 anos - NR-7)
+  if (avaliacao.categorias.saudeOcupacionalNR7.vencido) {
+    categoriasEliminadas.push('Saúde Ocupacional e Exames NR-7 (20 anos expirados)');
+    db.prepare('DELETE FROM exames_ocupacionais WHERE colaborador_id = ?').run(colaboradorId);
+  } else {
+    // Respeita a regra do maior prazo: exames médicos NR-7 continuam retidos
+    categoriasRetidas.push('Saúde Ocupacional e Exames NR-7 (Retidos por 20 anos pós-desligamento conforme NR-7)');
+  }
+
+  const termo = {
+    termoId,
+    dataHora: agora,
+    responsavel: {
+      id: usuarioSolicitante.id,
+      email: usuarioSolicitante.email,
+      perfil: usuarioSolicitante.perfil,
+    },
+    colaboradorId,
+    colaboradorNomeOriginal: avaliacao.nome,
+    dataDesligamento: avaliacao.desligamento!,
+    anosPosDesligamento: avaliacao.anosPosDesligamento,
+    categoriasEliminadas,
+    categoriasRetidas,
+    fundamentoLegal: dados.justificativa.trim(),
+    status: 'CONCLUIDO',
+  };
+
+  // Registra no Log de Auditoria Imutável (RNF-03 / RNF-55)
+  registrarLog(db, {
+    usuarioId: usuarioSolicitante.id,
+    usuarioEmail: usuarioSolicitante.email,
+    usuarioPerfil: usuarioSolicitante.perfil,
+    acao: 'ELIMINACAO_DADOS_LGPD',
+    entidade: 'COLABORADOR',
+    registroId: colaboradorId,
+    detalhes: `Termo de eliminação/anonimização ${termoId} homologado pelo RH (${usuarioSolicitante.email}) para colaborador ID ${colaboradorId} (${avaliacao.nome}). Categorias eliminadas: [${categoriasEliminadas.join('; ')}]. Categorias retidas por maior prazo: [${categoriasRetidas.join('; ')}]. Fundamento legal: "${dados.justificativa.trim()}".`,
+  });
+
+  return {
+    sucesso: true,
+    mensagem: 'Eliminação e anonimização de dados concluída com sucesso com termo registrado em log (RN-56 / RNF-55).',
+    termo,
+  };
+}

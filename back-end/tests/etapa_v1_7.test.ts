@@ -52,11 +52,17 @@ import {
   registrarIncidenteSeguranca,
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
+  anexarDocumento,
+  cadastrarExameOcupacional,
+  avaliarRetencaoColaborador,
+  executarEliminacaoAnonimizacaoLGPD,
 } from '../src/services/documentosAlertasService.js';
 import {
   gerarContrachequeEstruturado,
   gerarContrachequePDF,
   gerarFichaColaboradorPDF,
+  obterFichaColaboradorLGPD,
+  gerarTermoEliminacaoPDF,
   gerarRelatorioFolhaMes,
   gerarRelatorioDadosPagamento,
   gerarRelatorioConferencia,
@@ -1566,5 +1572,300 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
       () => consultarTrilhaAprovacaoCompetencia(db, { perfil: 'COLABORADOR' } as any, comp.id),
       /Você não tem permissão para esta ação\./
     );
+  });
+
+  // =========================================================================
+  // US-17: GESTÃO LGPD, FICHA COMPLETA E DESCARTE SEGURO (RN-56, RN-76, RNF-29, RNF-55)
+  // =========================================================================
+
+  it('Cenário US-17 / Critério 1: Busca por CPF e geração de ficha completa com eventos, cadastro, férias, documentos e histórico', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Juliana Mendes LGPD',
+      cpf: '52998224725',
+      nascimento: '1991-07-25',
+      admissao: '2023-03-01',
+      cargo: 'Supervisora de Crédito',
+      setor: 'Crédito',
+      salarioBase: '4500.00',
+      banco: '341',
+      agencia: '0987',
+      conta: '54321',
+      dependentes: [
+        { nome: 'Pedro Mendes', nascimento: '2018-05-10', parentesco: 'FILHO' },
+      ],
+    });
+
+    // 1. Lança eventos na folha
+    lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 3,
+    });
+
+    // 2. Anexa documento
+    anexarDocumento(db, rhUser, {
+      colaboradorId: colab.id,
+      tipo: 'CNH',
+      nomeArquivo: 'cnh_juliana.pdf',
+      dataValidade: '2028-10-10',
+    });
+
+    // 3. Concede férias
+    solicitarFerias(db, rhUser, {
+      colaboradorId: colab.id,
+      dataInicio: '2026-11-03',
+      diasGozo: 15,
+      diasAbono: 0,
+    });
+
+    // 4. Busca estruturada por CPF
+    const fichaEstruturada = obterFichaColaboradorLGPD(db, rhUser, '529.982.247-25');
+    assert.strictEqual(fichaEstruturada.colaborador.nome, 'Juliana Mendes LGPD');
+    assert.strictEqual(fichaEstruturada.colaborador.cargo, 'Supervisora de Crédito');
+    assert.strictEqual(fichaEstruturada.dependentes.length, 1);
+    assert.strictEqual(fichaEstruturada.dependentes[0].nome, 'Pedro Mendes');
+    assert.ok(fichaEstruturada.eventos.length >= 1, 'Ficha deve conter os eventos lançados da folha');
+    assert.strictEqual(fichaEstruturada.eventos[0].tipo, 'HORA_EXTRA_UTIL');
+    assert.strictEqual(fichaEstruturada.documentos.length, 1);
+    assert.strictEqual(fichaEstruturada.ferias.length, 1);
+
+    // 5. Geração em PDF
+    const pdfBuffer = gerarFichaColaboradorPDF(db, rhUser, '52998224725');
+    assert.ok(pdfBuffer instanceof Buffer);
+    assert.strictEqual(pdfBuffer.subarray(0, 4).toString(), '%PDF', 'Deve gerar PDF válido');
+
+    // 6. Validação do log de auditoria
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'COLABORADOR', registroId: colab.id });
+    const logFicha = logs.find((l: any) => l.acao === 'GERAR_FICHA_COLABORADOR_LGPD');
+    assert.ok(logFicha, 'Deve registrar log imutável GERAR_FICHA_COLABORADOR_LGPD');
+
+    // 7. Bloqueio de perfil não autorizado
+    assert.throws(
+      () => obterFichaColaboradorLGPD(db, { perfil: 'COLABORADOR' } as any, '52998224725'),
+      /Você não tem permissão para acessar a ficha completa do colaborador\./
+    );
+  });
+
+  it('Cenário US-17 / Critério 2: Correção de dados cadastrais/pessoais mantendo histórico e log de auditoria', () => {
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Carlos Eduardo Silva',
+      cpf: '52998224725',
+      nascimento: '1985-11-20',
+      admissao: '2024-01-10',
+      cargo: 'Assistente',
+      setor: 'Atendimento',
+      salarioBase: '2000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '11111',
+    });
+
+    // Correção de dados pessoais e bancários pelo RH
+    const resAtualizacao = atualizarColaborador(db, rhUser, colab.id, {
+      nome: 'Carlos Eduardo da Silva Mendes',
+      banco: '237',
+      agencia: '4321',
+      conta: '99999',
+      versaoEsperada: 1,
+    });
+
+    assert.strictEqual(resAtualizacao.versao, 2);
+
+    // Valida histórico de alterações do colaborador (RN-07 / US-17)
+    const historico = db.prepare(`
+      SELECT campo, valor_anterior, valor_novo
+      FROM historico_colaborador
+      WHERE colaborador_id = ?
+      ORDER BY id ASC
+    `).all(colab.id) as any[];
+
+    const histNome = historico.find((h) => h.campo === 'nome');
+    assert.ok(histNome, 'Deve registrar alteração de nome no histórico');
+    assert.strictEqual(histNome.valor_anterior, 'Carlos Eduardo Silva');
+    assert.strictEqual(histNome.valor_novo, 'Carlos Eduardo da Silva Mendes');
+
+    const histBanco = historico.find((h) => h.campo === 'banco');
+    assert.ok(histBanco, 'Deve registrar alteração de banco no histórico');
+    assert.strictEqual(histBanco.valor_anterior, '001');
+    assert.strictEqual(histBanco.valor_novo, '237');
+
+    const histConta = historico.find((h) => h.campo === 'conta');
+    assert.ok(histConta, 'Deve registrar alteração de conta no histórico');
+    assert.strictEqual(histConta.valor_anterior, '11111');
+    assert.strictEqual(histConta.valor_novo, '99999');
+
+    // Valida log de auditoria
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'COLABORADOR', registroId: colab.id });
+    const logAtt = logs.find((l: any) => l.acao === 'ATUALIZAR_COLABORADOR');
+    assert.ok(logAtt, 'Deve registrar log imutável de atualização de dados');
+  });
+
+  it('Cenário US-17 / Critério 3: Bloqueio de eliminação de colaborador ativo ou dentro do prazo de retenção de 5 anos', () => {
+    // 1. Colaborador com vínculo ativo não pode ser eliminado
+    const colabAtivo = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Ativo LGPD',
+      cpf: '52998224725',
+      nascimento: '1995-02-14',
+      admissao: '2024-01-01',
+      cargo: 'Caixa',
+      setor: 'Atendimento',
+      salarioBase: '2200.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '12345',
+    });
+
+    const avalAtivo = avaliarRetencaoColaborador(db, colabAtivo.id);
+    assert.strictEqual(avalAtivo.aptoParaEliminacao, false);
+    assert.ok(avalAtivo.motivoBloqueio?.includes('vínculo ativo'));
+
+    assert.throws(
+      () =>
+        executarEliminacaoAnonimizacaoLGPD(db, rhUser, colabAtivo.id, {
+          confirmacaoRH: true,
+          justificativa: 'Solicitação indevida',
+        }),
+      /Eliminação rejeitada: Colaborador com vínculo ativo/
+    );
+
+    // 2. Colaborador desligado há apenas 2 anos (desligamento em 2024, referência em 2026)
+    const colabRecente = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Desligado Recente',
+      cpf: '12345678909',
+      nascimento: '1993-06-10',
+      admissao: '2023-01-01',
+      desligamento: '2024-05-01',
+      cargo: 'Caixa',
+      setor: 'Atendimento',
+      salarioBase: '2200.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '54321',
+    });
+    db.prepare("UPDATE colaboradores SET situacao = 'INATIVO' WHERE id = ?").run(colabRecente.id);
+
+    const avalRecente = avaliarRetencaoColaborador(db, colabRecente.id, '2026-10-01');
+    assert.strictEqual(avalRecente.aptoParaEliminacao, false);
+    assert.ok(avalRecente.motivoBloqueio?.includes('mínimo de retenção de 5 anos'));
+
+    assert.throws(
+      () =>
+        executarEliminacaoAnonimizacaoLGPD(db, rhUser, colabRecente.id, {
+          confirmacaoRH: true,
+          justificativa: 'Tentativa antes do prazo',
+          dataReferencia: '2026-10-01',
+        }),
+      /Eliminação rejeitada: .* Dentro do prazo legal mínimo de retenção de 5 anos/
+    );
+
+    // 3. Exige confirmação expressa do RH
+    assert.throws(
+      () =>
+        executarEliminacaoAnonimizacaoLGPD(db, rhUser, colabRecente.id, {
+          confirmacaoRH: false,
+          justificativa: 'Sem confirmação',
+        }),
+      /A eliminação\/anonimização exige confirmação expressa do RH/
+    );
+
+    // 4. Bloqueia perfil não autorizado
+    assert.throws(
+      () =>
+        executarEliminacaoAnonimizacaoLGPD(db, diretoriaUser as any, colabRecente.id, {
+          confirmacaoRH: true,
+          justificativa: 'Diretoria tentando descarte',
+        }),
+      /Apenas o perfil RH pode homologar a eliminação ou anonimização de dados/
+    );
+  });
+
+  it('Cenário US-17 / Critério 4: Eliminação após 5 anos respeita regra do maior prazo para exames ocupacionais (NR-7) e emite termo em log', () => {
+    // Colaborador desligado há mais de 5 anos (desligado em 2020, data de teste 2026-10-01)
+    const colabAntigo = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Marcos Oliveira Desligado',
+      cpf: '52998224725',
+      nascimento: '1980-03-12',
+      admissao: '2015-02-01',
+      desligamento: '2020-05-01',
+      cargo: 'Gerente Operacional',
+      setor: 'Operações',
+      salarioBase: '7000.00',
+      banco: '237',
+      agencia: '1122',
+      conta: '334455',
+      titularConta: 'Marcos Oliveira',
+    });
+    db.prepare("UPDATE colaboradores SET situacao = 'INATIVO' WHERE id = ?").run(colabAntigo.id);
+
+    // Anexa documento pessoal (CNH) e cadastra exame ocupacional (ASO Demissional)
+    anexarDocumento(db, rhUser, {
+      colaboradorId: colabAntigo.id,
+      tipo: 'CNH',
+      nomeArquivo: 'cnh_marcos.pdf',
+      dataValidade: '2022-01-01',
+    });
+
+    cadastrarExameOcupacional(db, rhUser, {
+      colaboradorId: colabAntigo.id,
+      tipo: 'ASO_DEMISSIONAL',
+      dataUltimoExame: '2020-05-01',
+      periodicidadeMeses: 12,
+    });
+
+    // 1. Avalia retenção: pessoal vencido (> 5 anos), mas saúde retida (NR-7 - 20 anos)
+    const aval = avaliarRetencaoColaborador(db, colabAntigo.id, '2026-10-01');
+    assert.strictEqual(aval.aptoParaEliminacao, true);
+    assert.strictEqual(aval.categorias.pessoaisEBancarios.vencido, true);
+    assert.strictEqual(aval.categorias.saudeOcupacionalNR7.vencido, false, 'Exame ocupacional ainda não atingiu 20 anos');
+    assert.strictEqual(aval.categorias.saudeOcupacionalNR7.retidoPorMaiorPrazo, true, 'Deve estar retido pelo maior prazo');
+
+    // 2. Executa eliminação/anonimização com confirmação do RH
+    const resEliminacao = executarEliminacaoAnonimizacaoLGPD(db, rhUser, colabAntigo.id, {
+      confirmacaoRH: true,
+      justificativa: 'Prescrição trabalhista de 5 anos atingida (CF art. 7º, XXIX). Ausência de demandas judiciais ativas.',
+      dataReferencia: '2026-10-01',
+    });
+
+    assert.strictEqual(resEliminacao.sucesso, true);
+    assert.ok(resEliminacao.termo.termoId.startsWith('TERMO-LGPD-'));
+    assert.strictEqual(resEliminacao.termo.status, 'CONCLUIDO');
+    assert.ok(resEliminacao.termo.categoriasEliminadas.some((c: string) => c.includes('Pessoais e Dados Bancários')));
+    assert.ok(resEliminacao.termo.categoriasRetidas.some((c: string) => c.includes('Saúde Ocupacional e Exames NR-7')));
+
+    // 3. Valida no banco de dados que dados pessoais e bancários foram anonimizados
+    const colabApos = db.prepare('SELECT nome, cpf, banco, agencia, conta, titular_conta FROM colaboradores WHERE id = ?').get(colabAntigo.id) as any;
+    assert.strictEqual(colabApos.banco, '***');
+    assert.strictEqual(colabApos.agencia, '***');
+    assert.strictEqual(colabApos.conta, '***');
+    assert.strictEqual(colabApos.titular_conta, 'ANONIMIZADO');
+    assert.strictEqual(colabApos.cpf, '00000000000');
+    assert.ok(colabApos.nome.includes('ANONIMIZADO'));
+
+    // Documentos pessoais foram excluídos
+    const docsApos = db.prepare('SELECT count(*) as qtd FROM documentos_colaborador WHERE colaborador_id = ?').get(colabAntigo.id) as any;
+    assert.strictEqual(docsApos.qtd, 0, 'Documentos pessoais devem ser excluídos');
+
+    // 4. REGRA DO MAIOR PRAZO (RNF-29): Exames ocupacionais PERMANECEM RETIDOS na tabela
+    const examesApos = db.prepare('SELECT count(*) as qtd FROM exames_ocupacionais WHERE colaborador_id = ?').get(colabAntigo.id) as any;
+    assert.strictEqual(examesApos.qtd, 1, 'Exame ocupacional deve permanecer retido conforme prazo maior de 20 anos da NR-7');
+
+    // 5. Valida gravação no log de auditoria imutável (RNF-03 / RNF-55)
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'COLABORADOR', registroId: colabAntigo.id });
+    const logEliminacao = logs.find((l: any) => l.acao === 'ELIMINACAO_DADOS_LGPD');
+    assert.ok(logEliminacao, 'Deve registrar ação ELIMINACAO_DADOS_LGPD no log de auditoria');
+    assert.ok(logEliminacao.detalhes.includes('TERMO-LGPD-'));
+    assert.ok(logEliminacao.detalhes.includes('Prescrição trabalhista'));
+
+    // 6. Geração do Termo de Eliminação em PDF (RNF-55)
+    const pdfTermo = gerarTermoEliminacaoPDF(resEliminacao.termo);
+    assert.ok(pdfTermo instanceof Buffer);
+    assert.strictEqual(pdfTermo.subarray(0, 4).toString(), '%PDF', 'Deve gerar PDF válido do Termo de Eliminação');
   });
 });

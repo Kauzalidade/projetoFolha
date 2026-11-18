@@ -308,10 +308,17 @@ export function atualizarColaborador(
   usuarioSolicitante: { id: number; email: string; perfil: string },
   colaboradorId: number,
   alteracoes: {
+    nome?: string;
+    nascimento?: string;
     salarioBase?: number | string;
     cargo?: string;
     setor?: string;
     filialId?: number;
+    banco?: string;
+    agencia?: string;
+    conta?: string;
+    titularConta?: string;
+    desligamento?: string;
     versaoEsperada?: number; // RNF-25: Concorrência otimista (versão do registro)
   }
 ): { id: number; versao: number; mensagem: string } {
@@ -338,6 +345,55 @@ export function atualizarColaborador(
     INSERT INTO historico_colaborador (colaborador_id, campo, valor_anterior, valor_novo, data_hora, usuario_id)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
+
+  if (alteracoes.nome && alteracoes.nome.trim() !== atual.nome) {
+    db.prepare('UPDATE colaboradores SET nome = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.nome.trim(), agora, colaboradorId);
+    histStmt.run(colaboradorId, 'nome', atual.nome, alteracoes.nome.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.nascimento && alteracoes.nascimento !== atual.nascimento) {
+    db.prepare('UPDATE colaboradores SET nascimento = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.nascimento, agora, colaboradorId);
+    histStmt.run(colaboradorId, 'nascimento', atual.nascimento, alteracoes.nascimento, agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.banco && alteracoes.banco.trim() !== atual.banco) {
+    db.prepare('UPDATE colaboradores SET banco = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.banco.trim(), agora, colaboradorId);
+    histStmt.run(colaboradorId, 'banco', atual.banco || '', alteracoes.banco.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.agencia && alteracoes.agencia.trim() !== atual.agencia) {
+    db.prepare('UPDATE colaboradores SET agencia = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.agencia.trim(), agora, colaboradorId);
+    histStmt.run(colaboradorId, 'agencia', atual.agencia || '', alteracoes.agencia.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.conta && alteracoes.conta.trim() !== atual.conta) {
+    db.prepare('UPDATE colaboradores SET conta = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.conta.trim(), agora, colaboradorId);
+    histStmt.run(colaboradorId, 'conta', atual.conta || '', alteracoes.conta.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.titularConta && alteracoes.titularConta.trim() !== atual.titular_conta) {
+    db.prepare('UPDATE colaboradores SET titular_conta = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.titularConta.trim(), agora, colaboradorId);
+    histStmt.run(colaboradorId, 'titular_conta', atual.titular_conta || '', alteracoes.titularConta.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
+
+  if (alteracoes.desligamento && alteracoes.desligamento !== atual.desligamento) {
+    db.prepare('UPDATE colaboradores SET desligamento = ?, atualizado_em = ? WHERE id = ?')
+      .run(alteracoes.desligamento, agora, colaboradorId);
+    histStmt.run(colaboradorId, 'desligamento', atual.desligamento || '', alteracoes.desligamento, agora, usuarioSolicitante.id);
+    houveAlteracao = true;
+  }
 
   if (alteracoes.salarioBase !== undefined) {
     const novoSalario = typeof alteracoes.salarioBase === 'number'
@@ -410,6 +466,16 @@ export function atualizarColaborador(
   if (houveAlteracao) {
     db.prepare('UPDATE colaboradores SET versao = ?, atualizado_em = ? WHERE id = ?')
       .run(novaVersao, agora, colaboradorId);
+
+    registrarLog(db, {
+      usuarioId: usuarioSolicitante.id,
+      usuarioEmail: usuarioSolicitante.email,
+      usuarioPerfil: usuarioSolicitante.perfil,
+      acao: 'ATUALIZAR_COLABORADOR',
+      entidade: 'COLABORADOR',
+      registroId: colaboradorId,
+      detalhes: `Dados cadastrais do colaborador ID ${colaboradorId} (${atual.nome}) atualizados com histórico preservado (RN-07 / US-17)`,
+    });
   }
 
   return {
