@@ -73,7 +73,7 @@ export function registrarOperacaoCritica(db: DatabaseSync, dados: OperacaoCritic
 export function consultarLogs(
   db: DatabaseSync,
   usuarioSolicitante: { perfil: string },
-  filtros?: { entidade?: string; usuarioEmail?: string }
+  filtros?: { entidade?: string; usuarioEmail?: string; registroId?: string | number }
 ): any[] {
   // Apenas DIRETORIA e ADMIN podem visualizar logs (Seção 4)
   if (usuarioSolicitante.perfil !== 'DIRETORIA' && usuarioSolicitante.perfil !== 'ADMIN') {
@@ -86,6 +86,10 @@ export function consultarLogs(
   if (filtros?.entidade) {
     query += ' AND entidade = ?';
     params.push(filtros.entidade);
+  }
+  if (filtros?.registroId !== undefined) {
+    query += ' AND registro_id = ?';
+    params.push(String(filtros.registroId));
   }
   if (filtros?.usuarioEmail) {
     query += ' AND usuario_email = ?';

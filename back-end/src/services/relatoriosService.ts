@@ -72,10 +72,75 @@ export function gerarContrachequeEstruturado(
   db: DatabaseSync,
   usuarioSolicitante: { perfil: string },
   colaboradorId: number,
-  competenciaId: number
+  competenciaId: number,
+  versaoSolicitada?: string
 ): any {
   if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
     throw new Error('Você não tem permissão para esta ação.');
+  }
+
+  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
+  if (!comp) throw new Error('Competência não encontrada.');
+
+  // Se versão específica foi solicitada, busca snapshot histórico daquela versão (US-16)
+  if (versaoSolicitada) {
+    const versaoRow = db.prepare(`
+      SELECT * FROM folha_versoes WHERE competencia_id = ? AND versao_numero = ?
+    `).get(competenciaId, versaoSolicitada) as any;
+
+    if (!versaoRow) {
+      throw new Error(`Versão ${versaoSolicitada} não encontrada para a competência.`);
+    }
+
+    const snap = JSON.parse(versaoRow.dados_json);
+    const colabSnap = snap.colaboradores?.find((c: any) => c.colaborador_id === colaboradorId || c.id === colaboradorId);
+    if (!colabSnap) {
+      throw new Error(`Colaborador não encontrado na versão ${versaoSolicitada} da folha.`);
+    }
+
+    const colab = db.prepare(`
+      SELECT c.*, f.nome as filial_nome
+      FROM colaboradores c
+      JOIN filiais f ON f.id = c.filial_id
+      WHERE c.id = ?
+    `).get(colaboradorId) as any;
+
+    const verbasSnap = colabSnap.verbas || [];
+
+    return {
+      cabecalho: {
+        empresa: 'Correspondente Bancário S.A.',
+        filial: colab?.filial_nome || 'Matriz',
+        competencia: comp.mes_ano,
+        situacao: 'FECHADA',
+        versao: versaoRow.versao_numero,
+        hashSha256: versaoRow.hash_sha256,
+        dataGeracao: new Date().toISOString(),
+      },
+      colaborador: {
+        nome: colabSnap.colaborador_nome || colab?.nome,
+        cpf: colabSnap.cpf || colab?.cpf,
+        cargo: colab?.cargo,
+        admissao: colab?.admissao,
+        banco: colab?.banco,
+        agencia: colab?.agencia,
+        conta: colab?.conta,
+      },
+      verbas: verbasSnap.map((v: any) => ({
+        descricao: v.descricao,
+        natureza: v.natureza,
+        provento: v.natureza === 'PROVENTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
+        desconto: v.natureza === 'DESCONTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
+        baseCalculo: new Dec(BigInt(v.base_calculo_centavos)).toNumber(),
+        memoriaResumida: v.regra_aplicada,
+      })),
+      totais: {
+        totalProventos: new Dec(BigInt(colabSnap.total_proventos_centavos)).toNumber(),
+        totalDescontos: new Dec(BigInt(colabSnap.total_descontos_centavos)).toNumber(),
+        liquido: new Dec(BigInt(colabSnap.liquido_centavos)).toNumber(),
+        fgtsEmpresa: new Dec(BigInt(colabSnap.fgts_centavos)).toNumber(),
+      },
+    };
   }
 
   const folha = db.prepare('SELECT * FROM folhas WHERE colaborador_id = ? AND competencia_id = ?')
@@ -89,7 +154,6 @@ export function gerarContrachequeEstruturado(
     WHERE c.id = ?
   `).get(colaboradorId) as any;
 
-  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
   const versaoRow = comp && comp.situacao === 'FECHADA'
     ? (db.prepare('SELECT versao_numero, hash_sha256 FROM folha_versoes WHERE competencia_id = ? ORDER BY id DESC LIMIT 1').get(competenciaId) as any)
     : null;
@@ -137,13 +201,14 @@ export function gerarContrachequePDF(
   db: DatabaseSync,
   usuarioSolicitante: { email: string; perfil: string },
   colaboradorId: number,
-  competenciaId: number
+  competenciaId: number,
+  versaoSolicitada?: string
 ): Buffer {
   if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  const dados = gerarContrachequeEstruturado(db, usuarioSolicitante, colaboradorId, competenciaId);
+  const dados = gerarContrachequeEstruturado(db, usuarioSolicitante, colaboradorId, competenciaId, versaoSolicitada);
 
   const linhasPDF: { texto: string; negrito?: boolean; tamanho?: number; dy?: number }[] = [
     { texto: 'CORRESPONDENTE BANCARIO S.A. - DEMONSTRATIVO DE PAGAMENTO', negrito: true, tamanho: 14, dy: 10 },
@@ -514,6 +579,11 @@ export function gerarRelatorioDadosPagamento(
   const rows = db.prepare(sql).all(...params) as any[];
   let somaLiquido = Dec.zero();
 
+  const versaoRow = comp && comp.situacao === 'FECHADA'
+    ? (db.prepare('SELECT versao_numero, hash_sha256 FROM folha_versoes WHERE competencia_id = ? ORDER BY id DESC LIMIT 1').get(competenciaId) as any)
+    : null;
+  const versao = versaoRow ? versaoRow.versao_numero : (comp?.situacao === 'FECHADA' ? 'V1' : 'Prévia');
+
   const linhas = rows.map((r) => {
     const liqDec = new Dec(BigInt(r.liquido_centavos));
     somaLiquido = somaLiquido.add(liqDec);
@@ -534,6 +604,8 @@ export function gerarRelatorioDadosPagamento(
     competenciaId,
     competencia: comp.mes_ano,
     situacao: comp.situacao,
+    versao,
+    hashSha256: versaoRow?.hash_sha256 || null,
     totalColaboradores: linhas.length,
     linhas,
     totalLiquido: somaLiquido.toNumber(),
@@ -899,6 +971,12 @@ export function gerarFichaColaboradorPDF(
   const historico = db.prepare('SELECT * FROM historico_colaborador WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
   const ferias = db.prepare('SELECT * FROM ferias WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
   const docs = db.prepare('SELECT * FROM documentos_colaborador WHERE colaborador_id = ?').all(colab.id) as any[];
+  const eventos = db.prepare(`
+    SELECT tipo, data_inicio, data_fim, quantidade, valor_centavos, descricao, criado_em
+    FROM eventos
+    WHERE colaborador_id = ?
+    ORDER BY id DESC
+  `).all(colab.id) as any[];
 
   const salarioDec = new Dec(BigInt(colab.salario_base_centavos));
 
@@ -952,6 +1030,25 @@ export function gerarFichaColaboradorPDF(
 
   linhasPDF.push(
     { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: `EVENTOS DA FOLHA LANCADOS (${eventos.length})`, negrito: true, tamanho: 10, dy: 14 }
+  );
+
+  if (eventos.length === 0) {
+    linhasPDF.push({ texto: 'Nenhum evento lançado para este colaborador.', tamanho: 8, dy: 12 });
+  } else {
+    for (const ev of eventos.slice(0, 10)) {
+      const valorStr = ev.valor_centavos ? ` - R$ ${(ev.valor_centavos / 100).toFixed(2)}` : '';
+      const qtdStr = ev.quantidade ? ` (${ev.quantidade})` : '';
+      linhasPDF.push({
+        texto: `* [${ev.tipo}] ${ev.descricao || ''}${qtdStr}${valorStr} [Lançado em: ${ev.criado_em.slice(0, 10)}]`,
+        tamanho: 8,
+        dy: 10,
+      });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
     { texto: `DOCUMENTOS ANEXADOS (${docs.length})`, negrito: true, tamanho: 10, dy: 14 }
   );
 
@@ -972,6 +1069,132 @@ export function gerarFichaColaboradorPDF(
     registroId: colab.id,
     detalhes: `Ficha completa do colaborador CPF ${formatarCPF(colab.cpf)} gerada para cumprimento de direitos do titular (RN-76)`,
   });
+
+  return montarPDF(linhasPDF);
+}
+
+/**
+ * US-17 / RN-76: Consulta dos dados estruturados da ficha do colaborador para LGPD.
+ */
+export function obterFichaColaboradorLGPD(
+  db: DatabaseSync,
+  usuarioSolicitante: { id?: number; email: string; perfil: string },
+  cpfBusca: string
+): any {
+  if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Você não tem permissão para acessar a ficha completa do colaborador.');
+  }
+
+  const cpfLimpo = limparCPF(cpfBusca);
+  const colab = db.prepare(`
+    SELECT c.*, f.nome as filial_nome
+    FROM colaboradores c
+    JOIN filiais f ON f.id = c.filial_id
+    WHERE c.cpf = ?
+  `).get(cpfLimpo) as any;
+
+  if (!colab) {
+    throw new Error('Colaborador não encontrado com o CPF informado.');
+  }
+
+  const dependentes = db.prepare('SELECT * FROM dependentes WHERE colaborador_id = ?').all(colab.id) as any[];
+  const historico = db.prepare('SELECT * FROM historico_colaborador WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
+  const ferias = db.prepare('SELECT * FROM ferias WHERE colaborador_id = ? ORDER BY id DESC').all(colab.id) as any[];
+  const docs = db.prepare('SELECT * FROM documentos_colaborador WHERE colaborador_id = ?').all(colab.id) as any[];
+  const eventos = db.prepare(`
+    SELECT id, tipo, data_inicio, data_fim, quantidade, valor_centavos, descricao, criado_em
+    FROM eventos
+    WHERE colaborador_id = ?
+    ORDER BY id DESC
+  `).all(colab.id) as any[];
+
+  return {
+    colaborador: {
+      id: colab.id,
+      nome: colab.nome,
+      cpf: formatarCPF(colab.cpf),
+      nascimento: colab.nascimento,
+      cargo: colab.cargo,
+      setor: colab.setor,
+      filial: colab.filial_nome,
+      admissao: colab.admissao,
+      desligamento: colab.desligamento,
+      situacao: colab.situacao,
+      salarioBase: Number(colab.salario_base_centavos) / 100,
+      jornada: colab.jornada_horas_mensais,
+      dadosBancarios: {
+        banco: colab.banco,
+        agencia: colab.agencia,
+        conta: colab.conta,
+        titular: colab.titular_conta,
+      },
+    },
+    dependentes,
+    historico,
+    ferias,
+    documentos: docs,
+    eventos: eventos.map((e) => ({
+      ...e,
+      valor: e.valor_centavos ? e.valor_centavos / 100 : 0,
+    })),
+  };
+}
+
+/**
+ * US-17 / RNF-55: Termo de Eliminação de Dados (LGPD - art. 16 / RN-56).
+ */
+export function gerarTermoEliminacaoPDF(termo: {
+  termoId: string;
+  dataHora: string;
+  responsavel: { email: string; perfil: string };
+  colaboradorId: number;
+  colaboradorNomeOriginal: string;
+  dataDesligamento: string;
+  anosPosDesligamento: number;
+  categoriasEliminadas: string[];
+  categoriasRetidas: string[];
+  fundamentoLegal: string;
+  status: string;
+}): Buffer {
+  const linhasPDF: { texto: string; negrito?: boolean; tamanho?: number; dy?: number }[] = [
+    { texto: 'CORRESPONDENTE BANCARIO S.A. - TERMO DE ELIMINACAO DE DADOS (LGPD)', negrito: true, tamanho: 13, dy: 10 },
+    { texto: `Identificador do Termo: ${termo.termoId} | Emissao: ${termo.dataHora}`, tamanho: 9, dy: 14 },
+    { texto: `Homologado por: ${termo.responsavel.email} (${termo.responsavel.perfil}) | Status: ${termo.status}`, tamanho: 9, dy: 12 },
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 12 },
+    { texto: '1. TITULAR DOS DADOS E VINCULO EMPREGATICIO:', negrito: true, tamanho: 10, dy: 14 },
+    { texto: `Colaborador ID: ${termo.colaboradorId} | Nome Anterior: ${termo.colaboradorNomeOriginal}`, tamanho: 9, dy: 12 },
+    { texto: `Data de Desligamento: ${termo.dataDesligamento} | Tempo decorrido: ${termo.anosPosDesligamento} anos`, tamanho: 9, dy: 12 },
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: '2. CATEGORIAS DE DADOS ELIMINADAS / ANONIMIZADAS (RN-56 / RNF-29):', negrito: true, tamanho: 10, dy: 14 },
+  ];
+
+  if (termo.categoriasEliminadas.length === 0) {
+    linhasPDF.push({ texto: 'Nenhuma categoria eliminada.', tamanho: 8, dy: 12 });
+  } else {
+    for (const cat of termo.categoriasEliminadas) {
+      linhasPDF.push({ texto: `* [DESCARTADO/ANONIMIZADO] ${cat}`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: '3. CATEGORIAS RETIDAS POR OBRIGACAO LEGAL DE MAIOR PRAZO (RNF-29):', negrito: true, tamanho: 10, dy: 14 }
+  );
+
+  if (termo.categoriasRetidas.length === 0) {
+    linhasPDF.push({ texto: 'Nenhuma categoria retida. Todos os prazos legais expiraram.', tamanho: 8, dy: 12 });
+  } else {
+    for (const cat of termo.categoriasRetidas) {
+      linhasPDF.push({ texto: `* [RETIDO POR MAIOR PRAZO] ${cat}`, tamanho: 8, dy: 10 });
+    }
+  }
+
+  linhasPDF.push(
+    { texto: '------------------------------------------------------------------------------------------------------------------------', tamanho: 8, dy: 14 },
+    { texto: '4. JUSTIFICATIVA E FUNDAMENTO LEGAL:', negrito: true, tamanho: 10, dy: 14 },
+    { texto: `Fundamento: "${termo.fundamentoLegal}"`, tamanho: 9, dy: 12 },
+    { texto: 'Declaramos que a operacao foi homologada formalmente pelo RH em conformidade com o art. 16 da LGPD.', tamanho: 8, dy: 16 }
+  );
 
   return montarPDF(linhasPDF);
 }

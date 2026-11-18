@@ -40,12 +40,15 @@ import {
 } from './services/eventoService.js';
 import {
   calcularFolhaColaborador,
+  calcularFolhaCompetenciaLote,
   executarConferenciaFinanceira,
   confirmarConferenciaFolha,
   devolverFolhaParaAjuste,
   fecharFolhaSegura,
   registrarPagamentoFolha,
   consultarVersoesFolha,
+  consultarTrilhaAprovacaoCompetencia,
+  obterDetalheVersaoFolha,
 } from './services/folhaService.js';
 import { solicitarFerias, listarFerias } from './services/feriasService.js';
 import { calcularDecimoTerceiro } from './services/decimoTerceiroService.js';
@@ -56,13 +59,20 @@ import {
   registrarIncidenteSeguranca,
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
+  obterIncidenteSeguranca,
+  decidirComunicacaoIncidente,
+  avaliarRetencaoColaborador,
+  executarEliminacaoAnonimizacaoLGPD,
 } from './services/documentosAlertasService.js';
 import {
   gerarRelatorioFolhaMes,
+  gerarContrachequeEstruturado,
   gerarContrachequePDF,
   exportarRelatorioPDF,
   exportarRelatorioExcel,
   gerarFichaColaboradorPDF,
+  obterFichaColaboradorLGPD,
+  gerarTermoEliminacaoPDF,
 } from './services/relatoriosService.js';
 import { validarSessao } from './security.js';
 
@@ -395,16 +405,13 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJSONBody(req);
 
       if (body.todosColaboradores && body.competenciaId) {
-        const ativos = db.prepare("SELECT id FROM colaboradores WHERE situacao = 'ATIVO'").all() as any[];
-        const resultados = ativos.map((c) =>
-          calcularFolhaColaborador(db, usuario, {
-            colaboradorId: c.id,
-            competenciaId: body.competenciaId,
-            diasUteisMes: body.diasUteisMes,
-            domingosEFeriadosMes: body.domingosEFeriadosMes,
-          })
-        );
-        return enviarJSON(res, 200, { calculados: resultados.length, resultados });
+        const resultadoLote = calcularFolhaCompetenciaLote(db, usuario, {
+          competenciaId: body.competenciaId,
+          diasUteisMes: body.diasUteisMes,
+          domingosEFeriadosMes: body.domingosEFeriadosMes,
+        });
+        const statusHttp = resultadoLote.sucesso ? 200 : 400;
+        return enviarJSON(res, statusHttp, resultadoLote);
       }
 
       const resCalculo = calcularFolhaColaborador(db, usuario, body);
@@ -442,7 +449,13 @@ const server = http.createServer(async (req, res) => {
     if (method === 'POST' && pathname === '/api/folha/pagamento') {
       const usuario = autenticarRequisicao(req);
       const body = await parseJSONBody(req);
-      const resPag = registrarPagamentoFolha(db, usuario, body.competenciaId, body.dataPagamento);
+      const resPag = registrarPagamentoFolha(
+        db,
+        usuario,
+        body.competenciaId,
+        body.dataPagamento,
+        body.justificativa || body.justificativaCorrecao
+      );
       return enviarJSON(res, 200, resPag);
     }
 
@@ -451,6 +464,23 @@ const server = http.createServer(async (req, res) => {
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
       const versoes = consultarVersoesFolha(db, compId);
       return enviarJSON(res, 200, versoes);
+    }
+
+    // US-16 / RNF-54: Consulta da Trilha de Aprovação e Responsabilidade (Diretoria e RH)
+    if (method === 'GET' && pathname === '/api/folha/trilha') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const trilha = consultarTrilhaAprovacaoCompetencia(db, usuario, compId);
+      return enviarJSON(res, 200, trilha);
+    }
+
+    // US-16 / RN-68: Consulta de Detalhes e Snapshot de Versão Específica
+    if (method === 'GET' && pathname === '/api/folha/versao-detalhe') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const versao = parsedUrl.query.versao as string;
+      const detalhe = obterDetalheVersaoFolha(db, usuario, compId, versao);
+      return enviarJSON(res, 200, detalhe);
     }
 
     // Férias e 13º
@@ -494,6 +524,33 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // US-18 / RN-77: Decisão de comunicação à ANPD e aos titulares (exclusivo Diretoria com parecer jurídico)
+    if (method === 'POST' && pathname.startsWith('/api/incidentes/') && pathname.endsWith('/decisao-comunicacao')) {
+      const usuario = autenticarRequisicao(req);
+      const incId = parseInt(pathname.split('/')[3], 10);
+      const body = await parseJSONBody(req);
+      const resultado = decidirComunicacaoIncidente(db, usuario, incId, body);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // US-18 / RN-77: Detalhamento e atualização/tratamento de incidentes de segurança
+    if (pathname.startsWith('/api/incidentes/') && !pathname.endsWith('/decisao-comunicacao')) {
+      const usuario = autenticarRequisicao(req);
+      const incId = parseInt(pathname.split('/')[3], 10);
+
+      if (method === 'GET') {
+        const inc = obterIncidenteSeguranca(db, usuario, incId);
+        return enviarJSON(res, 200, inc);
+      }
+
+      if (method === 'PUT' || method === 'PATCH') {
+        const body = await parseJSONBody(req);
+        atualizarIncidenteSeguranca(db, usuario, incId, body);
+        const atualizado = obterIncidenteSeguranca(db, usuario, incId);
+        return enviarJSON(res, 200, atualizado);
+      }
+    }
+
     // Relatórios e Downloads em PDF e Excel
     if (method === 'GET' && pathname === '/api/relatorios/folha') {
       const usuario = autenticarRequisicao(req);
@@ -516,8 +573,18 @@ const server = http.createServer(async (req, res) => {
       const usuario = autenticarRequisicao(req);
       const colabId = parseInt(pathname.split('/')[4], 10);
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
-      const pdf = gerarContrachequePDF(db, usuario, colabId, compId);
+      const versaoQ = parsedUrl.query.versao as string | undefined;
+      const pdf = gerarContrachequePDF(db, usuario, colabId, compId, versaoQ);
       return enviarArquivo(res, 200, 'application/pdf', `contracheque_${colabId}.pdf`, pdf);
+    }
+
+    if (method === 'GET' && pathname.startsWith('/api/relatorios/contracheque-estruturado/')) {
+      const usuario = autenticarRequisicao(req);
+      const colabId = parseInt(pathname.split('/')[4], 10);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const versaoQ = parsedUrl.query.versao as string | undefined;
+      const estruturado = gerarContrachequeEstruturado(db, usuario, colabId, compId, versaoQ);
+      return enviarJSON(res, 200, estruturado);
     }
 
     if (method === 'GET' && pathname.startsWith('/api/relatorios/ficha/')) {
@@ -525,6 +592,43 @@ const server = http.createServer(async (req, res) => {
       const cpf = pathname.split('/')[4];
       const pdf = gerarFichaColaboradorPDF(db, usuario, cpf);
       return enviarArquivo(res, 200, 'application/pdf', `ficha_colaborador_${cpf}.pdf`, pdf);
+    }
+
+    // US-17 / RN-76: Obtenção estruturada da ficha completa do colaborador para LGPD
+    if (method === 'GET' && pathname.startsWith('/api/lgpd/ficha/')) {
+      const usuario = autenticarRequisicao(req);
+      const cpf = pathname.split('/')[4];
+      const ficha = obterFichaColaboradorLGPD(db, usuario, cpf);
+      return enviarJSON(res, 200, ficha);
+    }
+
+    // US-17 / RN-56 / RNF-29: Avaliação de retenção e prazos de guarda por categoria
+    if (method === 'GET' && pathname.startsWith('/api/lgpd/retencao/')) {
+      autenticarRequisicao(req);
+      const colabId = parseInt(pathname.split('/')[4], 10);
+      const dataRef = parsedUrl.query.dataReferencia as string | undefined;
+      const retencao = avaliarRetencaoColaborador(db, colabId, dataRef);
+      return enviarJSON(res, 200, retencao);
+    }
+
+    // US-17 / RN-56 / RNF-55: Eliminação e anonimização de dados com confirmação expressa do RH
+    if (method === 'POST' && pathname === '/api/lgpd/eliminar') {
+      const usuario = autenticarRequisicao(req);
+      const body = await parseJSONBody(req);
+      const resultado = executarEliminacaoAnonimizacaoLGPD(db, usuario, body.colaboradorId, {
+        confirmacaoRH: body.confirmacaoRH,
+        justificativa: body.justificativa,
+        dataReferencia: body.dataReferencia,
+      });
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // US-17 / RNF-55: Emissão do Termo de Eliminação de Dados em PDF
+    if (method === 'POST' && pathname === '/api/lgpd/termo/pdf') {
+      autenticarRequisicao(req);
+      const body = await parseJSONBody(req);
+      const pdf = gerarTermoEliminacaoPDF(body.termo);
+      return enviarArquivo(res, 200, 'application/pdf', `termo_eliminacao_${body.termo?.colaboradorId || 'lgpd'}.pdf`, pdf);
     }
 
     // Logs de Auditoria (Restrito à Diretoria e Admin - RNF-03)
@@ -1043,9 +1147,11 @@ function renderizarInterfaceWebHTML(): string {
           <button class="btn btn-danger" onclick="fecharFolhaPainel()">🔒 3. Fechar Folha Seguro (RN-68)</button>
           <button class="btn btn-outline" onclick="registrarPagamentoPainel()">💳 4. Registrar Pagamento (RN-61)</button>
           <button class="btn btn-outline" onclick="devolverParaAjustePainel()">↩️ Devolver para Ajuste</button>
+          <button class="btn btn-outline" onclick="consultarTrilhaPainel()">📜 Trilha de Aprovação (US-16)</button>
         </div>
 
         <div id="painelConferenciaResult"></div>
+        <div id="painelTrilhaAprovacao"></div>
       </div>
 
       <div class="card">
@@ -1927,7 +2033,36 @@ function renderizarInterfaceWebHTML(): string {
       });
       const d = await res.json();
       if (!res.ok) toast('erro', d.erro);
-      else toast('sucesso', 'Folha devolvida para ajuste com justificativa gravada.');
+      else {
+        toast('sucesso', 'Folha devolvida para ajuste com justificativa gravada.');
+        atualizarPainelFolha();
+      }
+    }
+
+    async function consultarTrilhaPainel() {
+      const compId = document.getElementById('selFolhaComp').value;
+      if (!compId) return;
+      const res = await fetch('/api/folha/trilha?competenciaId=' + compId, { headers: { Authorization: 'Bearer ' + token } });
+      const d = await res.json();
+      const div = document.getElementById('painelTrilhaAprovacao');
+      if (!res.ok) {
+        toast('erro', d.erro || 'Erro ao consultar trilha');
+        return;
+      }
+      let html = '<div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:16px; margin-top:12px;">' +
+        '<h3 style="margin-bottom:8px; font-size:1rem; color:#1e293b;">Trilha de Aprovação e Responsabilidade (US-16 / RN-04, RN-67, RN-68)</h3>' +
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:0.85rem;">' +
+        '<div><strong>1. Lançamento:</strong><br>' + (d.etapas.lancamento.concluido ? '✅ ' + (d.etapas.lancamento.usuarioEmail || 'ID ' + d.etapas.lancamento.usuarioId) + '<br><small>' + (d.etapas.lancamento.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : '⏳ Pendente') + '</div>' +
+        '<div><strong>2. Cálculo:</strong><br>' + (d.etapas.calculo.concluido ? '✅ ' + (d.etapas.calculo.usuarioEmail || 'ID ' + d.etapas.calculo.usuarioId) + '<br><small>' + (d.etapas.calculo.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : '⏳ Pendente') + '</div>' +
+        '<div><strong>3. Conferência:</strong><br>' + (d.etapas.conferencia.valida ? '✅ ' + (d.etapas.conferencia.usuarioEmail || 'ID ' + d.etapas.conferencia.usuarioId) + '<br><small>' + (d.etapas.conferencia.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : (d.etapas.conferencia.motivoDevolucao ? '↩️ Devolvida: ' + d.etapas.conferencia.motivoDevolucao : '⏳ Pendente')) + '</div>' +
+        '<div><strong>4. Fechamento:</strong><br>' + (d.etapas.fechamento.fechada ? '🔒 ' + (d.etapas.fechamento.usuarioEmail || 'ID ' + d.etapas.fechamento.usuarioId) + '<br><small>' + (d.etapas.fechamento.dataHora || '').slice(0, 19).replace('T', ' ') + ' (' + d.etapas.fechamento.versaoAtual + ')</small>' : '⏳ Aberta') + '</div>' +
+        '<div><strong>5. Pagamento:</strong><br>' + (d.etapas.pagamento.pago ? '💳 ' + (d.etapas.pagamento.usuarioEmail || 'ID ' + d.etapas.pagamento.usuarioId) + '<br><small>' + (d.etapas.pagamento.dataHora || '') + '</small>' : '⏳ Não pago') + '</div>' +
+        '</div>' +
+        '<div style="margin-top:12px; font-size:0.82rem; color:var(--text-muted);">' +
+        'Total de Versões Registradas: <strong>' + d.totalVersoes + '</strong>' +
+        (d.etapas.fechamento.justificativaReabertura ? '<br>Última Justificativa de Reabertura: <em>"' + d.etapas.fechamento.justificativaReabertura + '"</em>' : '') +
+        '</div></div>';
+      div.innerHTML = html;
     }
 
     // --- FUNÇÕES DA TAB 5 (FÉRIAS & 13º) ---

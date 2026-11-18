@@ -61,6 +61,21 @@ export interface LancarAtrasoDTO {
   observacao?: string;
 }
 
+function registrarLancamentoCompetencia(
+  db: DatabaseSync,
+  competenciaId: number,
+  usuarioId: number,
+  agora: string
+): void {
+  try {
+    db.prepare(`
+      UPDATE competencias
+      SET lancado_por = ?, lancado_em = ?
+      WHERE id = ?
+    `).run(usuarioId, agora, competenciaId);
+  } catch (_) {}
+}
+
 export function lancarHorasExtras(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
@@ -116,15 +131,19 @@ export function lancarHorasExtras(
   const valorDec = Dec.fromMoeda(valorTotal);
   const agora = new Date().toISOString();
 
-  // RN-65: Detecção de duplicidade de evento idêntico
-  const duplicado = db.prepare(`
-    SELECT id FROM eventos
-    WHERE colaborador_id = ? AND competencia_id = ? AND tipo = ? AND quantidade = ? AND valor_centavos = ?
-  `).get(dados.colaboradorId, dados.competenciaId, tipoBanco, dados.quantidadeHoras, Number(valorDec.centavos));
+  // RN-65: Detecção de duplicidade de evento idêntico (mesmo colaborador, tipo, data e valor)
+  const duplicado = dados.data
+    ? db.prepare(`
+        SELECT id FROM eventos
+        WHERE colaborador_id = ? AND competencia_id = ? AND tipo = ? AND quantidade = ? AND valor_centavos = ? AND data_inicio = ?
+      `).get(dados.colaboradorId, dados.competenciaId, tipoBanco, dados.quantidadeHoras, Number(valorDec.centavos), dados.data)
+    : db.prepare(`
+        SELECT id FROM eventos
+        WHERE colaborador_id = ? AND competencia_id = ? AND tipo = ? AND quantidade = ? AND valor_centavos = ?
+      `).get(dados.colaboradorId, dados.competenciaId, tipoBanco, dados.quantidadeHoras, Number(valorDec.centavos));
 
   if (duplicado && !dados.confirmarDuplicidade) {
-    // Alerta de possível duplicidade
-    // Se o usuário não confirmou explicitamente, pode lançar com aviso ou registrar
+    throw new Error('Aviso de possível duplicidade: este evento já foi lançado para o colaborador. Confirme para gravar (RN-65).');
   }
 
   const stmt = db.prepare(`
@@ -151,6 +170,8 @@ export function lancarHorasExtras(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),
@@ -212,6 +233,8 @@ export function lancarFaltaInjustificada(
     agora
   );
 
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
+
   return {
     id: Number(res.lastInsertRowid),
     diasFalta: dados.diasFalta,
@@ -271,6 +294,8 @@ export function lancarAtrasoSaidaAntecipada(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),
@@ -333,6 +358,8 @@ export function lancarAtestado(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),
@@ -422,6 +449,8 @@ export function lancarValeTransporte(
     agora
   );
 
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
+
   return {
     id: Number(res.lastInsertRowid),
     optante: true,
@@ -479,6 +508,8 @@ export function lancarVerbaAvulsa(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),

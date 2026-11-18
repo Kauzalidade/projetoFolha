@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   implantacao_saldo_descontar_centavos INTEGER NOT NULL DEFAULT 0,
   implantacao_competencia_inicio TEXT NULL,
   situacao TEXT NOT NULL DEFAULT 'ATIVO' CHECK(situacao IN ('ATIVO', 'INATIVO', 'EM_FERIAS', 'AFASTADO', 'DESLIGADO')),
+  versao INTEGER NOT NULL DEFAULT 1, -- RNF-25: Controle de versão para concorrência otimista
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
 );
@@ -107,13 +108,16 @@ CREATE TABLE IF NOT EXISTS competencias (
   fechado_em TEXT NULL,
   fechado_por INTEGER NULL REFERENCES usuarios(id),
   lancado_por INTEGER NULL REFERENCES usuarios(id),
+  lancado_em TEXT NULL,
   calculado_por INTEGER NULL REFERENCES usuarios(id),
+  calculado_em TEXT NULL,
   conferido_por INTEGER NULL REFERENCES usuarios(id),
   conferido_em TEXT NULL,
   justificativa_reabertura TEXT NULL,
   motivo_devolucao TEXT NULL,
   pago_em TEXT NULL,
   pago_por INTEGER NULL REFERENCES usuarios(id),
+  em_processamento INTEGER NOT NULL DEFAULT 0, -- RN-71: Bloqueio de edição concorrente durante operações críticas
   criado_em TEXT NOT NULL
 );
 
@@ -268,7 +272,7 @@ CREATE TABLE IF NOT EXISTS exames_ocupacionais (
   criado_em TEXT NOT NULL
 );
 
--- Incidentes de Segurança da Informação (RN-77)
+-- Incidentes de Segurança da Informação (RN-77, US-18)
 CREATE TABLE IF NOT EXISTS incidentes_seguranca (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   data_hora TEXT NOT NULL,
@@ -279,8 +283,26 @@ CREATE TABLE IF NOT EXISTS incidentes_seguranca (
   responsavel_email TEXT NOT NULL,
   providencias TEXT NULL,
   situacao TEXT NOT NULL DEFAULT 'ABERTO' CHECK(situacao IN ('ABERTO', 'EM_TRATAMENTO', 'ENCERRADO')),
+  comunicar_anpd INTEGER NOT NULL DEFAULT 0,
+  comunicar_titulares INTEGER NOT NULL DEFAULT 0,
+  orientacao_juridica TEXT NULL,
+  decisao_comunicacao_por INTEGER NULL REFERENCES usuarios(id),
+  decisao_comunicacao_email TEXT NULL,
+  decisao_comunicacao_em TEXT NULL,
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
+);
+
+-- Histórico de Providências de Incidentes de Segurança (RN-77, US-18)
+CREATE TABLE IF NOT EXISTS incidentes_providencias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  incidente_id INTEGER NOT NULL REFERENCES incidentes_seguranca(id),
+  data_hora TEXT NOT NULL,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  usuario_email TEXT NOT NULL,
+  usuario_perfil TEXT NOT NULL,
+  descricao_providencia TEXT NOT NULL,
+  situacao_resultante TEXT NOT NULL
 );
 
 -- Log de Auditoria Imutável (RNF-03)
@@ -314,6 +336,33 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   const local = caminhoArquivo || path.join(process.cwd(), 'rh_folha.db');
   const db = new DatabaseSync(local);
   db.exec(SCHEMA_SQL);
+
+  // Migrações dinâmicas para bases SQLite existentes (RN-71, RNF-25, US-16, US-18)
+  try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE colaboradores ADD COLUMN versao INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+  try { db.exec('ALTER TABLE competencias ADD COLUMN lancado_em TEXT NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE competencias ADD COLUMN calculado_em TEXT NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN comunicar_anpd INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN comunicar_titulares INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN orientacao_juridica TEXT NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_por INTEGER NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_email TEXT NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_em TEXT NULL'); } catch (_) {}
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS incidentes_providencias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        incidente_id INTEGER NOT NULL REFERENCES incidentes_seguranca(id),
+        data_hora TEXT NOT NULL,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        usuario_email TEXT NOT NULL,
+        usuario_perfil TEXT NOT NULL,
+        descricao_providencia TEXT NOT NULL,
+        situacao_resultante TEXT NOT NULL
+      )
+    `);
+  } catch (_) {}
+
   return db;
 }
 
