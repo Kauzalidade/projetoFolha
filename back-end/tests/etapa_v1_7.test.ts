@@ -52,6 +52,8 @@ import {
   registrarIncidenteSeguranca,
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
+  obterIncidenteSeguranca,
+  decidirComunicacaoIncidente,
   anexarDocumento,
   cadastrarExameOcupacional,
   avaliarRetencaoColaborador,
@@ -1867,5 +1869,170 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
     const pdfTermo = gerarTermoEliminacaoPDF(resEliminacao.termo);
     assert.ok(pdfTermo instanceof Buffer);
     assert.strictEqual(pdfTermo.subarray(0, 4).toString(), '%PDF', 'Deve gerar PDF válido do Termo de Eliminação');
+  });
+
+  // =========================================================================
+  // US-18 / RN-77: REGISTRO E ACOMPANHAMENTO DE INCIDENTES DE SEGURANÇA
+  // =========================================================================
+
+  it('Cenário US-18 / Critério 1: Registro completo de incidente com data/hora, descrição, dados, pessoas e responsável no estado ABERTO', () => {
+    // RH registra incidente
+    const incRH = registrarIncidenteSeguranca(db, rhUser, {
+      descricao: 'Envio incorreto de e-mail com relatório de folha contendo CPFs.',
+      dadosAfetados: 'CPF, Nome e Salário Líquido',
+      pessoasAfetadas: '15 colaboradores do setor de operações',
+      providenciasIniciais: 'E-mail recall solicitado e destinatário orientado a apagar.',
+    });
+
+    assert.ok(incRH.id > 0);
+    assert.strictEqual(incRH.situacao, 'ABERTO');
+    assert.ok(incRH.criadoEm);
+
+    // Validação da consulta detalhada
+    const detalhe = obterIncidenteSeguranca(db, rhUser, incRH.id);
+    assert.strictEqual(detalhe.id, incRH.id);
+    assert.strictEqual(detalhe.descricao, 'Envio incorreto de e-mail com relatório de folha contendo CPFs.');
+    assert.strictEqual(detalhe.dadosAfetados, 'CPF, Nome e Salário Líquido');
+    assert.strictEqual(detalhe.pessoasAfetadas, '15 colaboradores do setor de operações');
+    assert.strictEqual(detalhe.responsavel.id, rhUser.id);
+    assert.strictEqual(detalhe.responsavel.email, rhUser.email);
+    assert.strictEqual(detalhe.situacao, 'ABERTO');
+    assert.strictEqual(detalhe.comunicarANPD, false);
+    assert.strictEqual(detalhe.comunicarTitulares, false);
+
+    // Validação de validação de campos obrigatórios
+    assert.throws(
+      () => registrarIncidenteSeguranca(db, rhUser, { descricao: '', dadosAfetados: 'x', pessoasAfetadas: 'y' }),
+      /Informe a descrição, os dados possivelmente afetados e as pessoas afetadas/
+    );
+
+    // Validação de log de auditoria imutável
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'INCIDENTE', registroId: incRH.id });
+    const logRegistro = logs.find((l: any) => l.acao === 'REGISTRAR_INCIDENTE_SEGURANCA');
+    assert.ok(logRegistro, 'Deve registrar log de auditoria do registro do incidente');
+    assert.strictEqual(logRegistro.usuario_email, rhUser.email);
+  });
+
+  it('Cenário US-18 / Critérios 2 e 3: Histórico de providências até encerramento restrito à Diretoria e Admin (RH é bloqueado)', () => {
+    // 1. Registro inicial
+    const inc = registrarIncidenteSeguranca(db, rhUser, {
+      descricao: 'Pen drive não criptografado com planilhas de pagamento esquecido em sala de reunião.',
+      dadosAfetados: 'Dados cadastrais e remunerações de 40 colaboradores',
+      pessoasAfetadas: '40 colaboradores',
+    });
+
+    // 2. RH tenta tratar/encerrar o incidente: deve ser bloqueado (RN-77 / US-18)
+    assert.throws(
+      () => atualizarIncidenteSeguranca(db, rhUser, inc.id, {
+        providencias: 'RH tenta fechar',
+        situacao: 'ENCERRADO',
+      }),
+      /Apenas Diretoria e Admin podem tratar e encerrar incidentes de segurança/
+    );
+
+    // 3. Admin trata e altera para EM_TRATAMENTO, registrando 1ª providência
+    atualizarIncidenteSeguranca(db, adminUser, inc.id, {
+      providencias: 'Dispositivo recolhido pelo suporte de TI. Iniciada perícia de logs de acesso.',
+      situacao: 'EM_TRATAMENTO',
+    });
+
+    let detalhe = obterIncidenteSeguranca(db, adminUser, inc.id);
+    assert.strictEqual(detalhe.situacao, 'EM_TRATAMENTO');
+    assert.strictEqual(detalhe.historicoProvidencias.length, 1);
+    assert.strictEqual(detalhe.historicoProvidencias[0].usuarioEmail, adminUser.email);
+    assert.ok(detalhe.historicoProvidencias[0].descricao.includes('Dispositivo recolhido'));
+
+    // 4. Diretoria assume e registra 2ª providência, encerrando o incidente
+    atualizarIncidenteSeguranca(db, diretoriaUser, inc.id, {
+      providencias: 'Perícia confirmou ausência de cópia ou acesso indevido. Arquivos destruídos com segurança.',
+      situacao: 'ENCERRADO',
+    });
+
+    detalhe = obterIncidenteSeguranca(db, diretoriaUser, inc.id);
+    assert.strictEqual(detalhe.situacao, 'ENCERRADO');
+    assert.strictEqual(detalhe.historicoProvidencias.length, 2);
+    assert.ok(detalhe.historicoProvidencias[1].descricao.includes('Perícia confirmou ausência'));
+    assert.strictEqual(detalhe.historicoProvidencias[1].usuarioEmail, diretoriaUser.email);
+    assert.strictEqual(detalhe.historicoProvidencias[1].situacaoResultante, 'ENCERRADO');
+
+    // 5. RH e Diretoria conseguem consultar/acompanhar o histórico completo
+    const detalheRH = obterIncidenteSeguranca(db, rhUser, inc.id);
+    assert.strictEqual(detalheRH.historicoProvidencias.length, 2);
+    assert.strictEqual(detalheRH.situacao, 'ENCERRADO');
+
+    // 6. Logs de auditoria para cada providência registrada
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'INCIDENTE', registroId: inc.id });
+    const logsTratamento = logs.filter((l: any) => l.acao === 'TRATAR_INCIDENTE_SEGURANCA');
+    assert.strictEqual(logsTratamento.length, 2);
+  });
+
+  it('Cenário US-18 / Critério 4: Decisão de comunicar ANPD e titulares é exclusiva da Diretoria com orientação jurídica obrigatória', () => {
+    // 1. Registro de incidente com potencial risco
+    const inc = registrarIncidenteSeguranca(db, rhUser, {
+      descricao: 'Acesso não autorizado detectado em servidor de backup contendo extratos bancários.',
+      dadosAfetados: 'Dados bancários e valores líquidos de rescisões',
+      pessoasAfetadas: '85 colaboradores',
+    });
+
+    // 2. RH tenta decidir comunicação à ANPD: bloqueio com erro específico
+    assert.throws(
+      () => decidirComunicacaoIncidente(db, rhUser, inc.id, {
+        comunicarANPD: true,
+        comunicarTitulares: true,
+        orientacaoJuridica: 'RH acha que deve comunicar',
+      }),
+      /Apenas a Diretoria, com orientação jurídica, pode decidir sobre a comunicação à ANPD e aos titulares/
+    );
+
+    // 3. Admin tenta decidir comunicação à ANPD: também bloqueado (apenas Diretoria)
+    assert.throws(
+      () => decidirComunicacaoIncidente(db, adminUser, inc.id, {
+        comunicarANPD: true,
+        comunicarTitulares: false,
+        orientacaoJuridica: 'TI e Admin recomendam notificação',
+      }),
+      /Apenas a Diretoria, com orientação jurídica, pode decidir sobre a comunicação à ANPD e aos titulares/
+    );
+
+    // 4. Diretoria tenta decidir sem orientação jurídica: bloqueado
+    assert.throws(
+      () => decidirComunicacaoIncidente(db, diretoriaUser, inc.id, {
+        comunicarANPD: true,
+        comunicarTitulares: true,
+        orientacaoJuridica: '   ',
+      }),
+      /A orientação jurídica e fundamentação técnica são obrigatórias para a decisão de comunicação/
+    );
+
+    // 5. Diretoria registra decisão com parecer jurídico válido
+    const parecer = 'Parecer Jurídico nº 14/2026: Conforme art. 48 da LGPD e Resolução CD/ANPD nº 15/2024, recomenda-se a comunicação imediata à ANPD em até 3 dias úteis e aos titulares afetados, devido ao risco potencial aos direitos fundamentais decorrente da natureza dos dados bancários.';
+    const decisao = decidirComunicacaoIncidente(db, diretoriaUser, inc.id, {
+      comunicarANPD: true,
+      comunicarTitulares: true,
+      orientacaoJuridica: parecer,
+    });
+
+    assert.strictEqual(decisao.incidenteId, inc.id);
+    assert.strictEqual(decisao.comunicarANPD, true);
+    assert.strictEqual(decisao.comunicarTitulares, true);
+    assert.strictEqual(decisao.orientacaoJuridica, parecer);
+    assert.strictEqual(decisao.decisaoPor, diretoriaUser.email);
+    assert.ok(decisao.decisaoEm);
+
+    // 6. Confirma dados refletidos no incidente e no histórico de providências
+    const detalhe = obterIncidenteSeguranca(db, diretoriaUser, inc.id);
+    assert.strictEqual(detalhe.comunicarANPD, true);
+    assert.strictEqual(detalhe.comunicarTitulares, true);
+    assert.strictEqual(detalhe.orientacaoJuridica, parecer);
+    assert.strictEqual(detalhe.decisaoComunicacaoPor, diretoriaUser.email);
+    assert.ok(detalhe.historicoProvidencias.some((p: any) => p.descricao.includes('Parecer Jurídico nº 14/2026')));
+
+    // 7. Confirma log de auditoria específico da decisão da Diretoria
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'INCIDENTE', registroId: inc.id });
+    const logDecisao = logs.find((l: any) => l.acao === 'DECISAO_COMUNICACAO_INCIDENTE_LGPD');
+    assert.ok(logDecisao, 'Deve registrar log DECISAO_COMUNICACAO_INCIDENTE_LGPD');
+    assert.strictEqual(logDecisao.usuario_email, diretoriaUser.email);
+    assert.strictEqual(logDecisao.usuario_perfil, 'DIRETORIA');
+    assert.ok(logDecisao.detalhes.includes('ANPD=SIM'));
   });
 });

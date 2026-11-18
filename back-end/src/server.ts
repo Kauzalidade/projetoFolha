@@ -59,6 +59,8 @@ import {
   registrarIncidenteSeguranca,
   atualizarIncidenteSeguranca,
   listarIncidentesSeguranca,
+  obterIncidenteSeguranca,
+  decidirComunicacaoIncidente,
   avaliarRetencaoColaborador,
   executarEliminacaoAnonimizacaoLGPD,
 } from './services/documentosAlertasService.js';
@@ -519,6 +521,33 @@ const server = http.createServer(async (req, res) => {
         const body = await parseJSONBody(req);
         const inc = registrarIncidenteSeguranca(db, usuario, body);
         return enviarJSON(res, 201, inc);
+      }
+    }
+
+    // US-18 / RN-77: Decisão de comunicação à ANPD e aos titulares (exclusivo Diretoria com parecer jurídico)
+    if (method === 'POST' && pathname.startsWith('/api/incidentes/') && pathname.endsWith('/decisao-comunicacao')) {
+      const usuario = autenticarRequisicao(req);
+      const incId = parseInt(pathname.split('/')[3], 10);
+      const body = await parseJSONBody(req);
+      const resultado = decidirComunicacaoIncidente(db, usuario, incId, body);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // US-18 / RN-77: Detalhamento e atualização/tratamento de incidentes de segurança
+    if (pathname.startsWith('/api/incidentes/') && !pathname.endsWith('/decisao-comunicacao')) {
+      const usuario = autenticarRequisicao(req);
+      const incId = parseInt(pathname.split('/')[3], 10);
+
+      if (method === 'GET') {
+        const inc = obterIncidenteSeguranca(db, usuario, incId);
+        return enviarJSON(res, 200, inc);
+      }
+
+      if (method === 'PUT' || method === 'PATCH') {
+        const body = await parseJSONBody(req);
+        atualizarIncidenteSeguranca(db, usuario, incId, body);
+        const atualizado = obterIncidenteSeguranca(db, usuario, incId);
+        return enviarJSON(res, 200, atualizado);
       }
     }
 

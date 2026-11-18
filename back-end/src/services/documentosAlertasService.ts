@@ -219,20 +219,34 @@ export function consultarAlertas(
 }
 
 /**
- * RN-77: Registro de Incidentes de Segurança da Informação (LGPD art. 48).
- * RH, Diretoria e Admin registram incidentes; Diretoria e Admin tratam.
+ * RN-77 / US-18: Registro e Tratamento de Incidentes de Segurança da Informação (LGPD art. 48).
+ * - RH, Diretoria e Admin registram incidentes;
+ * - Diretoria e Admin tratam e acompanham, registrando providências até o encerramento;
+ * - Decisão de comunicar ANPD e titulares cabe exclusivamente à Diretoria com orientação jurídica.
  */
+export interface IncidenteSegurancaRegistroDTO {
+  descricao: string;
+  dadosAfetados: string;
+  pessoasAfetadas: string;
+  providenciasIniciais?: string;
+}
+
+export interface DecisaoComunicacaoIncidenteDTO {
+  comunicarANPD: boolean;
+  comunicarTitulares: boolean;
+  orientacaoJuridica: string;
+}
+
 export function registrarIncidenteSeguranca(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
-  dados: {
-    descricao: string;
-    dadosAfetados: string;
-    pessoasAfetadas: string;
-    providenciasIniciais?: string;
-  }
+  dados: IncidenteSegurancaRegistroDTO
 ): any {
-  if (!dados.descricao || !dados.dadosAfetados || !dados.pessoasAfetadas) {
+  if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'ADMIN' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Apenas RH, Admin e Diretoria podem registrar incidentes de segurança (RN-77 / US-18).');
+  }
+
+  if (!dados.descricao || !dados.descricao.trim() || !dados.dadosAfetados || !dados.dadosAfetados.trim() || !dados.pessoasAfetadas || !dados.pessoasAfetadas.trim()) {
     throw new Error('Informe a descrição, os dados possivelmente afetados e as pessoas afetadas.');
   }
 
@@ -244,6 +258,10 @@ export function registrarIncidenteSeguranca(
     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ABERTO', ?, ?)
   `);
 
+  const providenciaInicialTexto = dados.providenciasIniciais && dados.providenciasIniciais.trim()
+    ? `[${agora} ${usuarioSolicitante.email}]: ${dados.providenciasIniciais.trim()}`
+    : null;
+
   const res = stmt.run(
     agora,
     dados.descricao.trim(),
@@ -251,12 +269,30 @@ export function registrarIncidenteSeguranca(
     dados.pessoasAfetadas.trim(),
     usuarioSolicitante.id,
     usuarioSolicitante.email,
-    dados.providenciasIniciais ?? null,
+    providenciaInicialTexto,
     agora,
     agora
   );
 
   const incidenteId = Number(res.lastInsertRowid);
+
+  if (dados.providenciasIniciais && dados.providenciasIniciais.trim()) {
+    try {
+      db.prepare(`
+        INSERT INTO incidentes_providencias (
+          incidente_id, data_hora, usuario_id, usuario_email, usuario_perfil,
+          descricao_providencia, situacao_resultante
+        ) VALUES (?, ?, ?, ?, ?, ?, 'ABERTO')
+      `).run(
+        incidenteId,
+        agora,
+        usuarioSolicitante.id,
+        usuarioSolicitante.email,
+        usuarioSolicitante.perfil,
+        dados.providenciasIniciais.trim()
+      );
+    } catch (_) {}
+  }
 
   registrarLog(db, {
     usuarioId: usuarioSolicitante.id,
@@ -280,23 +316,45 @@ export function atualizarIncidenteSeguranca(
     situacao?: 'ABERTO' | 'EM_TRATAMENTO' | 'ENCERRADO';
   }
 ): void {
-  // Apenas Diretoria e Admin tratam incidentes (Tabela 4.1)
+  // Apenas Diretoria e Admin tratam incidentes (RN-77 / US-18)
   if (usuarioSolicitante.perfil !== 'DIRETORIA' && usuarioSolicitante.perfil !== 'ADMIN') {
-    throw new Error('Apenas Diretoria e Admin podem tratar e encerrar incidentes de segurança.');
+    throw new Error('Apenas Diretoria e Admin podem tratar e encerrar incidentes de segurança (RN-77 / US-18).');
   }
 
   const atual = db.prepare('SELECT * FROM incidentes_seguranca WHERE id = ?').get(incidenteId) as any;
-  if (!atual) throw new Error('Incidente não encontrado.');
+  if (!atual) throw new Error('Incidente de segurança não encontrado.');
 
   const agora = new Date().toISOString();
   const novaSituacao = dados.situacao || atual.situacao;
-  const novasProvidencias = dados.providencias ? `${atual.providencias ? atual.providencias + '\n' : ''}[${agora} ${usuarioSolicitante.email}]: ${dados.providencias.trim()}` : atual.providencias;
+
+  let novasProvidenciasTexto = atual.providencias;
+  if (dados.providencias && dados.providencias.trim()) {
+    const descTrim = dados.providencias.trim();
+    novasProvidenciasTexto = `${atual.providencias ? atual.providencias + '\n' : ''}[${agora} ${usuarioSolicitante.email}]: ${descTrim}`;
+
+    try {
+      db.prepare(`
+        INSERT INTO incidentes_providencias (
+          incidente_id, data_hora, usuario_id, usuario_email, usuario_perfil,
+          descricao_providencia, situacao_resultante
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        incidenteId,
+        agora,
+        usuarioSolicitante.id,
+        usuarioSolicitante.email,
+        usuarioSolicitante.perfil,
+        descTrim,
+        novaSituacao
+      );
+    } catch (_) {}
+  }
 
   db.prepare(`
     UPDATE incidentes_seguranca
     SET providencias = ?, situacao = ?, atualizado_em = ?
     WHERE id = ?
-  `).run(novasProvidencias, novaSituacao, agora, incidenteId);
+  `).run(novasProvidenciasTexto, novaSituacao, agora, incidenteId);
 
   registrarLog(db, {
     usuarioId: usuarioSolicitante.id,
@@ -305,14 +363,165 @@ export function atualizarIncidenteSeguranca(
     acao: 'TRATAR_INCIDENTE_SEGURANCA',
     entidade: 'INCIDENTE',
     registroId: incidenteId,
-    detalhes: `Incidente ID ${incidenteId} atualizado para situação ${novaSituacao}`,
+    detalhes: `Incidente ID ${incidenteId} atualizado por ${usuarioSolicitante.email}: situação ${novaSituacao}${dados.providencias ? `. Providência: "${dados.providencias.trim()}"` : ''}`,
   });
+}
+
+/**
+ * US-18: Decisão de comunicação à ANPD e aos titulares de dados pessoais.
+ * Restrito exclusivamente à Diretoria com fundamentação jurídica (RN-77).
+ */
+export function decidirComunicacaoIncidente(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  incidenteId: number,
+  dados: DecisaoComunicacaoIncidenteDTO
+): {
+  incidenteId: number;
+  comunicarANPD: boolean;
+  comunicarTitulares: boolean;
+  orientacaoJuridica: string;
+  decisaoPor: string;
+  decisaoEm: string;
+} {
+  // Apenas Diretoria pode decidir sobre comunicação à ANPD e titulares (RN-77 / US-18)
+  if (usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Apenas a Diretoria, com orientação jurídica, pode decidir sobre a comunicação à ANPD e aos titulares (RN-77 / US-18).');
+  }
+
+  if (!dados.orientacaoJuridica || !dados.orientacaoJuridica.trim()) {
+    throw new Error('A orientação jurídica e fundamentação técnica são obrigatórias para a decisão de comunicação (RN-77 / US-18).');
+  }
+
+  const atual = db.prepare('SELECT * FROM incidentes_seguranca WHERE id = ?').get(incidenteId) as any;
+  if (!atual) throw new Error('Incidente de segurança não encontrado.');
+
+  const agora = new Date().toISOString();
+  const comunicarAnpdInt = dados.comunicarANPD ? 1 : 0;
+  const comunicarTitularesInt = dados.comunicarTitulares ? 1 : 0;
+  const orientacao = dados.orientacaoJuridica.trim();
+
+  db.prepare(`
+    UPDATE incidentes_seguranca
+    SET comunicar_anpd = ?,
+        comunicar_titulares = ?,
+        orientacao_juridica = ?,
+        decisao_comunicacao_por = ?,
+        decisao_comunicacao_email = ?,
+        decisao_comunicacao_em = ?,
+        atualizado_em = ?
+    WHERE id = ?
+  `).run(
+    comunicarAnpdInt,
+    comunicarTitularesInt,
+    orientacao,
+    usuarioSolicitante.id,
+    usuarioSolicitante.email,
+    agora,
+    agora,
+    incidenteId
+  );
+
+  const descDecisao = `[Decisão da Diretoria com Parecer Jurídico]: Notificar ANPD: ${dados.comunicarANPD ? 'SIM' : 'NÃO'}; Notificar Titulares: ${dados.comunicarTitulares ? 'SIM' : 'NÃO'}. Parecer Jurídico: "${orientacao}"`;
+  const novasProvidencias = `${atual.providencias ? atual.providencias + '\n' : ''}[${agora} ${usuarioSolicitante.email}]: ${descDecisao}`;
+
+  db.prepare('UPDATE incidentes_seguranca SET providencias = ? WHERE id = ?').run(novasProvidencias, incidenteId);
+
+  try {
+    db.prepare(`
+      INSERT INTO incidentes_providencias (
+        incidente_id, data_hora, usuario_id, usuario_email, usuario_perfil,
+        descricao_providencia, situacao_resultante
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      incidenteId,
+      agora,
+      usuarioSolicitante.id,
+      usuarioSolicitante.email,
+      usuarioSolicitante.perfil,
+      descDecisao,
+      atual.situacao
+    );
+  } catch (_) {}
+
+  registrarLog(db, {
+    usuarioId: usuarioSolicitante.id,
+    usuarioEmail: usuarioSolicitante.email,
+    usuarioPerfil: usuarioSolicitante.perfil,
+    acao: 'DECISAO_COMUNICACAO_INCIDENTE_LGPD',
+    entidade: 'INCIDENTE',
+    registroId: incidenteId,
+    detalhes: `Decisão de comunicação do Incidente ID ${incidenteId}: ANPD=${dados.comunicarANPD ? 'SIM' : 'NÃO'}, Titulares=${dados.comunicarTitulares ? 'SIM' : 'NÃO'}. Parecer jurídico registrado.`,
+  });
+
+  return {
+    incidenteId,
+    comunicarANPD: Boolean(dados.comunicarANPD),
+    comunicarTitulares: Boolean(dados.comunicarTitulares),
+    orientacaoJuridica: orientacao,
+    decisaoPor: usuarioSolicitante.email,
+    decisaoEm: agora
+  };
+}
+
+/**
+ * Consulta detalhada de um incidente de segurança, incluindo histórico estruturado de providências.
+ */
+export function obterIncidenteSeguranca(
+  db: DatabaseSync,
+  usuarioSolicitante: { perfil: string },
+  incidenteId: number
+): any {
+  if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'ADMIN' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Apenas RH, Admin e Diretoria podem consultar incidentes de segurança (RN-77 / US-18).');
+  }
+
+  const inc = db.prepare('SELECT * FROM incidentes_seguranca WHERE id = ?').get(incidenteId) as any;
+  if (!inc) throw new Error('Incidente de segurança não encontrado.');
+
+  let providencias: any[] = [];
+  try {
+    providencias = db.prepare('SELECT * FROM incidentes_providencias WHERE incidente_id = ? ORDER BY id ASC').all(incidenteId) as any[];
+  } catch (_) {}
+
+  return {
+    id: inc.id,
+    dataHora: inc.data_hora,
+    descricao: inc.descricao,
+    dadosAfetados: inc.dados_afetados,
+    pessoasAfetadas: inc.pessoas_afetadas,
+    responsavel: {
+      id: inc.responsavel_usuario_id,
+      email: inc.responsavel_email
+    },
+    situacao: inc.situacao,
+    providenciasTexto: inc.providencias,
+    historicoProvidencias: providencias.map((p) => ({
+      id: p.id,
+      dataHora: p.data_hora,
+      usuarioId: p.usuario_id,
+      usuarioEmail: p.usuario_email,
+      usuarioPerfil: p.usuario_perfil,
+      descricao: p.descricao_providencia,
+      situacaoResultante: p.situacao_resultante
+    })),
+    comunicarANPD: Boolean(inc.comunicar_anpd),
+    comunicarTitulares: Boolean(inc.comunicar_titulares),
+    orientacaoJuridica: inc.orientacao_juridica,
+    decisaoComunicacaoPor: inc.decisao_comunicacao_email,
+    decisaoComunicacaoEm: inc.decisao_comunicacao_em,
+    criadoEm: inc.criado_em,
+    atualizadoEm: inc.atualizado_em
+  };
 }
 
 export function listarIncidentesSeguranca(
   db: DatabaseSync,
   usuarioSolicitante: { perfil: string }
 ): any[] {
+  if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'ADMIN' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    throw new Error('Apenas RH, Admin e Diretoria podem acompanhar incidentes de segurança (RN-77 / US-18).');
+  }
   return db.prepare('SELECT * FROM incidentes_seguranca ORDER BY id DESC').all();
 }
 
