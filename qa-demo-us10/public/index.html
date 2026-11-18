@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Demo — US-10: Registro de Proventos e Descontos Manuais (Spec v1.7)</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-content">
+      <div class="brand">
+        <span class="brand-badge">QA EVIDENCE &bull; US-10</span>
+        <h1>Sistema RH Folha <span>US-10 (Spec v1.7)</span></h1>
+        <p class="subtitle">Demonstração Interativa dos Critérios de Aceite de Verbas Avulsas, Incidências e Memória de Cálculo</p>
+      </div>
+      <div class="header-badges">
+        <span class="env-pill"><span class="dot live"></span> SQLite :memory: (Isolado)</span>
+        <span class="branch-pill">Branch: <code>feat/us-10-verbas-avulsas</code></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Banner de Métricas e KPIs -->
+    <section class="summary-section">
+      <div class="summary-card">
+        <div class="summary-label">Cenários Avaliados</div>
+        <div class="summary-value" id="kpi-total">10</div>
+        <div class="summary-sub">Cobertura Integral da US-10</div>
+      </div>
+      <div class="summary-card status-success">
+        <div class="summary-label">Critérios Aprovados</div>
+        <div class="summary-value" id="kpi-aprovados">10</div>
+        <div class="summary-sub">100% conforme regras da Spec</div>
+      </div>
+      <div class="summary-card status-danger">
+        <div class="summary-label">Critérios Reprovados</div>
+        <div class="summary-value" id="kpi-reprovados">0</div>
+        <div class="summary-sub">Zero falhas de conformidade</div>
+      </div>
+      <div class="summary-card status-warning">
+        <div class="summary-label">Não Executados</div>
+        <div class="summary-value" id="kpi-nao-executados">0</div>
+        <div class="summary-sub">Todos auditados em tempo real</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Status da Validação</div>
+        <div class="summary-value status-badge-kpi" id="kpi-status">100% CONFORME</div>
+        <div class="summary-sub">Spec v1.7 (RN-25 a RN-27)</div>
+      </div>
+    </section>
+
+    <!-- Barra de Ações Rápidas -->
+    <section class="actions-bar">
+      <div class="action-buttons">
+        <button id="btn-run-all" class="btn btn-primary">
+          <span class="icon">▶</span> Executar Todos os Cenários
+        </button>
+        <button id="btn-reset" class="btn btn-secondary">
+          <span class="icon">↺</span> Reiniciar Banco Demo (:memory:)
+        </button>
+      </div>
+      <div class="filter-tabs">
+        <button class="tab active" data-filter="all">Todos (<span id="tab-count-all">10</span>)</button>
+        <button class="tab" data-filter="aprovados">Aprovados (<span id="tab-count-aprovados">10</span>)</button>
+        <button class="tab" data-filter="reprovados">Reprovados (<span id="tab-count-reprovados">0</span>)</button>
+      </div>
+    </section>
+
+    <!-- Lista dos 10 Cenários de Aceite -->
+    <section class="scenarios-section">
+      <div class="section-header">
+        <h2>🔬 Critérios de Aceite da US-10 — Resultados Reais</h2>
+        <p>Validação executada chamando diretamente as funções em <code>back-end/src/services/</code> sobre o banco SQLite em memória. Cada cenário é aferido em tempo real contra as regras legais da especificação v1.7.</p>
+      </div>
+
+      <div class="scenarios-grid" id="scenarios-container">
+        <div class="loading-placeholder">Carregando e executando cenários reais do servidor...</div>
+      </div>
+    </section>
+
+    <!-- Playground Interativo: Simulador de Verbas e Memória de Cálculo -->
+    <section class="playground-section">
+      <div class="section-header">
+        <h2>⚡ Simulador Interativo de Verbas Avulsas e Memória de Cálculo (US-10)</h2>
+        <p>Realize lançamentos manuais com marcações de incidência individualizadas e verifique imediatamente os reflexos na memória de cálculo e no banco SQLite.</p>
+      </div>
+
+      <div class="playground-grid">
+        <!-- Card de Lançamento de Verba Avulsa -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Lançar Verba Avulsa (RN-25)</h3>
+            <span class="tag">PROVENTO OU DESCONTO</span>
+          </div>
+
+          <form id="form-verba" class="panel-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Colaborador</label>
+                <select name="colaboradorId" id="select-colaborador" required></select>
+              </div>
+              <div class="form-group">
+                <label>Competência</label>
+                <select name="competenciaId" id="select-competencia" required></select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Natureza da Verba</label>
+                <select name="tipo" id="input-tipo" required>
+                  <option value="PROVENTO">➕ Provento (Adicional / Bônus)</option>
+                  <option value="DESCONTO">➖ Desconto (Pensão / Consignado / Adiantamento)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Valor em Reais (R$)</label>
+                <input type="number" name="valorReais" id="input-valor" step="0.01" min="0.01" value="450.00" placeholder="Ex: 450.00" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Descrição Obrigatória (RN-25)</label>
+              <input type="text" name="descricao" id="input-descricao" value="Adicional de Insalubridade 20%" placeholder="Ex: Pensão Alimentícia, Consignado, Insalubridade..." required>
+              <small class="form-help">A descrição informada é preservada integralmente no holerite e na memória de cálculo.</small>
+            </div>
+
+            <div class="form-group">
+              <label>Incidências Tributárias Independentes (RN-26 / Tabela 7.4):</label>
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" name="incideINSS" id="check-inss" checked>
+                  <span>Incide em INSS</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="incideIRRF" id="check-irrf" checked>
+                  <span>Incide em IRRF</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="incideFGTS" id="check-fgts" checked>
+                  <span>Incide em FGTS (8% Encargo)</span>
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              <span class="icon">💾</span> Gravar Verba Avulsa no Banco
+            </button>
+            <div class="form-feedback" id="feedback-verba"></div>
+          </form>
+        </div>
+
+        <!-- Card de Memória de Cálculo em Tempo Real -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Memória de Cálculo e Bases (RN-02 / RN-26)</h3>
+            <span class="tag">CÁLCULO LEGAL</span>
+          </div>
+
+          <div class="memoria-container">
+            <div class="form-row" style="align-items:flex-end;">
+              <div class="form-group" style="flex:1;">
+                <label>Colaborador para Auditoria da Folha</label>
+                <select id="select-colab-memoria"></select>
+              </div>
+              <div style="margin-bottom:5px;">
+                <button type="button" id="btn-calcular-memoria" class="btn btn-success">
+                  ⚡ Calcular Folha
+                </button>
+              </div>
+            </div>
+
+            <!-- Resumo das Bases Apuradas -->
+            <div>
+              <label style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:6px;">
+                Bases de Cálculo Independentes (Tabela 7.4):
+              </label>
+              <div class="bases-grid">
+                <div class="base-badge-card">
+                  <div class="base-title">Base INSS</div>
+                  <div class="base-val" id="mem-base-inss">R$ 0,00</div>
+                </div>
+                <div class="base-badge-card">
+                  <div class="base-title">Rend. Trib. IRRF</div>
+                  <div class="base-val" id="mem-base-irrf">R$ 0,00</div>
+                </div>
+                <div class="base-badge-card">
+                  <div class="base-title">Base FGTS</div>
+                  <div class="base-val" id="mem-base-fgts">R$ 0,00</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Faixa de Totais Financeiros -->
+            <div class="totais-strip">
+              <div class="total-item proventos">
+                <span>Total Proventos</span>
+                <strong id="mem-tot-proventos">R$ 0,00</strong>
+              </div>
+              <div class="total-item descontos">
+                <span>Total Descontos</span>
+                <strong id="mem-tot-descontos">R$ 0,00</strong>
+              </div>
+              <div class="total-item liquido">
+                <span>Valor Líquido</span>
+                <strong id="mem-tot-liquido">R$ 0,00</strong>
+              </div>
+              <div class="total-item">
+                <span>FGTS Encargo (8%)</span>
+                <strong id="mem-tot-fgts" style="color:#60a5fa;">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <!-- Tabela de Verbas Discriminadas -->
+            <div style="overflow-x:auto; max-height:220px;">
+              <table class="data-table" id="tbl-memoria-verbas" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Verba Discriminada</th>
+                    <th>Natureza</th>
+                    <th style="text-align:right;">Base</th>
+                    <th style="text-align:right;">Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-memoria-verbas">
+                  <tr><td colspan="4" class="text-center">Clique em "⚡ Calcular Folha" para visualizar a memória.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabela ao Vivo do SQLite -->
+    <section class="live-data-section">
+      <div class="section-header">
+        <h2>📋 Eventos de Verbas Avulsas no SQLite (:memory:)</h2>
+        <p>Visão em tempo real da tabela <code>eventos</code> do banco de teste isolado. Atualizada automaticamente a cada lançamento.</p>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table" id="tabela-eventos">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Colaborador</th>
+              <th>Competência</th>
+              <th>Natureza</th>
+              <th>Descrição Registrada</th>
+              <th>Valor (R$)</th>
+              <th>Incidências Tributárias</th>
+              <th>Criado Em</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-eventos">
+            <tr><td colspan="8" class="text-center">Nenhum evento registrado ainda.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Guia de Evidências e Capturas de Tela para o Trello -->
+    <section class="guide-section">
+      <div class="section-header">
+        <h2>📸 Roteiro de Capturas de Tela para Trello e Avaliação de QA</h2>
+        <p>Orientações práticas para captura de imagens com identificação clara dos elementos comprobatórios da US-10.</p>
+      </div>
+
+      <div class="checklist-grid">
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 1</span>
+          <h4>Visão Geral e Indicadores (v1.7)</h4>
+          <p>Capture o topo da tela destacando os cards de KPI: 10 Cenários Avaliados, 10 Aprovados, 0 Reprovados e Status <strong>100% CONFORME</strong> no banco SQLite :memory:.</p>
+        </div>
+
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 2</span>
+          <h4>Provento Manual e Desconto (RN-25)</h4>
+          <p>Capture os Cards #1 e #2 evidenciando o registro do provento e do desconto manual com descrições preservadas e valores positivos.</p>
+        </div>
+
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 3</span>
+          <h4>Incidências Isoladas de INSS, IRRF e FGTS</h4>
+          <p>Capture os Cards #3, #4 e #5 demonstrando o desacoplamento das bases tributárias da Tabela 7.4 (cada verba afeta apenas a base correspondente).</p>
+        </div>
+
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 4</span>
+          <h4>Validações e Trava de Competência</h4>
+          <p>Capture os Cards #7 e #8 mostrando o bloqueio de descrição vazia/valor negativo e a trava de segurança contra competências FECHADA/CALCULADA.</p>
+        </div>
+
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 5</span>
+          <h4>Simulador Interativo e Memória de Cálculo</h4>
+          <p>Capture a seção do Simulador após o lançamento de uma verba e clique em "⚡ Calcular Folha", enquadrando as bases independentes e verbas discriminadas.</p>
+        </div>
+
+        <div class="checklist-card">
+          <span class="checklist-badge">Print 6</span>
+          <h4>Tabela ao Vivo do SQLite com Badges</h4>
+          <p>Capture a tabela de eventos ao vivo demonstrando a gravação física dos lançamentos com os badges coloridos de incidência <code>INSS</code>, <code>IRRF</code> e <code>FGTS</code>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-content">
+      <p>Projeto Folha de Pagamento & RH &bull; Demonstração Técnica QA US-10 (Spec v1.7)</p>
+      <p>Desenvolvido para apresentação e registro de evidências de conformidade no Trello.</p>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

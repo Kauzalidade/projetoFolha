@@ -12,7 +12,7 @@ import path from 'node:path';
 let dbInstance: DatabaseSync | null = null;
 
 export const SCHEMA_SQL = `
--- Tabela de Usuários do Sistema (RNF-01, RNF-02, Seção 4)
+-- Tabela de Usuários do Sistema (RNF-01, RNF-02, Seção 4, US-12)
 CREATE TABLE IF NOT EXISTS usuarios (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nome TEXT NOT NULL,
@@ -20,8 +20,29 @@ CREATE TABLE IF NOT EXISTS usuarios (
   senha_hash TEXT NOT NULL,
   perfil TEXT NOT NULL CHECK(perfil IN ('RH', 'DIRETORIA', 'ADMIN')),
   ativo INTEGER NOT NULL DEFAULT 1,
+  segundo_fator_ativo INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
+);
+
+-- Histórico das últimas senhas para impedir reutilização (US-12)
+CREATE TABLE IF NOT EXISTS historico_senhas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  senha_hash TEXT NOT NULL,
+  criado_em TEXT NOT NULL
+);
+
+-- Desafios de Segundo Fator de Autenticação (2FA) (US-12)
+CREATE TABLE IF NOT EXISTS desafios_2fa (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  desafio_token TEXT UNIQUE NOT NULL,
+  codigo_hash TEXT NOT NULL,
+  expira_em TEXT NOT NULL,
+  tentativas INTEGER NOT NULL DEFAULT 0,
+  utilizado INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL
 );
 
 -- Tabela de Filiais (1 Matriz + Filiais - Seção 1.4 e Seção 2)
@@ -110,6 +131,7 @@ CREATE TABLE IF NOT EXISTS competencias (
   calculado_por INTEGER NULL REFERENCES usuarios(id),
   conferido_por INTEGER NULL REFERENCES usuarios(id),
   conferido_em TEXT NULL,
+  justificativa_conferencia TEXT NULL,
   justificativa_reabertura TEXT NULL,
   motivo_devolucao TEXT NULL,
   pago_em TEXT NULL,
@@ -314,6 +336,16 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   const local = caminhoArquivo || path.join(process.cwd(), 'rh_folha.db');
   const db = new DatabaseSync(local);
   db.exec(SCHEMA_SQL);
+  try {
+    db.exec('ALTER TABLE usuarios ADD COLUMN segundo_fator_ativo INTEGER NOT NULL DEFAULT 0');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.exec('ALTER TABLE competencias ADD COLUMN justificativa_conferencia TEXT NULL');
+  } catch {
+    // Coluna já existe
+  }
   return db;
 }
 

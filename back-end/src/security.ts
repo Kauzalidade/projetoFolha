@@ -162,7 +162,94 @@ export function encerrarSessao(token: string): void {
   sessoesAtivas.delete(token);
 }
 
+/**
+ * Encerra todas as sessões ativas de um determinado usuário (Critério US-12 / RNF-01).
+ * Invocado na redefinição de senha ou inativação do usuário.
+ * Retorna o número de sessões invalidadas.
+ */
+export function invalidarSessoesUsuario(usuarioId: number): number {
+  let encerradas = 0;
+  for (const [token, sessao] of sessoesAtivas.entries()) {
+    if (sessao.usuarioId === usuarioId) {
+      sessoesAtivas.delete(token);
+      encerradas++;
+    }
+  }
+  return encerradas;
+}
+
+/**
+ * Retorna a quantidade de sessões atualmente ativas para o usuário.
+ */
+export function contarSessoesAtivasUsuario(usuarioId: number): number {
+  let ativas = 0;
+  const agora = Date.now();
+  for (const [token, sessao] of sessoesAtivas.entries()) {
+    if (sessao.usuarioId === usuarioId) {
+      if (agora - sessao.ultimoAcesso <= TEMPO_EXPIRACAO_SESSAO) {
+        ativas++;
+      } else {
+        sessoesAtivas.delete(token);
+      }
+    }
+  }
+  return ativas;
+}
+
+/**
+ * Utilitários criptográficos de Segundo Fator de Autenticação (2FA) - US-12.
+ */
+
+// Armazenamento em memória do canal de entrega out-of-band simulado (e-mail/SMS corporativo)
+// Usado estritamente para testes automatizados e simulador de homologação
+interface MensagemOutbox2FA {
+  codigo: string;
+  expiraEm: number;
+}
+const outbox2FA = new Map<number, MensagemOutbox2FA>();
+
+export function gerarCodigoNumerico2FA(): string {
+  // Código numérico de 6 dígitos criptograficamente seguro (100000 a 999999)
+  const codeInt = crypto.randomInt(100000, 1000000);
+  return codeInt.toString();
+}
+
+export function gerarHashCodigo2FA(codigo: string): string {
+  return crypto.createHash('sha256').update(codigo.trim()).digest('hex');
+}
+
+export function verificarCodigo2FA(codigoInformado: string, hashEsperado: string): boolean {
+  if (!codigoInformado || !hashEsperado) return false;
+  const hashInformado = gerarHashCodigo2FA(codigoInformado);
+  const bufEsperado = Buffer.from(hashEsperado, 'hex');
+  const bufInformado = Buffer.from(hashInformado, 'hex');
+  if (bufEsperado.length !== bufInformado.length) return false;
+  return crypto.timingSafeEqual(bufEsperado, bufInformado);
+}
+
+export function despacharCodigo2FAOutbox(usuarioId: number, codigo: string, expiraEmMs: number): void {
+  outbox2FA.set(usuarioId, {
+    codigo,
+    expiraEm: Date.now() + expiraEmMs,
+  });
+}
+
+export function obterUltimoCodigo2FAOutbox(usuarioId: number): string | null {
+  const item = outbox2FA.get(usuarioId);
+  if (!item) return null;
+  if (Date.now() > item.expiraEm) {
+    outbox2FA.delete(usuarioId);
+    return null;
+  }
+  return item.codigo;
+}
+
+export function limparOutbox2FA(): void {
+  outbox2FA.clear();
+}
+
 export function limparTodasSessoes(): void {
   sessoesAtivas.clear();
   tentativasPorEmail.clear();
+  limparOutbox2FA();
 }

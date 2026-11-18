@@ -1,0 +1,11 @@
+{
+  "name": "qa-demo-us13",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node ../back-end/node_modules/tsx/dist/cli.mjs server.ts",
+    "test:cenarios": "node ../back-end/node_modules/tsx/dist/cli.mjs test-cenarios.ts",
+    "test:http": "node ../back-end/node_modules/tsx/dist/cli.mjs test-http.ts"
+  }
+}
