@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = join(ROOT, 'public');
+const PUBLIC_DIR = join(ROOT, '..', '..', 'front-end', 'authentication');
 const scryptAsync = promisify(scrypt);
 const SESSION_IDLE_MS = 30 * 60 * 1000;
 const LOGIN_BLOCK_MS = 15 * 60 * 1000;
