@@ -338,8 +338,13 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   db.exec(SCHEMA_SQL);
 
   // Migrações dinâmicas para bases SQLite existentes (RN-71, RNF-25, US-16, US-18)
-  try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec("ALTER TABLE colaboradores ADD COLUMN titular_conta TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+  try { db.exec("ALTER TABLE colaboradores ADD COLUMN email TEXT NULL"); } catch (_) {}
+  try { db.exec("ALTER TABLE colaboradores ADD COLUMN implantacao_ferias_gozadas_dias INTEGER NOT NULL DEFAULT 0"); } catch (_) {}
+  try { db.exec("ALTER TABLE colaboradores ADD COLUMN implantacao_saldo_descontar_centavos INTEGER NOT NULL DEFAULT 0"); } catch (_) {}
+  try { db.exec("ALTER TABLE colaboradores ADD COLUMN implantacao_competencia_inicio TEXT NULL"); } catch (_) {}
   try { db.exec('ALTER TABLE colaboradores ADD COLUMN versao INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+  try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE competencias ADD COLUMN lancado_em TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE competencias ADD COLUMN calculado_em TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN comunicar_anpd INTEGER NOT NULL DEFAULT 0'); } catch (_) {}

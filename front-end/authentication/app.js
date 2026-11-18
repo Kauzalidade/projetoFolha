@@ -1,3 +1,10 @@
+(function() {
+// Se executando dentro da aplicação principal do projetoFolha SPA (que possui #app-shell),
+// a orquestração e autenticação completa são geridas pelo script principal em index.html.
+if (document.getElementById('app-shell')) {
+  return;
+}
+
 const views = [...document.querySelectorAll('.view')];
 const notice = document.querySelector('#notice');
 const noticeIcon = document.querySelector('#notice-icon');
@@ -261,3 +268,4 @@ document.addEventListener('touchstart', reportActivity, { passive: true });
 document.addEventListener('wheel', reportActivity, { passive: true });
 
 restoreSession();
+})();

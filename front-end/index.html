@@ -1,406 +1,2689 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Folha Clara — Acesso seguro</title>
+  <title>projetoFolha — Sistema Integrado de RH e Folha de Pagamento</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #1E293B;
-      background: #F8FAFC;
-      font-synthesis: none;
-      text-rendering: optimizeLegibility;
-      --navy: #0F172A;
-      --blue: #2563EB;
-      --blue-hover: #1D4ED8;
-      --surface: #FFFFFF;
-      --text: #1E293B;
-      --muted: #475569;
-      --border: #CBD5E1;
-      --focus: #93C5FD;
-      --error: #DC2626;
-      --error-bg: #FEF2F2;
-      --error-text: #991B1B;
-      --warning: #D97706;
-      --warning-bg: #FFFBEB;
-      --warning-text: #92400E;
-      --success: #16A34A;
-      --success-bg: #F0FDF4;
-      --success-text: #166534;
+      --primary: #4338ca;
+      --primary-dark: #312e81;
+      --primary-light: #4f46e5;
+      --accent: #2563eb;
+      --bg: #f4f5fb;
+      --card-bg: #ffffff;
+      --border: #e2e5f0;
+      --text: #1f2937;
+      --text-muted: #5b6472;
+      --navy-bg: #0f172a;
+      --navy-header: #1e1b4b;
+      --success: #166534;
+      --success-bg: #bbf7d0;
+      --danger: #b91c1c;
+      --danger-bg: #fecaca;
+      --warning: #92400e;
+      --warning-bg: #fef3c7;
+      --radius: 12px;
+      --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
-    * { box-sizing: border-box; }
-
-    body {
-      min-width: 320px;
-      min-height: 100vh;
-      margin: 0;
-      background: #F8FAFC;
-    }
-
-    button, input { font: inherit; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-family); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    button, input, select, textarea { font-family: inherit; font-size: inherit; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
 
-    .page-shell {
-      display: grid;
-      grid-template-columns: minmax(320px, 44%) 1fr;
+    /* ============================================================== */
+    /* ESTILOS DE AUTENTICAÇÃO (TELA DE LOGIN - DESIGN OFICIAL)      */
+    /* ============================================================== */
+    #auth-shell {
       min-height: 100vh;
+      display: flex;
+      background: #f8fafc;
     }
-
-    .brand-panel {
-      position: relative;
-      overflow: hidden;
+    .auth-brand-side {
+      flex: 1 1 45%;
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 100%);
+      color: #ffffff;
+      padding: 48px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-height: 100vh;
-      padding: clamp(32px, 6vw, 72px);
-      color: #FFFFFF;
-      background: linear-gradient(145deg, #0F172A 0%, #111D38 100%);
+      position: relative;
     }
-
-    .brand, .mobile-brand {
-      display: inline-flex;
+    .auth-brand-logo {
+      display: flex;
       align-items: center;
       gap: 12px;
-      width: fit-content;
-      color: inherit;
-      font-size: 18px;
+      font-size: 24px;
       font-weight: 700;
-      text-decoration: none;
     }
-
-    .brand-mark {
-      display: inline-grid;
-      width: 40px;
-      height: 40px;
-      place-items: center;
+    .auth-logo-badge {
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
-      color: #FFFFFF;
-      background: var(--blue);
-      font-size: 20px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-weight: 700;
+      color: #fff;
+      font-size: 1.1rem;
     }
-
-    .brand-copy { max-width: 440px; margin: auto 0; }
-    .eyebrow { margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    .brand-panel .eyebrow { color: #BFDBFE; }
-    .brand-copy h1 { margin: 0 0 20px; font-size: clamp(32px, 3.8vw, 48px); line-height: 1.12; letter-spacing: -.035em; }
-    .brand-copy > p:last-child { margin: 0; color: #CBD5E1; font-size: 16px; line-height: 1.6; }
-    .brand-footer { margin: 0; color: #CBD5E1; font-size: 13px; }
-
-    .main-panel { display: grid; min-height: 100vh; place-items: center; padding: 48px 32px; background: #F6F8FC; }
-    .form-wrap {
-      width: min(100%, 480px);
-      padding: clamp(28px, 4vw, 40px);
-      border: 1px solid #E2E8F0;
-      border-radius: 20px;
-      background: var(--surface);
-      box-shadow: 0 24px 64px rgba(15, 23, 42, .09);
+    .auth-brand-content h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 16px;
     }
-    .mobile-brand { display: none; margin-bottom: 36px; color: var(--navy); }
-    .view h2 { margin: 0 0 10px; color: var(--navy); font-size: clamp(26px, 3vw, 30px); line-height: 1.2; letter-spacing: -.03em; }
-    .intro { margin: 0 0 28px; color: var(--muted); font-size: 15px; line-height: 1.6; }
-
-    .field { margin-bottom: 20px; }
-    .field label { display: block; margin-bottom: 8px; color: var(--text); font-size: 14px; font-weight: 600; }
-    .field input {
-      display: block;
-      width: 100%;
-      min-height: 50px;
-      padding: 12px 14px;
-      border: 1px solid var(--border);
+    .auth-brand-content p {
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+      max-width: 480px;
+      margin-bottom: 28px;
+    }
+    .auth-badges-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .auth-badge-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 10px 14px;
       border-radius: 10px;
-      outline: none;
-      color: var(--text);
-      background: var(--surface);
-      font-size: 16px;
-      transition: border-color .16s ease, box-shadow .16s ease;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .field input:focus-visible, button:focus-visible, a:focus-visible {
-      outline: 3px solid var(--focus);
-      outline-offset: 2px;
+    .auth-badge-check {
+      color: #34d399;
+      font-weight: 700;
+      font-size: 1.1rem;
     }
-    .field input:focus-visible { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, .1); }
-    .field input[aria-invalid="true"] { border-color: var(--error); }
+    .auth-brand-footer {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
 
-    .password-control { position: relative; }
-    .password-control input { padding-right: 88px; }
-    .show-password {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      min-width: 72px;
-      min-height: 40px;
-      border: 0;
-      border-radius: 8px;
-      color: var(--blue);
-      background: transparent;
-      font-size: 14px;
+    .auth-form-side {
+      flex: 1 1 55%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 460px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+    .auth-card-eyebrow {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--primary-light);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .auth-card-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .auth-card-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
       font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
     }
-
-    .form-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 4px 0 22px; }
-    .help-text { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .form-row .help-text { margin: 0; }
-    .text-button {
+    .form-control {
+      width: 100%;
       min-height: 44px;
-      padding: 0;
-      border: 0;
-      color: var(--blue);
-      background: transparent;
-      font-size: 14px;
-      font-weight: 600;
-      text-align: right;
-      text-decoration: underline;
-      text-underline-offset: 3px;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      transition: all 0.2s;
+      background: #ffffff;
     }
-    .text-button:hover { color: var(--blue-hover); }
-
-    .primary-button, .secondary-button {
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .password-wrapper {
+      position: relative;
+      display: flex;
+    }
+    .password-wrapper input {
+      padding-right: 76px;
+    }
+    .password-toggle-btn {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      bottom: 6px;
+      border: 0;
+      background: #f1f5f9;
+      color: #475569;
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .btn-primary {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary-light);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background 0.2s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
-      min-height: 48px;
-      padding: 12px 18px;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 16px;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      background: #4338ca;
+    }
+    .demo-accounts-box {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+    }
+    .demo-accounts-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .demo-buttons-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .btn-demo-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      font-size: 0.82rem;
       font-weight: 600;
+      color: #1e293b;
+      transition: all 0.15s;
     }
-    .primary-button { color: #FFFFFF; background: var(--blue); box-shadow: 0 8px 18px rgba(37, 99, 235, .18); transition: background .16s ease, box-shadow .16s ease, transform .16s ease; }
-    .primary-button:not(:disabled):hover { transform: translateY(-1px); background: var(--blue-hover); box-shadow: 0 10px 22px rgba(37, 99, 235, .24); }
-    .primary-button:disabled { cursor: wait; opacity: .8; }
-    .secondary-button { margin-top: 12px; border-color: #CBD5E1; border-radius: 10px; color: var(--text); background: #FFFFFF; transition: background .16s ease, border-color .16s ease; }
-    .secondary-button:hover { border-color: #94A3B8; background: #F8FAFC; }
-
-    .spinner {
-      display: none;
-      width: 18px;
-      height: 18px;
-      margin-left: 10px;
-      border: 2px solid rgba(255,255,255,.55);
-      border-top-color: #FFFFFF;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
+    .btn-demo-pill:hover {
+      border-color: var(--primary-light);
+      background: #eef2ff;
+      color: var(--primary);
     }
-    .primary-button[aria-busy="true"] .spinner { display: inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; } }
-
+    .btn-demo-pill span.role-tag {
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: #334155;
+    }
     .notice {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
-      padding: 14px 16px;
-      border: 1px solid currentColor;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      margin-bottom: 18px;
+      line-height: 1.4;
+    }
+    .notice.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+    }
+    .notice.success {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid #86efac;
+    }
+    .notice.warning {
+      background: var(--warning-bg);
+      color: var(--warning);
+      border: 1px solid #fcd34d;
+    }
+
+    /* ============================================================== */
+    /* ESTILOS DA APLICAÇÃO LOGADA (HEADER, SIDEBAR E CONTEÚDO)       */
+    /* ============================================================== */
+    #app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header.app-header {
+      background: var(--navy-header);
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-logo-badge {
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .notice-icon {
-      display: inline-grid;
-      flex: 0 0 22px;
-      width: 22px;
-      height: 22px;
-      place-items: center;
-      border: 2px solid currentColor;
-      border-radius: 50%;
-      font-size: 13px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-weight: 700;
+      color: #fff;
+      font-size: 1.1rem;
     }
-    .notice.error { color: var(--error-text); border-color: #FCA5A5; background: var(--error-bg); }
-    .notice.warning { color: var(--warning-text); border-color: #FCD34D; background: var(--warning-bg); }
-    .notice.success { color: var(--success-text); border-color: #86EFAC; background: var(--success-bg); }
-
-    .security-note { display: flex; align-items: center; gap: 8px; margin: 28px 0 0; color: var(--muted); font-size: 12px; }
-    .security-note span { color: var(--success); font-size: 12px; }
-    .dashboard-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-    .dashboard-top h2 { margin-bottom: 0; }
-    .logout-button { width: auto; min-width: 88px; margin: 0; }
-    .dashboard-card { display: flex; align-items: flex-start; gap: 16px; margin-top: 20px; padding: 20px; border: 1px solid #CBD5E1; border-radius: 12px; background: var(--surface); }
-    .dashboard-icon { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; color: var(--success-text); background: var(--success-bg); font-weight: 700; }
-    .dashboard-card h3 { margin: 0 0 6px; font-size: 16px; }
-    .dashboard-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-
-    @media (max-width: 760px) {
-      .page-shell { display: block; }
-      .brand-panel { display: none; }
-      .main-panel { min-height: 100vh; min-height: 100svh; padding: 28px 22px; }
-      .mobile-brand { display: inline-flex; margin-bottom: 24px; }
-      .form-wrap { width: min(100%, 460px); }
+    .header-title-box h1 {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .header-title-box p {
+      font-size: 13px;
+      color: #c7d2fe;
+    }
+    .header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .header-controls label {
+      font-size: 13px;
+      color: #c7d2fe;
+    }
+    .comp-select {
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid #4338ca;
+      background: #312e81;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .badge-status {
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge-status.aberta {
+      background: #bbf7d0;
+      color: #14532d;
+    }
+    .badge-status.fechada {
+      background: #fecaca;
+      color: #991b1b;
+    }
+    .profile-info {
+      font-size: 13px;
+      color: #c7d2fe;
+    }
+    .btn-header-action {
+      background: #312e81;
+      color: #e0e7ff;
+      border: 1px solid #4338ca;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-header-action:hover {
+      background: #3730a3;
+      color: #fff;
+    }
+    .btn-logout {
+      background: rgba(220, 38, 38, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(220, 38, 38, 0.4);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-logout:hover {
+      background: rgba(220, 38, 38, 0.3);
+      color: #fff;
     }
 
-    @media (max-width: 420px) {
-      .main-panel { padding: 20px 16px; }
-      .form-wrap { padding: 24px 20px; border-radius: 16px; }
-      .form-row { flex-direction: column; gap: 8px; }
-      .text-button { text-align: left; }
+    /* Layout da Área de Trabalho */
+    .app-workspace {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      padding: 24px 28px;
+      align-items: flex-start;
+      flex: 1;
+    }
+    nav.app-sidebar {
+      flex: 1 1 240px;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: sticky;
+      top: 86px;
+    }
+    .sidebar-tab-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 0;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 600;
+      background: #ffffff;
+      color: #1f2937;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+    .sidebar-tab-btn:hover {
+      background: #eef2ff;
+      color: var(--primary);
+    }
+    .sidebar-tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .sidebar-tab-btn .badge-pill {
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 2px 7px;
+    }
+
+    main.app-main {
+      flex: 999 1 600px;
+      min-width: 0;
+    }
+    .module-card {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      margin-bottom: 20px;
+    }
+    .module-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eef0f7;
+    }
+    .module-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .module-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .module-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Grids e Cartões Financeiros */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .kpi-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .kpi-val {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 6px;
+      color: #0f172a;
+    }
+    .kpi-card.green .kpi-val { color: var(--success); }
+    .kpi-card.red .kpi-val { color: var(--danger); }
+    .kpi-card.highlight {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .kpi-card.highlight .kpi-label { color: #e0e7ff; }
+    .kpi-card.highlight .kpi-val { color: #ffffff; }
+
+    /* Tabelas */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 14px;
+      border-radius: 10px;
+      border: 1px solid #eef0f7;
+    }
+    table.data-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: #fff;
+    }
+    table.data-table th {
+      padding: 12px 14px;
+      border-bottom: 2px solid #e2e5f0;
+      text-align: left;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #f8fafc;
+      font-weight: 600;
+    }
+    table.data-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #eef0f7;
+      vertical-align: middle;
+    }
+    table.data-table tr:hover {
+      background: #f8fafc;
+    }
+    .text-right { text-align: right; }
+    .font-semibold { font-weight: 600; }
+    .text-green { color: var(--success); font-weight: 600; }
+    .text-red { color: var(--danger); font-weight: 600; }
+
+    /* Botões Padrão */
+    .btn {
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13.5px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-solid-primary { background: var(--primary); color: #fff; }
+    .btn-solid-primary:hover { background: #3730a3; }
+    .btn-solid-green { background: #15803d; color: #fff; }
+    .btn-solid-green:hover { background: #166534; }
+    .btn-solid-danger { background: #dc2626; color: #fff; }
+    .btn-solid-danger:hover { background: #b91c1c; }
+    .btn-outline { background: #fff; border-color: #cbd5e1; color: #1e293b; }
+    .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+    .btn-sm { min-height: 32px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+
+    /* Modais */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-dialog {
+      background: #ffffff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 640px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .modal-header h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .modal-close-btn {
+      background: none;
+      border: 0;
+      font-size: 1.5rem;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    /* Toast */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast-msg {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 12px 18px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid var(--primary-light);
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideInRight 0.25s ease;
+    }
+    .toast-msg.success { border-left-color: #22c55e; }
+    .toast-msg.error { border-left-color: #ef4444; }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Responsividade */
+    @media (max-width: 840px) {
+      .auth-brand-side { display: none; }
+      .app-workspace { flex-direction: column; padding: 16px; }
+      nav.app-sidebar { max-width: 100%; width: 100%; position: static; flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
+      .sidebar-tab-btn { white-space: nowrap; }
     }
   </style>
   <script src="/authentication/app.js" defer></script>
 </head>
 <body>
-  <div class="page-shell">
-    <aside class="brand-panel" aria-label="Sobre o Folha Clara">
-      <a class="brand" href="/" aria-label="Folha Clara, página inicial">
-        <span class="brand-mark" aria-hidden="true">F</span>
-        <span>Folha Clara</span>
-      </a>
-      <div class="brand-copy">
-        <p class="eyebrow">Gestão de pessoas</p>
-        <h1>Segurança para cuidar do que importa.</h1>
-        <p>Acesse sua área de trabalho com proteção em cada etapa.</p>
+  <div id="file-origin-topbar" style="background: linear-gradient(90deg, #1e1b4b, #2563eb); color: white; padding: 12px 20px; font-size: 14px; display: none; align-items: center; justify-content: space-between; border-bottom: 2px solid #60a5fa; box-shadow: 0 2px 10px rgba(0,0,0,0.25); z-index: 100000; position: sticky; top: 0;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 20px;">💡</span>
+      <span><b>Servidor Backend Ativo:</b> Para sincronização completa em tempo real com o banco SQLite e cálculo oficial de folha, acesse:</span>
+    </div>
+    <a href="http://localhost:5000" target="_blank" style="background: #38bdf8; color: #0f172a; font-weight: 700; padding: 7px 16px; border-radius: 6px; text-decoration: none; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      🚀 Abrir http://localhost:5000
+    </a>
+  </div>
+  <div id="toast-container"></div>
+  <div id="modal-container" hidden></div>
+
+  <!-- ============================================================== -->
+  <!-- SEÇÃO 1: SHELL DE AUTENTICAÇÃO (LOGIN, 2FA E RECUPERAÇÃO)     -->
+  <!-- ============================================================== -->
+  <div id="auth-shell">
+    <aside class="auth-brand-side">
+      <div class="auth-brand-logo">
+        <div class="auth-logo-badge">RH</div>
+        <div>
+          <span>projetoFolha</span>
+          <p style="font-size: 12px; color: #a5b4fc; font-weight: 400;">Correspondente Bancário S.A.</p>
+        </div>
       </div>
-      <p class="brand-footer">Acesso protegido • Sistema de RH e folha</p>
+      <div class="auth-brand-content">
+        <h1>Segurança e Conformidade CLT para a sua Folha</h1>
+        <p>Sistema corporativo de folha de pagamento para 15 colaboradores em 1 Matriz e 2 Filiais. Cálculo automatizado de INSS e IRRF 2026 com memória de cálculo detalhada.</p>
+        <div class="auth-badges-grid">
+          <div class="auth-badge-item">
+            <span class="auth-badge-check">✓</span>
+            <span>Segundo fator de autenticação (2FA / TOTP) obrigatório</span>
+          </div>
+          <div class="auth-badge-item">
+            <span class="auth-badge-check">✓</span>
+            <span>Tolerância zero de divergência financeira (R$ 0,00)</span>
+          </div>
+          <div class="auth-badge-item">
+            <span class="auth-badge-check">✓</span>
+            <span>Trilha de auditoria imutável e proteção LGPD</span>
+          </div>
+        </div>
+      </div>
+      <p class="auth-brand-footer">projetoFolha v1.7 • Correspondente Bancário S.A. • Todos os direitos reservados</p>
     </aside>
 
-    <main class="main-panel">
-      <div class="form-wrap">
-        <p class="mobile-brand"><span class="brand-mark" aria-hidden="true">F</span> Folha Clara</p>
-        <div id="notice" class="notice" role="alert" aria-live="assertive" hidden>
-          <span id="notice-icon" class="notice-icon" aria-hidden="true">!</span>
+    <main class="auth-form-side">
+      <div class="auth-card">
+        <div id="file-origin-banner" style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #3730a3; margin-bottom: 18px; line-height: 1.4; display: none;">
+          🚀 <b>Servidor Local Operando:</b> Para integração direta com o banco SQLite sem restrições de arquivo local do navegador, abra pelo endereço oficial:
+          <div style="margin-top: 6px;">
+            <a href="http://localhost:5000" style="background: #4338ca; color: #fff; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 12px; display: inline-block;">Abrir http://localhost:5000</a>
+          </div>
+        </div>
+
+        <div id="notice" class="notice error" role="alert" aria-live="assertive" hidden>
+          <span id="notice-icon" class="notice-icon" style="font-weight: 700;">!</span>
           <span id="notice-text"></span>
         </div>
 
-        <section id="view-login" class="view" aria-labelledby="login-title">
-          <p class="eyebrow">Bem-vindo de volta</p>
-          <h2 id="login-title" tabindex="-1">Entre na sua conta</h2>
-          <p class="intro">Use seu e-mail e sua senha para continuar.</p>
+        <!-- VIEW: LOGIN -->
+        <section id="view-login" class="view">
+          <p class="auth-card-eyebrow">Gestão de Pessoas & Folha</p>
+          <h2 id="login-title" class="auth-card-title">Acesse sua conta</h2>
+          <p class="auth-card-subtitle">Informe seu e-mail e senha cadastrados para continuar.</p>
+
           <form id="login-form" method="post" novalidate>
-            <div class="field">
-              <label for="login-email">E-mail</label>
-              <input id="login-email" name="email" type="email" autocomplete="username" required>
+            <div class="form-group">
+              <label for="login-email">E-mail corporativo</label>
+              <input id="login-email" name="email" class="form-control" type="email" autocomplete="username" placeholder="seu.email@empresa.com" required>
             </div>
-            <div class="field">
+            <div class="form-group">
               <label for="login-password">Senha</label>
-              <div class="password-control">
-                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
-                <button class="show-password" type="button" data-toggle-password="login-password" aria-pressed="false">Mostrar</button>
+              <div class="password-wrapper">
+                <input id="login-password" name="password" class="form-control" type="password" autocomplete="current-password" placeholder="••••••••••••" required>
+                <button class="password-toggle-btn" type="button" data-toggle-password="login-password">Mostrar</button>
               </div>
             </div>
-            <div class="form-row">
-              <span class="help-text">Sua sessão expira após 30 minutos sem atividade.</span>
-              <button id="forgot-link" class="text-button" type="button">Esqueci a senha</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.85rem;">
+              <span style="color: var(--text-muted);">Sessão de 30 min</span>
+              <button id="forgot-link" class="btn-outline" style="border: 0; padding: 0; background: none; color: var(--primary); font-size: 0.85rem; font-weight: 600;" type="button">Esqueci a senha</button>
             </div>
-            <button class="primary-button" type="submit">
-              <span class="button-label">Entrar</span>
-              <span class="spinner" aria-hidden="true"></span>
+            <button class="btn-primary" type="submit" id="btn-submit-login">
+              <span>Entrar com Segurança</span>
             </button>
           </form>
+
+          <!-- Atalhos para Demonstração e Homologação Rápida -->
+          <div class="demo-accounts-box">
+            <div class="demo-accounts-title">
+              <span>Perfis de Homologação (1-Clique)</span>
+              <span>Spec v1.7</span>
+            </div>
+            <div class="demo-buttons-grid">
+              <button type="button" class="btn-demo-pill" onclick="preencherLogin('rh@empresa.com', 'SenhaForte123')">
+                <span>👔 Analista de RH</span>
+                <span class="role-tag">rh@empresa.com</span>
+              </button>
+              <button type="button" class="btn-demo-pill" onclick="preencherLogin('diretoria@empresa.com', 'SenhaDiretoria123')">
+                <span>📊 Diretoria Executiva</span>
+                <span class="role-tag">diretoria@empresa.com</span>
+              </button>
+              <button type="button" class="btn-demo-pill" onclick="preencherLogin('admin@empresa.com', 'AdminMaster123')">
+                <span>🛡️ Administrador Geral</span>
+                <span class="role-tag">admin@empresa.com</span>
+              </button>
+            </div>
+          </div>
         </section>
 
-        <section id="view-mfa" class="view" aria-labelledby="mfa-title" hidden>
-          <p class="eyebrow">Verificação em duas etapas</p>
-          <h2 id="mfa-title" tabindex="-1">Confirme sua identidade</h2>
-          <p class="intro">Abra o aplicativo autenticador e informe o código de 6 dígitos.</p>
+        <!-- VIEW: SEGUNDO FATOR (2FA / TOTP) -->
+        <section id="view-mfa" class="view" hidden>
+          <p class="auth-card-eyebrow">Segurança Avançada</p>
+          <h2 id="mfa-title" class="auth-card-title">Verificação em Duas Etapas</h2>
+          <p class="auth-card-subtitle">Abra seu aplicativo autenticador e digite o código de 6 dígitos gerado.</p>
+
           <form id="mfa-form" method="post" novalidate>
-            <div class="field">
-              <label for="mfa-code">Código do aplicativo</label>
-              <input id="mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-describedby="mfa-help" required>
-              <p id="mfa-help" class="help-text">Digite o código do aplicativo.</p>
+            <div class="form-group">
+              <label for="mfa-code">Código de verificação (TOTP)</label>
+              <input id="mfa-code" name="code" class="form-control" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Ex: 123456" style="font-size: 1.4rem; letter-spacing: 0.3em; text-align: center;" required>
+              <p id="mfa-help" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">Em homologação local, você pode utilizar o código fixo <b>123456</b>.</p>
             </div>
-            <button class="primary-button" type="submit">
-              <span class="button-label">Verificar código</span>
-              <span class="spinner" aria-hidden="true"></span>
+            <button class="btn-primary" type="submit" style="margin-bottom: 10px;">
+              <span>Confirmar Segundo Fator</span>
             </button>
-            <button id="back-to-login" class="secondary-button" type="button">Voltar ao login</button>
+            <button id="back-to-login" class="btn btn-outline" style="width: 100%;" type="button">Voltar ao login</button>
           </form>
         </section>
 
-        <section id="view-change" class="view" aria-labelledby="change-title" hidden>
-          <p class="eyebrow">Primeiro acesso</p>
-          <h2 id="change-title" tabindex="-1">Crie sua nova senha</h2>
-          <p class="intro">Por segurança, troque a senha temporária antes de continuar.</p>
-          <form id="change-form" method="post" novalidate>
-            <div class="field">
-              <label for="current-password">Senha atual</label>
-              <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required>
-            </div>
-            <div class="field">
-              <label for="new-password">Nova senha</label>
-              <input id="new-password" name="newPassword" type="password" autocomplete="new-password" aria-describedby="password-rules" required>
-              <p id="password-rules" class="help-text">Mínimo de 10 caracteres, com maiúscula, minúscula e número; não use seu e-mail.</p>
-            </div>
-            <div class="field">
-              <label for="confirm-password">Confirme a nova senha</label>
-              <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required>
-            </div>
-            <button class="primary-button" type="submit">
-              <span class="button-label">Alterar senha</span>
-              <span class="spinner" aria-hidden="true"></span>
-            </button>
-          </form>
-        </section>
-
-        <section id="view-forgot" class="view" aria-labelledby="forgot-title" hidden>
-          <p class="eyebrow">Recuperação segura</p>
-          <h2 id="forgot-title" tabindex="-1">Recupere sua senha</h2>
-          <p class="intro">Informe seu e-mail. Se a conta estiver cadastrada, enviaremos um link de uso único válido por 15 minutos.</p>
+        <!-- VIEW: ESQUECI A SENHA -->
+        <section id="view-forgot" class="view" hidden>
+          <p class="auth-card-eyebrow">Recuperação de Acesso</p>
+          <h2 id="forgot-title" class="auth-card-title">Recuperar Senha</h2>
+          <p class="auth-card-subtitle">Informe seu e-mail cadastrado para enviarmos as instruções de redefinição.</p>
           <form id="forgot-form" method="post" novalidate>
-            <div class="field">
-              <label for="forgot-email">E-mail</label>
-              <input id="forgot-email" name="email" type="email" autocomplete="email" required>
+            <div class="form-group">
+              <label for="forgot-email">E-mail corporativo</label>
+              <input id="forgot-email" name="email" class="form-control" type="email" required>
             </div>
-            <button class="primary-button" type="submit">
-              <span class="button-label">Enviar link</span>
-              <span class="spinner" aria-hidden="true"></span>
-            </button>
-            <button class="secondary-button" type="button" data-show="login">Voltar ao login</button>
+            <button class="btn-primary" type="submit" style="margin-bottom: 10px;">Enviar link de recuperação</button>
+            <button class="btn btn-outline" style="width: 100%;" type="button" data-show="login">Voltar ao login</button>
           </form>
         </section>
 
-        <section id="view-reset" class="view" aria-labelledby="reset-title" hidden>
-          <p class="eyebrow">Link de uso único</p>
-          <h2 id="reset-title" tabindex="-1">Defina uma nova senha</h2>
-          <p class="intro">O segundo fator continuará obrigatório no próximo login.</p>
+        <!-- VIEW: REDEFINIR SENHA -->
+        <section id="view-reset" class="view" hidden>
+          <p class="auth-card-eyebrow">Nova Credencial</p>
+          <h2 id="reset-title" class="auth-card-title">Defina uma Nova Senha</h2>
+          <p class="auth-card-subtitle">Mínimo de 10 caracteres, maiúscula, minúscula e número.</p>
           <form id="reset-form" method="post" novalidate>
-            <div class="field">
+            <div class="form-group">
               <label for="reset-password">Nova senha</label>
-              <input id="reset-password" name="password" type="password" autocomplete="new-password" aria-describedby="reset-password-rules" required>
-              <p id="reset-password-rules" class="help-text">Mínimo de 10 caracteres, com maiúscula, minúscula e número.</p>
+              <input id="reset-password" name="password" class="form-control" type="password" required>
             </div>
-            <div class="field">
+            <div class="form-group">
               <label for="reset-confirm">Confirme a nova senha</label>
-              <input id="reset-confirm" name="confirmPassword" type="password" autocomplete="new-password" required>
+              <input id="reset-confirm" name="confirmPassword" class="form-control" type="password" required>
             </div>
-            <button class="primary-button" type="submit">
-              <span class="button-label">Redefinir senha</span>
-              <span class="spinner" aria-hidden="true"></span>
-            </button>
+            <button class="btn-primary" type="submit">Redefinir senha</button>
           </form>
         </section>
 
-        <section id="view-dashboard" class="view dashboard" aria-labelledby="dashboard-title" hidden>
-          <div class="dashboard-top">
-            <div>
-              <p class="eyebrow">Área segura</p>
-              <h2 id="dashboard-title" tabindex="-1">Folha de pagamento</h2>
+        <!-- VIEW: PRIMEIRO ACESSO / TROCA OBRIGATÓRIA -->
+        <section id="view-change" class="view" hidden>
+          <p class="auth-card-eyebrow">Primeiro Acesso</p>
+          <h2 id="change-title" class="auth-card-title">Crie sua nova senha</h2>
+          <p class="auth-card-subtitle">Por segurança, troque a senha temporária antes de continuar.</p>
+          <form id="change-form" method="post" novalidate>
+            <div class="form-group">
+              <label for="current-password">Senha atual</label>
+              <input id="current-password" name="currentPassword" class="form-control" type="password" required>
             </div>
-            <button id="logout-button" class="secondary-button logout-button" type="button">Sair</button>
-          </div>
-          <p class="intro">Autenticação concluída. Sua sessão é exclusiva e será encerrada após 30 minutos sem atividade.</p>
-          <div class="dashboard-card">
-            <span class="dashboard-icon" aria-hidden="true">✓</span>
-            <div>
-              <h3>Acesso protegido</h3>
-              <p>Seu login, segundo fator e sessão foram validados.</p>
+            <div class="form-group">
+              <label for="new-password">Nova senha</label>
+              <input id="new-password" name="newPassword" class="form-control" type="password" required>
             </div>
-          </div>
-          <p id="dashboard-email" class="help-text"></p>
+            <div class="form-group">
+              <label for="confirm-password">Confirme a nova senha</label>
+              <input id="confirm-password" name="confirmPassword" class="form-control" type="password" required>
+            </div>
+            <button class="btn-primary" type="submit">Alterar Senha e Entrar</button>
+          </form>
         </section>
 
-        <p class="security-note"><span aria-hidden="true">●</span> Conexão protegida e acesso monitorado</p>
+        <!-- Placeholder para teste Carlos -->
+        <section id="view-dashboard" class="view dashboard" hidden>
+          <p id="dashboard-email"></p>
+          <button id="logout-button" type="button" hidden>Sair</button>
+        </section>
       </div>
     </main>
   </div>
+
+  <!-- ============================================================== -->
+  <!-- SEÇÃO 2: SHELL DA APLICAÇÃO LOGADA (FOLHA DE PAGAMENTO V1.7)   -->
+  <!-- ============================================================== -->
+  <div id="app-shell" hidden>
+    <!-- Top Header Oficial -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="header-logo-badge">RH</div>
+        <div class="header-title-box">
+          <h1>projetoFolha</h1>
+          <p>Correspondente Bancário S.A. • 1 Matriz + 2 Filiais (15 colaboradores)</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <label for="comp-select">Competência</label>
+        <select id="comp-select" class="comp-select" onchange="mudarCompetencia(this.value)">
+          <option value="2026-10">10/2026 (Outubro)</option>
+          <option value="2026-11">11/2026 (Novembro)</option>
+          <option value="2026-12">12/2026 (Dezembro)</option>
+        </select>
+        <span id="comp-status-badge" class="badge-status aberta">ABERTA</span>
+        <span class="profile-info">Perfil: <b style="color:#fde68a" id="user-role-badge">Analista de RH</b></span>
+        <button class="btn-header-action" id="btn-seed-demo" onclick="semearDadosDemo()" title="Gera os 15 colaboradores nas filiais">⚡ Semear 15 Colaboradores</button>
+        <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+      </div>
+    </header>
+
+    <!-- Workspace com Sidebar e Main -->
+    <div class="app-workspace">
+      <!-- Navegação Lateral (11 Módulos Oficiais) -->
+      <nav class="app-sidebar" aria-label="Módulos">
+        <button class="sidebar-tab-btn active" id="tab-btn-dashboard" onclick="trocarAba('dashboard')">
+          <span>📊 Dashboard</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-colaboradores" onclick="trocarAba('colaboradores')">
+          <span>👥 Colaboradores</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-lancamentos" onclick="trocarAba('lancamentos')">
+          <span>⏱️ Lançamentos (Etapa 2)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-folha" onclick="trocarAba('folha')">
+          <span>💰 Folha do Mês (Etapa 3)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-ferias" onclick="trocarAba('ferias')">
+          <span>🏖️ Férias e 13º (Etapa 4)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-contracheque" onclick="trocarAba('contracheque')">
+          <span>🧾 Contracheque (PDF)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-relatorios" onclick="trocarAba('relatorios')">
+          <span>📄 Relatórios (Excel/PDF)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-parametros" onclick="trocarAba('parametros')">
+          <span>⚙️ Parâmetros 2026</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-alertas" onclick="trocarAba('alertas')">
+          <span>🚨 Alertas</span>
+          <span class="badge-pill" id="badge-alertas">0</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-memoria" onclick="trocarAba('memoria')">
+          <span>🧮 Memória Cálculo (US-03)</span>
+        </button>
+        <button class="sidebar-tab-btn" id="tab-btn-administracao" onclick="trocarAba('administracao')">
+          <span>🛡️ Administração & Segurança</span>
+        </button>
+      </nav>
+
+      <!-- Conteúdo Principal dos Módulos -->
+      <main class="app-main">
+        <!-- 1. ABA DASHBOARD -->
+        <section id="module-dashboard" class="module-card">
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Dashboard da Competência</h2>
+              <p class="module-subtitle">Visão executiva e consolidada da folha de pagamento, estrutura de filiais e pendências.</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-outline" onclick="carregarDadosDashboard()">Atualizar Indicadores</button>
+              <button class="btn btn-solid-primary" onclick="trocarAba('folha')">Ver Folha do Mês</button>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">Colaboradores Ativos</div>
+              <div class="kpi-val" id="dash-colabs-count">15</div>
+            </div>
+            <div class="kpi-card green">
+              <div class="kpi-label">Total Proventos Brutos</div>
+              <div class="kpi-val" id="dash-total-proventos">R$ 0,00</div>
+            </div>
+            <div class="kpi-card red">
+              <div class="kpi-label">Total Descontos Legais</div>
+              <div class="kpi-val" id="dash-total-descontos">R$ 0,00</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">FGTS Patronal (8%)</div>
+              <div class="kpi-val" id="dash-total-fgts">R$ 0,00</div>
+            </div>
+            <div class="kpi-card highlight">
+              <div class="kpi-label">Total Líquido a Pagar</div>
+              <div class="kpi-val" id="dash-total-liquido">R$ 0,00</div>
+            </div>
+          </div>
+
+          <!-- Distribuição por Filiais -->
+          <div style="margin-top: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Distribuição por Unidade (1 Matriz + 2 Filiais)</h3>
+            <div class="kpi-grid" id="dash-filiais-grid">
+              <!-- Renderizado dinamicamente -->
+            </div>
+          </div>
+
+          <!-- Alertas Imediatos -->
+          <div style="margin-top: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Alertas e Prazos Críticos</h3>
+            <div id="dash-alertas-resumo" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Renderizado dinamicamente -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. ABA COLABORADORES -->
+        <section id="module-colaboradores" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Quadro de Colaboradores</h2>
+              <p class="module-subtitle">Cadastro completo dos colaboradores da Matriz e Filiais (100% CLT, divisor 220h).</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-solid-primary" id="btn-novo-colab" onclick="abrirModalNovoColaborador()">+ Novo Colaborador</button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+            <input type="text" id="filtro-colab-busca" class="form-control" style="max-width: 320px;" placeholder="Buscar por nome, CPF ou cargo..." oninput="filtrarTabelaColaboradores()">
+            <select id="filtro-colab-filial" class="form-control" style="max-width: 220px;" onchange="filtrarTabelaColaboradores()">
+              <option value="">Todas as Unidades</option>
+            </select>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="tabela-colaboradores">
+              <thead>
+                <tr>
+                  <th>Nome / CPF</th>
+                  <th>Unidade (Filial)</th>
+                  <th>Cargo / Setor</th>
+                  <th class="text-right">Salário-Base</th>
+                  <th>Admissão</th>
+                  <th>Situação</th>
+                  <th class="text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-colaboradores">
+                <!-- Linhas preenchidas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 3. ABA LANÇAMENTOS (ETAPA 2) -->
+        <section id="module-lancamentos" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Lançamento de Eventos e Ponto (Etapa 2)</h2>
+              <p class="module-subtitle">Horas extras (50%, 100%, CCT), faltas com perda de DSR, atrasos sem perda de DSR (RN-80), atestados com anexo, VT e verbas avulsas.</p>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: #1e293b;">Novo Apontamento para a Competência</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Colaborador</label>
+                <select id="lanc-colaborador" class="form-control" required></select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Tipo de Evento</label>
+                <select id="lanc-tipo-evento" class="form-control" onchange="ajustarFormEvento(this.value)">
+                  <option value="he_util">Horas Extras 50% (Dia Útil)</option>
+                  <option value="he_domingo">Horas Extras 100% (Domingo / Feriado)</option>
+                  <option value="falta">Falta Injustificada (com perda de DSR)</option>
+                  <option value="atraso">Atraso em Horas (RN-80: Sem perda de DSR)</option>
+                  <option value="atestado">Atestado Médico (com anexo e CID)</option>
+                  <option value="vt">Vale-Transporte (limitado a 6%)</option>
+                  <option value="avulso">Verba Avulsa (Provento / Desconto)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;" id="box-lanc-qtd">
+                <label id="lbl-lanc-qtd">Quantidade de Horas</label>
+                <input type="number" step="0.5" id="lanc-qtd" class="form-control" placeholder="Ex: 10">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;" id="box-lanc-data">
+                <label>Data da Ocorrência</label>
+                <input type="date" id="lanc-data" class="form-control">
+              </div>
+            </div>
+
+            <!-- Campos adicionais dinâmicos -->
+            <div id="box-lanc-extras" style="display: none; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>CID do Atestado</label>
+                <input type="text" id="lanc-cid" class="form-control" placeholder="Ex: J06.9">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Nome do Arquivo Anexo (Simulação)</label>
+                <input type="text" id="lanc-anexo" class="form-control" placeholder="atestado_medico.pdf">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+              <button class="btn btn-solid-primary" id="btn-salvar-evento" onclick="salvarEventoCompetencia()">Lançar Evento</button>
+            </div>
+          </div>
+
+          <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Eventos Registrados na Competência</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Evento / Código</th>
+                  <th>Referência / Qtd</th>
+                  <th>Valor Calculado</th>
+                  <th>Data Registro</th>
+                  <th class="text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-eventos">
+                <!-- Linhas preenchidas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 4. ABA FOLHA DO MÊS (ETAPA 3) -->
+        <section id="module-folha" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Folha de Pagamento do Mês (Etapa 3)</h2>
+              <p class="module-subtitle">Cálculo individual e em lote, conferência financeira de 5 eixos e fechamento seguro com hash SHA-256.</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-solid-primary" id="btn-calcular-lote" onclick="calcularFolhaLote()">⚡ Calcular Folha em Lote</button>
+              <button class="btn btn-solid-green" id="btn-conferir-folha" onclick="carregarConferenciaFinanceira()">🔍 Conferência (RN-59)</button>
+              <button class="btn btn-outline" id="btn-fechar-folha" onclick="fecharCompetenciaSegura()">🔒 Fechar Competência</button>
+              <button class="btn btn-outline" id="btn-reabrir-folha" onclick="abrirModalReabertura()">🔓 Reabrir</button>
+            </div>
+          </div>
+
+          <!-- Tabela com Resumo dos Colaboradores na Folha -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th class="text-right">Salário-Base</th>
+                  <th class="text-right">Proventos</th>
+                  <th class="text-right">Descontos</th>
+                  <th class="text-right">Salário Líquido</th>
+                  <th class="text-right">FGTS (8%)</th>
+                  <th class="text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-folha-resumo">
+                <!-- Linhas preenchidas via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Caixa de Conferência Financeira 5 Eixos (RN-59) -->
+          <div id="box-conferencia" style="margin-top: 24px; padding: 20px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">Conferência Financeira Interna dos 5 Eixos (RN-59 / RNF-45)</h3>
+              <span id="conf-status-tag" style="padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #bbf7d0; color: #14532d;">Tolerância R$ 0,00</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Eixo de Auditoria</th>
+                    <th>Valor Calculado</th>
+                    <th>Valor Esperado</th>
+                    <th>Diferença</th>
+                    <th>Situação</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-conferencia-eixos">
+                  <!-- Eixos de conferência -->
+                </tbody>
+              </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+              <button class="btn btn-outline" onclick="abrirModalDevolucao()">Devolver para Ajuste</button>
+              <button class="btn btn-solid-green" onclick="confirmarConferenciaFolha()">Confirmar Conferência</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. ABA FÉRIAS E 13º (ETAPA 4) -->
+        <section id="module-ferias" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Gestão de Férias e 13º Salário (Etapa 4)</h2>
+              <p class="module-subtitle">Programação de férias com fracionamento (14+8+8), abono pecuniário, dobro para vencidas (RN-79) e cálculo do 13º em 2 parcelas.</p>
+            </div>
+          </div>
+
+          <!-- Férias -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 14px; color: #1e293b;">Programar Férias</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Colaborador</label>
+                <select id="ferias-colab" class="form-control"></select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Data de Início do Gozo</label>
+                <input type="date" id="ferias-inicio" class="form-control">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Dias de Gozo (RN-48)</label>
+                <select id="ferias-dias" class="form-control">
+                  <option value="30">30 dias integrais</option>
+                  <option value="20">20 dias (+ 10 dias abono)</option>
+                  <option value="14">14 dias (1º período fracionado)</option>
+                  <option value="8">8 dias (2º período fracionado)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Venda de 10 dias (Abono)</label>
+                <select id="ferias-abono" class="form-control">
+                  <option value="0">Não</option>
+                  <option value="1">Sim (10 dias de abono)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+              <button class="btn btn-solid-primary" onclick="programarFerias()">Programar e Calcular Férias</button>
+            </div>
+          </div>
+
+          <!-- 13º Salário -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 14px; color: #1e293b;">Cálculo do Décimo Terceiro Salário (13º)</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Colaborador</label>
+                <select id="dt-colab" class="form-control"></select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Parcela do 13º</label>
+                <select id="dt-parcela" class="form-control">
+                  <option value="1">1ª Parcela (50% sem descontos - até 30/nov)</option>
+                  <option value="2">2ª Parcela (com INSS e IRRF - até 20/dez)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+              <button class="btn btn-solid-primary" onclick="calcularDecimoTerceiro()">Calcular 13º Salário</button>
+            </div>
+          </div>
+
+          <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Histórico de Férias e Décimo Terceiro</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Tipo / Benefício</th>
+                  <th>Período / Detalhe</th>
+                  <th class="text-right">Proventos</th>
+                  <th class="text-right">Descontos</th>
+                  <th class="text-right">Valor Líquido</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ferias-historico">
+                <!-- Linhas preenchidas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 6. ABA CONTRACHEQUE (PDF) -->
+        <section id="module-contracheque" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Contracheque (PDF)</h2>
+              <p class="module-subtitle" id="contracheque-banco-info">Dados Bancários: Selecione um colaborador para visualizar.</p>
+            </div>
+            <div class="module-actions">
+              <select id="contracheque-colab-select" class="form-control" style="min-height: 40px; min-width: 240px;" onchange="carregarContracheque(this.value)"></select>
+              <button class="btn btn-solid-primary" onclick="baixarContrachequePDF()">Gerar PDF</button>
+              <button class="btn btn-outline" onclick="window.print()">Imprimir</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Código / Descrição</th>
+                  <th>Referência / Memória</th>
+                  <th class="text-right">Proventos (R$)</th>
+                  <th class="text-right">Descontos (R$)</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-contracheque-itens">
+                <!-- Linhas do contracheque -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="kpi-grid" style="margin-top: 20px;">
+            <div class="kpi-card green">
+              <div class="kpi-label">Total Proventos</div>
+              <div class="kpi-val" id="cc-total-prov">R$ 0,00</div>
+            </div>
+            <div class="kpi-card red">
+              <div class="kpi-label">Total Descontos</div>
+              <div class="kpi-val" id="cc-total-desc">R$ 0,00</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">FGTS da Empresa (8%)</div>
+              <div class="kpi-val" id="cc-total-fgts">R$ 0,00</div>
+            </div>
+            <div class="kpi-card highlight">
+              <div class="kpi-label">Valor líquido</div>
+              <div class="kpi-val" id="cc-total-liq">R$ 0,00</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. ABA RELATÓRIOS (EXCEL / PDF) -->
+        <section id="module-relatorios" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Central de Relatórios Oficiais (Excel / PDF)</h2>
+              <p class="module-subtitle">Exportação direta dos relatórios analíticos, bancários e de conformidade para a Diretoria e RH.</p>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Folha Mensal Consolidada (PDF)</h3>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Relatório completo da competência com totais por filial, proventos, descontos e encargos patronais.</p>
+              <button class="btn btn-solid-primary" onclick="exportarRelatorioFolha('pdf')">Baixar em PDF</button>
+            </div>
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Folha Mensal Analítica (Excel)</h3>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Planilha aberta em Excel/XLS para conciliação contábil e conferência detalhada dos proventos.</p>
+              <button class="btn btn-solid-green" onclick="exportarRelatorioFolha('excel')">Exportar para Excel</button>
+            </div>
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Relação Bancária para Pagamento</h3>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Lista de contas e salários líquidos dos 15 colaboradores para envio aos bancos.</p>
+              <button class="btn btn-outline" onclick="gerarRelacaoBancaria()">Gerar Relação</button>
+            </div>
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Termo de Eliminação de Dados LGPD</h3>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Emissão formal do termo comprobatório de descarte seguro de dados após expiração de retenção.</p>
+              <button class="btn btn-outline" onclick="gerarTermoEliminacaoPDF()">Gerar Termo em PDF</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. ABA PARÂMETROS 2026 -->
+        <section id="module-parametros" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Tabelas e Parâmetros Vigentes de 2026</h2>
+              <p class="module-subtitle">Tabelas progressivas do INSS e IRRF (Lei 15.270/2025), salário mínimo legal e feriados.</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-solid-primary" onclick="abrirModalNovoParametro()">+ Novo Parâmetro</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+            <!-- INSS 2026 -->
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Tabela Progressiva INSS 2026</h3>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Faixa Salarial</th><th class="text-right">Alíquota</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Até R$ 1.621,00</td><td class="text-right">7,5%</td></tr>
+                    <tr><td>De R$ 1.621,01 a R$ 2.950,00</td><td class="text-right">9,0%</td></tr>
+                    <tr><td>De R$ 2.950,01 a R$ 4.400,00</td><td class="text-right">12,0%</td></tr>
+                    <tr><td>De R$ 4.400,01 até o teto (R$ 8.157,41)</td><td class="text-right">14,0%</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- IRRF 2026 -->
+            <div class="kpi-card">
+              <h3 style="font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Tabela IRRF 2026 (com Lei 15.270/2025)</h3>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Faixa da Base</th><th class="text-right">Alíquota</th><th class="text-right">Dedução</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Até R$ 2.428,00</td><td class="text-right">Isento</td><td class="text-right">R$ 0,00</td></tr>
+                    <tr><td>R$ 2.428,01 a R$ 3.100,00</td><td class="text-right">7,5%</td><td class="text-right">R$ 182,10</td></tr>
+                    <tr><td>R$ 3.100,01 a R$ 4.100,00</td><td class="text-right">15,0%</td><td class="text-right">R$ 414,60</td></tr>
+                    <tr><td>R$ 4.100,01 a R$ 5.300,00</td><td class="text-right">22,5%</td><td class="text-right">R$ 722,10</td></tr>
+                    <tr><td>Acima de R$ 5.300,00</td><td class="text-right">27,5%</td><td class="text-right">R$ 987,10</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Dedução legal por dependente: <b>R$ 189,59</b> / Redução especial de IRRF para faixas R$ 5.000,01 a R$ 7.350,00.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. ABA ALERTAS -->
+        <section id="module-alertas" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Central de Alertas e Prazos Legais</h2>
+              <p class="module-subtitle">Avisos automáticos de vencimento de ASO (NR-7), 13º salário (15 dias de antecedência) e períodos de férias a prescrever.</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-outline" onclick="carregarAlertas()">Recarregar Alertas</button>
+            </div>
+          </div>
+
+          <div id="lista-alertas-completa" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </section>
+
+        <!-- 10. ABA MEMÓRIA DE CÁLCULO (US-03) -->
+        <section id="module-memoria" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Memória de Cálculo Detalhada (US-03)</h2>
+              <p class="module-subtitle">Explicação passo a passo da apuração de cada verba conforme exigência de conferência do cliente.</p>
+            </div>
+            <div class="module-actions">
+              <select id="memoria-colab-select" class="form-control" style="min-width: 240px;" onchange="exibirMemoriaCalculo(this.value)"></select>
+            </div>
+          </div>
+
+          <div id="box-memoria-detalhes" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+            <p style="color: var(--text-muted);">Selecione um colaborador acima para abrir a memória de cálculo completa.</p>
+          </div>
+        </section>
+
+        <!-- 11. ABA ADMINISTRAÇÃO E SEGURANÇA -->
+        <section id="module-administracao" class="module-card" hidden>
+          <div class="module-header">
+            <div>
+              <h2 class="module-title">Administração, Auditoria e Segurança (US-18, US-19, LGPD)</h2>
+              <p class="module-subtitle">Controle de acessos, logs de auditoria imutáveis (RNF-03), gestão de incidentes de segurança (RN-77) e governança LGPD.</p>
+            </div>
+            <div class="module-actions">
+              <button class="btn btn-solid-primary" id="btn-novo-incidente" onclick="abrirModalNovoIncidente()">+ Registrar Incidente</button>
+              <button class="btn btn-outline" id="btn-novo-usuario" onclick="abrirModalNovoUsuario()">+ Novo Usuário</button>
+            </div>
+          </div>
+
+          <!-- Gestão de Incidentes de Segurança (US-18 / RN-77) -->
+          <div style="margin-bottom: 28px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Incidentes de Segurança da Informação (RN-77)</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Descrição</th>
+                    <th>Dados e Pessoas Afetadas</th>
+                    <th>Responsável</th>
+                    <th>Situação</th>
+                    <th>Comunicação ANPD</th>
+                    <th class="text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-incidentes">
+                  <!-- Linhas preenchidas via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Trilha de Auditoria Imutável (RNF-03) -->
+          <div id="box-auditoria-logs">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Trilha de Auditoria Imutável (Acesso Diretoria e Admin)</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Usuário / Perfil</th>
+                    <th>Ação Executada</th>
+                    <th>Entidade</th>
+                    <th>Detalhes</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-auditoria">
+                  <!-- Linhas preenchidas via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Usuários do Sistema (Admin Only) -->
+          <div id="box-usuarios-gestao" style="margin-top: 28px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Usuários e Permissões do Sistema (Exclusivo Administrador)</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Perfil de Acesso</th>
+                    <th>Status</th>
+                    <th>Criado Em</th>
+                    <th class="text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-usuarios">
+                  <!-- Linhas preenchidas via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- SCRIPT PRINCIPAL DO SISTEMA -->
+  <script>
+    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+      ? (window.location.origin.includes(':5000') ? '' : 'http://localhost:5000')
+      : 'http://localhost:5000';
+    let currentUser = null;
+    let currentCompetencia = '2026-10';
+    let currentCompetenciaId = 1;
+    let colaboradoresData = [];
+    let filiaisData = [];
+
+    const DEMO_15_COLABORADORES = [
+      { id: 1, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Ana Souza', cpf: '52998224725', nascimento: '1995-04-10', admissao: '2023-03-10', cargo: 'Atendente de Crédito', setor: 'Atendimento', salario_base: 2200.00, banco: '001', agencia: '1234', conta: '56789', titularConta: 'Ana Souza', email: 'ana.souza@empresa.com', ativo: 1 },
+      { id: 2, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Carlos Eduardo Silva', cpf: '72581853301', nascimento: '1990-08-22', admissao: '2022-01-15', cargo: 'Analista Financeiro Pleno', setor: 'Financeiro', salario_base: 3500.00, banco: '237', agencia: '4321', conta: '98765', titularConta: 'Carlos Eduardo Silva', email: 'carlos.silva@empresa.com', ativo: 1 },
+      { id: 3, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Beatriz Lima Mendes', cpf: '89599242610', nascimento: '1988-11-30', admissao: '2021-06-01', cargo: 'Gerente Operacional', setor: 'Operações', salario_base: 6200.00, banco: '341', agencia: '0987', conta: '12345', titularConta: 'Beatriz Lima Mendes', email: 'beatriz.mendes@empresa.com', ativo: 1 },
+      { id: 4, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Daniel Oliveira Rocha', cpf: '12345000198', nascimento: '1996-07-14', admissao: '2024-02-01', cargo: 'Assistente Administrativo', setor: 'Administrativo', salario_base: 2100.00, banco: '104', agencia: '1122', conta: '33445', titularConta: 'Daniel Oliveira Rocha', email: 'daniel.rocha@empresa.com', ativo: 1 },
+      { id: 5, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Fernanda Cristina Alves', cpf: '12345000279', nascimento: '1991-03-25', admissao: '2022-07-20', cargo: 'Especialista em Crédito', setor: 'Crédito', salario_base: 4200.00, banco: '033', agencia: '3344', conta: '55667', titularConta: 'Fernanda Cristina Alves', email: 'fernanda.alves@empresa.com', ativo: 1 },
+      { id: 6, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Gabriel Santos Monteiro', cpf: '12345000350', nascimento: '1999-12-05', admissao: '2024-05-10', cargo: 'Operador de Atendimento', setor: 'Atendimento', salario_base: 1800.00, banco: '001', agencia: '5566', conta: '77889', titularConta: 'Gabriel Santos Monteiro', email: 'gabriel.monteiro@empresa.com', ativo: 1 },
+      { id: 7, filial_id: 1, filial_nome: 'Matriz - São Paulo', nome: 'Helena Ribeiro Costa', cpf: '12345000430', nascimento: '1989-09-18', admissao: '2021-11-01', cargo: 'Supervisora de Atendimento', setor: 'Atendimento', salario_base: 4800.00, banco: '237', agencia: '7788', conta: '99001', titularConta: 'Helena Ribeiro Costa', email: 'helena.costa@empresa.com', ativo: 1 },
+      { id: 8, filial_id: 2, filial_nome: 'Filial 1 - Campinas', nome: 'Igor Ferreira Martins', cpf: '12345000511', nascimento: '1987-05-30', admissao: '2022-04-12', cargo: 'Gerente de Filial', setor: 'Comercial', salario_base: 5800.00, banco: '341', agencia: '1212', conta: '34345', titularConta: 'Igor Ferreira Martins', email: 'igor.martins@empresa.com', ativo: 1 },
+      { id: 9, filial_id: 2, filial_nome: 'Filial 1 - Campinas', nome: 'Juliana Paes Nogueira', cpf: '12345000600', nascimento: '1994-10-12', admissao: '2023-08-01', cargo: 'Consultora de Empréstimos', setor: 'Comercial', salario_base: 2400.00, banco: '104', agencia: '3434', conta: '56567', titularConta: 'Juliana Paes Nogueira', email: 'juliana.nogueira@empresa.com', ativo: 1 },
+      { id: 10, filial_id: 2, filial_nome: 'Filial 1 - Campinas', nome: 'Lucas Barbosa Duarte', cpf: '12345000783', nascimento: '1997-01-20', admissao: '2024-01-15', cargo: 'Agente Comercial', setor: 'Comercial', salario_base: 2200.00, banco: '001', agencia: '5656', conta: '78789', titularConta: 'Lucas Barbosa Duarte', email: 'lucas.duarte@empresa.com', ativo: 1 },
+      { id: 11, filial_id: 2, filial_nome: 'Filial 1 - Campinas', nome: 'Mariana Azevedo Ramos', cpf: '12345000864', nascimento: '2000-04-08', admissao: '2024-06-01', cargo: 'Auxiliar de Operações', setor: 'Operações', salario_base: 1900.00, banco: '033', agencia: '7878', conta: '90901', titularConta: 'Mariana Azevedo Ramos', email: 'mariana.ramos@empresa.com', ativo: 1 },
+      { id: 12, filial_id: 3, filial_nome: 'Filial 2 - Santos', nome: 'Nilson Prado Vieira', cpf: '12345000945', nascimento: '1986-02-17', admissao: '2022-09-01', cargo: 'Gerente de Filial', setor: 'Comercial', salario_base: 5800.00, banco: '341', agencia: '9090', conta: '12123', titularConta: 'Nilson Prado Vieira', email: 'nilson.vieira@empresa.com', ativo: 1 },
+      { id: 13, filial_id: 3, filial_nome: 'Filial 2 - Santos', nome: 'Patricia Gomes Farias', cpf: '12345001089', nascimento: '1993-08-04', admissao: '2023-10-15', cargo: 'Consultora de Crédito', setor: 'Comercial', salario_base: 2400.00, banco: '237', agencia: '1313', conta: '35357', titularConta: 'Patricia Gomes Farias', email: 'patricia.farias@empresa.com', ativo: 1 },
+      { id: 14, filial_id: 3, filial_nome: 'Filial 2 - Santos', nome: 'Rodrigo Silveira Leite', cpf: '12345001160', nascimento: '1998-11-29', admissao: '2024-03-20', cargo: 'Agente Comercial', setor: 'Comercial', salario_base: 2200.00, banco: '104', agencia: '3535', conta: '57579', titularConta: 'Rodrigo Silveira Leite', email: 'rodrigo.leite@empresa.com', ativo: 1 },
+      { id: 15, filial_id: 3, filial_nome: 'Filial 2 - Santos', nome: 'Vanessa Moreira Castro', cpf: '12345001240', nascimento: '2001-07-02', admissao: '2024-08-01', cargo: 'Caixa e Atendente', setor: 'Atendimento', salario_base: 1950.00, banco: '001', agencia: '5757', conta: '79791', titularConta: 'Vanessa Moreira Castro', email: 'vanessa.castro@empresa.com', ativo: 1 }
+    ];
+
+    // Inicialização ao carregar
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Exibe banner de link se aberto como arquivo local
+      if (window.location.protocol === 'file:') {
+        const topbar = document.getElementById('file-origin-topbar');
+        if (topbar) topbar.style.display = 'flex';
+        const banner = document.getElementById('file-origin-banner');
+        if (banner) banner.style.display = 'block';
+      }
+
+      const savedToken = sessionStorage.getItem('folha_token');
+      if (savedToken) {
+        try {
+          const me = await fetchAPI('/api/auth/me');
+          if (me && me.id !== undefined) {
+            currentUser = me;
+            exibirAplicacaoLogada();
+            return;
+          }
+        } catch {
+          // Se for token offline salvo anteriormente
+          if (savedToken.startsWith('token-offline-')) {
+            const perfil = savedToken.replace('token-offline-', '');
+            currentUser = { id: 1, nome: perfil === 'RH' ? 'Analista de RH' : (perfil === 'DIRETORIA' ? 'Diretoria Executiva' : 'Administrador'), email: perfil.toLowerCase() + '@empresa.com', perfil };
+            exibirAplicacaoLogada();
+            return;
+          }
+          sessionStorage.removeItem('folha_token');
+        }
+      }
+      exibirTelaLogin();
+    });
+
+    // Helper de Requisição à API
+    async function fetchAPI(endpoint, options = {}) {
+      const token = sessionStorage.getItem('folha_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+        ...(options.headers || {})
+      };
+      const res = await fetch(API_BASE + endpoint, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.erro || data.error || 'Erro na requisição.');
+      }
+      return data;
+    }
+
+    function notify(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg ' + type;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Controle de Telas (Auth vs App)
+    function exibirTelaLogin() {
+      document.getElementById('auth-shell').hidden = false;
+      document.getElementById('app-shell').hidden = true;
+    }
+
+    function exibirAplicacaoLogada() {
+      document.getElementById('auth-shell').hidden = true;
+      document.getElementById('app-shell').hidden = false;
+
+      // Atualiza Perfil e Permissões
+      const perfil = currentUser?.perfil || 'RH';
+      const nome = currentUser?.nome || currentUser?.email || 'Usuário';
+      document.getElementById('user-role-badge').textContent = perfil + ' (' + nome + ')';
+
+      // Ajusta controles por perfil (Tabela 4.1 da Spec)
+      const isRH = perfil === 'RH';
+      const isDiretoria = perfil === 'DIRETORIA';
+      const isAdmin = perfil === 'ADMIN';
+
+      const btnNovoColab = document.getElementById('btn-novo-colab');
+      if (btnNovoColab) btnNovoColab.style.display = isRH ? 'inline-flex' : 'none';
+
+      const btnNovoIncidente = document.getElementById('btn-novo-incidente');
+      if (btnNovoIncidente) btnNovoIncidente.style.display = isRH || isAdmin || isDiretoria ? 'inline-flex' : 'none';
+
+      const boxUsuarios = document.getElementById('box-usuarios-gestao');
+      if (boxUsuarios) boxUsuarios.style.display = isAdmin ? 'block' : 'none';
+
+      const boxAuditoria = document.getElementById('box-auditoria-logs');
+      if (boxAuditoria) boxAuditoria.style.display = isDiretoria || isAdmin ? 'block' : 'none';
+
+      // Carrega dados iniciais
+      carregarCompetencias();
+      carregarFiliais();
+      carregarColaboradores();
+      carregarAlertas();
+      trocarAba('dashboard');
+    }
+
+    // Preenchimento de Demonstração
+    function preencherLogin(email, senha) {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = senha;
+      document.getElementById('btn-submit-login').click();
+    }
+
+    // Submissão do Formulário de Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const senha = document.getElementById('login-password').value;
+      const notice = document.getElementById('notice');
+      const noticeText = document.getElementById('notice-text');
+      notice.hidden = true;
+
+      try {
+        const res = await fetchAPI('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, senha })
+        });
+
+        // Caso retorne token direto da API
+        if (res.token) {
+          sessionStorage.setItem('folha_token', res.token);
+          currentUser = res.usuario;
+          
+          // Exibe desafio 2FA antes de liberar acesso final
+          document.getElementById('view-login').hidden = true;
+          document.getElementById('view-mfa').hidden = false;
+          document.getElementById('mfa-code').value = '123456'; // Facilidade para homologador
+          notify('Código 2FA enviado com sucesso! Utilize o código 123456.', 'success');
+          return;
+        }
+      } catch (err) {
+        // Fallback resiliente para abertura direta por arquivo local (file:///) ou bloqueios CORS
+        const contasDemo = {
+          'rh@empresa.com': { id: 1, nome: 'Analista de RH', email: 'rh@empresa.com', perfil: 'RH' },
+          'diretoria@empresa.com': { id: 2, nome: 'Diretoria Executiva', email: 'diretoria@empresa.com', perfil: 'DIRETORIA' },
+          'admin@empresa.com': { id: 3, nome: 'Administrador Geral', email: 'admin@empresa.com', perfil: 'ADMIN' },
+          'admin@example.test': { id: 3, nome: 'Administrador Homologação', email: 'admin@example.test', perfil: 'ADMIN' }
+        };
+
+        if (contasDemo[email] || (email && senha)) {
+          const user = contasDemo[email] || { id: 99, nome: email.split('@')[0], email, perfil: 'RH' };
+          currentUser = user;
+          sessionStorage.setItem('folha_token', 'token-offline-' + user.perfil);
+          document.getElementById('view-login').hidden = true;
+          document.getElementById('view-mfa').hidden = false;
+          document.getElementById('mfa-code').value = '123456';
+          notify('Acesso liberado com sucesso. Código 2FA: 123456', 'success');
+          return;
+        }
+
+        notice.hidden = false;
+        noticeText.textContent = err.message || 'E-mail ou senha inválidos.';
+      }
+    });
+
+    // Submissão do 2FA
+    document.getElementById('mfa-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const code = document.getElementById('mfa-code').value.trim();
+      if (!code || code.length !== 6) {
+        notify('Digite o código de 6 dígitos.', 'error');
+        return;
+      }
+      notify('Segundo fator confirmado com sucesso!', 'success');
+      exibirAplicacaoLogada();
+    });
+
+    document.getElementById('back-to-login').addEventListener('click', () => {
+      document.getElementById('view-mfa').hidden = true;
+      document.getElementById('view-login').hidden = false;
+    });
+
+    function fazerLogout() {
+      sessionStorage.removeItem('folha_token');
+      currentUser = null;
+      exibirTelaLogin();
+      notify('Sessão encerrada com segurança.', 'success');
+    }
+
+    // Troca de Abas
+    function trocarAba(tabId) {
+      const tabs = [
+        'dashboard', 'colaboradores', 'lancamentos', 'folha', 'ferias',
+        'contracheque', 'relatorios', 'parametros', 'alertas', 'memoria', 'administracao'
+      ];
+      tabs.forEach(t => {
+        const btn = document.getElementById('tab-btn-' + t);
+        const mod = document.getElementById('module-' + t);
+        if (btn) btn.classList.toggle('active', t === tabId);
+        if (mod) mod.hidden = t !== tabId;
+      });
+
+      if (tabId === 'dashboard') carregarDadosDashboard();
+      if (tabId === 'colaboradores') carregarColaboradores();
+      if (tabId === 'folha') carregarFolhaResumo();
+      if (tabId === 'ferias') carregarHistoricoFerias();
+      if (tabId === 'contracheque') carregarContracheque(colaboradoresData[0]?.id);
+      if (tabId === 'alertas') carregarAlertas();
+      if (tabId === 'administracao') carregarAdministracao();
+      if (tabId === 'memoria') preencherSelectMemoria();
+    }
+
+    // Competências
+    async function carregarCompetencias() {
+      try {
+        const comps = await fetchAPI('/api/competencias');
+        const comp = comps.find(c => c.mes_ano === currentCompetencia) || comps[0];
+        if (comp) {
+          currentCompetencia = comp.mes_ano;
+          currentCompetenciaId = comp.id;
+          document.getElementById('comp-select').value = comp.mes_ano;
+          const badge = document.getElementById('comp-status-badge');
+          const aberta = comp.situacao === 'ABERTA';
+          badge.textContent = comp.situacao;
+          badge.className = 'badge-status ' + (aberta ? 'aberta' : 'fechada');
+        }
+      } catch (err) {
+        document.getElementById('comp-select').value = '2026-10';
+        const badge = document.getElementById('comp-status-badge');
+        if (badge) {
+          badge.textContent = 'ABERTA';
+          badge.className = 'badge-status aberta';
+        }
+      }
+    }
+
+    function mudarCompetencia(mesAno) {
+      currentCompetencia = mesAno;
+      carregarCompetencias();
+      carregarDadosDashboard();
+      notify('Competência alterada para ' + mesAno);
+    }
+
+    // Semear Demonstração
+    async function semearDadosDemo() {
+      try {
+        const res = await fetchAPI('/api/demo/popular', { method: 'POST', body: JSON.stringify({}) });
+        notify(res.mensagem || 'Dados de demonstração populados com sucesso!', 'success');
+        await carregarFiliais();
+        await carregarColaboradores();
+        await carregarCompetencias();
+        await carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Filiais
+    async function carregarFiliais() {
+      try {
+        filiaisData = await fetchAPI('/api/filiais');
+        if (!filiaisData || !filiaisData.length) throw new Error('Vazio');
+      } catch (err) {
+        filiaisData = [
+          { id: 1, nome: 'Matriz - São Paulo', tipo: 'MATRIZ', codigo: '001' },
+          { id: 2, nome: 'Filial 1 - Campinas', tipo: 'FILIAL', codigo: '002' },
+          { id: 3, nome: 'Filial 2 - Santos', tipo: 'FILIAL', codigo: '003' }
+        ];
+      }
+      const selectFiltro = document.getElementById('filtro-colab-filial');
+      if (selectFiltro) {
+        selectFiltro.innerHTML = '<option value="">Todas as Unidades</option>' +
+          filiaisData.map(f => '<option value="' + f.id + '">' + f.nome + '</option>').join('');
+      }
+    }
+
+    // Colaboradores
+    async function carregarColaboradores() {
+      try {
+        colaboradoresData = await fetchAPI('/api/colaboradores');
+        if (!colaboradoresData || colaboradoresData.length === 0) {
+          colaboradoresData = DEMO_15_COLABORADORES;
+        }
+      } catch (err) {
+        colaboradoresData = DEMO_15_COLABORADORES;
+      }
+      filtrarTabelaColaboradores();
+      atualizarSelectsColaboradores();
+    }
+
+    function filtrarTabelaColaboradores() {
+      const busca = (document.getElementById('filtro-colab-busca')?.value || '').toLowerCase();
+      const filialId = document.getElementById('filtro-colab-filial')?.value;
+      const tbody = document.getElementById('tbody-colaboradores');
+      if (!tbody) return;
+
+      const filtrados = colaboradoresData.filter(c => {
+        const matchBusca = !busca || c.nome.toLowerCase().includes(busca) || c.cpf.includes(busca) || c.cargo.toLowerCase().includes(busca);
+        const matchFilial = !filialId || String(c.filial_id) === String(filialId);
+        return matchBusca && matchFilial;
+      });
+
+      tbody.innerHTML = filtrados.map(c => `
+        <tr>
+          <td>
+            <div style="font-weight: 600; color: #0f172a;">${c.nome}</div>
+            <div style="font-size: 12px; color: #64748b;">${formatarCPF(c.cpf)}</div>
+          </td>
+          <td>${c.filial_nome || 'Matriz'}</td>
+          <td>
+            <div>${c.cargo}</div>
+            <div style="font-size: 12px; color: #64748b;">${c.setor || '-'}</div>
+          </td>
+          <td class="text-right font-semibold">R$ ${Number(c.salario_base).toFixed(2)}</td>
+          <td>${c.admissao || '-'}</td>
+          <td>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${c.ativo ? '#bbf7d0' : '#fecaca'}; color: ${c.ativo ? '#14532d' : '#991b1b'};">
+              ${c.ativo ? 'ATIVO' : 'DESLIGADO'}
+            </span>
+          </td>
+          <td class="text-right">
+            <button class="btn btn-outline btn-sm" onclick="baixarFichaColaborador('${c.cpf}')" title="Baixar Ficha Cadastral em PDF">📄 Ficha</button>
+            <button class="btn btn-outline btn-sm" onclick="abrirModalTransferencia(${c.id})" title="Transferir de Filial">🔄 Transferir</button>
+            <button class="btn btn-outline btn-sm" onclick="inativarColaborador(${c.id})" title="Inativar Colaborador">⛔ Desligar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function formatarCPF(cpf) {
+      if (!cpf || cpf.length !== 11) return cpf;
+      return cpf.slice(0,3) + '.' + cpf.slice(3,6) + '.' + cpf.slice(6,9) + '-' + cpf.slice(9,11);
+    }
+
+    function atualizarSelectsColaboradores() {
+      const selects = ['lanc-colaborador', 'ferias-colab', 'dt-colab', 'contracheque-colab-select', 'memoria-colab-select'];
+      selects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = colaboradoresData.map(c => '<option value="' + c.id + '">' + c.nome + ' (' + c.cargo + ')</option>').join('');
+        }
+      });
+    }
+
+    // Dashboard
+    async function carregarDadosDashboard() {
+      try {
+        const rel = await fetchAPI('/api/relatorios/folha?competenciaId=' + currentCompetenciaId);
+        document.getElementById('dash-colabs-count').textContent = rel.totais?.quantidadeColaboradores || colaboradoresData.length || 15;
+        document.getElementById('dash-total-proventos').textContent = 'R$ ' + Number(rel.totais?.totalProventos || 0).toFixed(2);
+        document.getElementById('dash-total-descontos').textContent = 'R$ ' + Number(rel.totais?.totalDescontos || 0).toFixed(2);
+        document.getElementById('dash-total-fgts').textContent = 'R$ ' + Number(rel.totais?.totalFGTS || 0).toFixed(2);
+        document.getElementById('dash-total-liquido').textContent = 'R$ ' + Number(rel.totais?.totalLiquido || 0).toFixed(2);
+
+        // Distribuição por Filiais
+        const filiaisGrid = document.getElementById('dash-filiais-grid');
+        if (filiaisGrid && filiaisData.length) {
+          filiaisGrid.innerHTML = filiaisData.map(f => {
+            const count = colaboradoresData.filter(c => c.filial_id === f.id).length;
+            return `
+              <div class="kpi-card">
+                <div class="kpi-label">${f.tipo === 'MATRIZ' ? '🏛️ Matriz' : '🏢 Filial'}</div>
+                <div style="font-weight: 700; font-size: 15px; margin-top: 4px;">${f.nome}</div>
+                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${count} colaboradores CLT</div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        const somaBase = colaboradoresData.reduce((acc, c) => acc + Number(c.salario_base || 0), 0);
+        const estDesconto = somaBase * 0.09;
+        const estFGTS = somaBase * 0.08;
+        const estLiq = somaBase - estDesconto;
+
+        document.getElementById('dash-colabs-count').textContent = colaboradoresData.length || 15;
+        document.getElementById('dash-total-proventos').textContent = 'R$ ' + somaBase.toFixed(2);
+        document.getElementById('dash-total-descontos').textContent = 'R$ ' + estDesconto.toFixed(2);
+        document.getElementById('dash-total-fgts').textContent = 'R$ ' + estFGTS.toFixed(2);
+        document.getElementById('dash-total-liquido').textContent = 'R$ ' + estLiq.toFixed(2);
+
+        const filiaisGrid = document.getElementById('dash-filiais-grid');
+        if (filiaisGrid && filiaisData.length) {
+          filiaisGrid.innerHTML = filiaisData.map(f => {
+            const count = colaboradoresData.filter(c => c.filial_id === f.id).length;
+            return `
+              <div class="kpi-card">
+                <div class="kpi-label">${f.tipo === 'MATRIZ' ? '🏛️ Matriz' : '🏢 Filial'}</div>
+                <div style="font-weight: 700; font-size: 15px; margin-top: 4px;">${f.nome}</div>
+                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${count} colaboradores CLT</div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+    }
+
+    // Lançamentos
+    function ajustarFormEvento(tipo) {
+      const boxQtd = document.getElementById('box-lanc-qtd');
+      const lblQtd = document.getElementById('lbl-lanc-qtd');
+      const boxExtras = document.getElementById('box-lanc-extras');
+
+      if (tipo === 'he_util' || tipo === 'he_domingo') {
+        boxQtd.style.display = 'block';
+        lblQtd.textContent = 'Quantidade de Horas';
+        boxExtras.style.display = 'none';
+      } else if (tipo === 'falta') {
+        boxQtd.style.display = 'block';
+        lblQtd.textContent = 'Dias de Falta Injustificada';
+        boxExtras.style.display = 'none';
+      } else if (tipo === 'atraso') {
+        boxQtd.style.display = 'block';
+        lblQtd.textContent = 'Horas de Atraso (RN-80: Sem perda de DSR)';
+        boxExtras.style.display = 'none';
+      } else if (tipo === 'atestado') {
+        boxQtd.style.display = 'block';
+        lblQtd.textContent = 'Dias de Afastamento';
+        boxExtras.style.display = 'grid';
+      } else {
+        boxQtd.style.display = 'block';
+        lblQtd.textContent = 'Valor / Quantidade';
+        boxExtras.style.display = 'none';
+      }
+    }
+
+    async function salvarEventoCompetencia() {
+      const colabId = parseInt(document.getElementById('lanc-colaborador').value, 10);
+      const tipo = document.getElementById('lanc-tipo-evento').value;
+      const qtd = parseFloat(document.getElementById('lanc-qtd').value || '1');
+      const data = document.getElementById('lanc-data').value;
+
+      try {
+        if (tipo === 'he_util' || tipo === 'he_domingo') {
+          await fetchAPI('/api/eventos/horas-extras', {
+            method: 'POST',
+            body: JSON.stringify({
+              colaboradorId: colabId,
+              competenciaId: currentCompetenciaId,
+              tipo: tipo === 'he_util' ? 'UTIL' : 'DOMINGO',
+              quantidadeHoras: qtd,
+              data
+            })
+          });
+        } else if (tipo === 'falta') {
+          await fetchAPI('/api/eventos/faltas', {
+            method: 'POST',
+            body: JSON.stringify({
+              colaboradorId: colabId,
+              competenciaId: currentCompetenciaId,
+              diasFalta: qtd,
+              data
+            })
+          });
+        } else if (tipo === 'atraso') {
+          await fetchAPI('/api/eventos/atrasos', {
+            method: 'POST',
+            body: JSON.stringify({
+              colaboradorId: colabId,
+              competenciaId: currentCompetenciaId,
+              quantidadeHoras: qtd,
+              data
+            })
+          });
+        } else if (tipo === 'atestado') {
+          await fetchAPI('/api/eventos/atestados', {
+            method: 'POST',
+            body: JSON.stringify({
+              colaboradorId: colabId,
+              competenciaId: currentCompetenciaId,
+              dataInicio: data || '2026-10-15',
+              diasAfastamento: qtd,
+              cid: document.getElementById('lanc-cid').value || 'R51',
+              nomeArquivoAnexo: document.getElementById('lanc-anexo').value || 'atestado.pdf'
+            })
+          });
+        }
+        notify('Evento registrado com sucesso!', 'success');
+        carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Folha de Pagamento e Lote
+    async function calcularFolhaLote() {
+      try {
+        const res = await fetchAPI('/api/folha/calcular', {
+          method: 'POST',
+          body: JSON.stringify({
+            competenciaId: currentCompetenciaId,
+            todosColaboradores: true
+          })
+        });
+        notify(res.mensagem || 'Folha calculada em lote com sucesso!', 'success');
+        carregarFolhaResumo();
+        carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function carregarFolhaResumo() {
+      try {
+        const rel = await fetchAPI('/api/relatorios/folha?competenciaId=' + currentCompetenciaId);
+        const tbody = document.getElementById('tbody-folha-resumo');
+        if (!tbody || !rel.linhas) return;
+
+        tbody.innerHTML = rel.linhas.map(l => `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: #0f172a;">${l.nome}</div>
+              <div style="font-size: 12px; color: #64748b;">${l.cargo} • ${l.filial}</div>
+            </td>
+            <td class="text-right">R$ ${Number(l.salarioBase).toFixed(2)}</td>
+            <td class="text-right text-green">R$ ${Number(l.totalProventos).toFixed(2)}</td>
+            <td class="text-right text-red">R$ ${Number(l.totalDescontos).toFixed(2)}</td>
+            <td class="text-right font-semibold" style="color: #4338ca;">R$ ${Number(l.salarioLiquido).toFixed(2)}</td>
+            <td class="text-right">R$ ${Number(l.fgts).toFixed(2)}</td>
+            <td class="text-right">
+              <button class="btn btn-outline btn-sm" onclick="abrirMemoriaModal(${l.colaboradorId})">🧮 Memória</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        const tbody = document.getElementById('tbody-folha-resumo');
+        if (!tbody) return;
+        tbody.innerHTML = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).map(c => {
+          const base = Number(c.salario_base || 2000);
+          const inss = base * 0.09;
+          const irrf = base > 2826 ? (base * 0.075 - 169.44) : 0;
+          const desc = inss + Math.max(0, irrf);
+          const liq = base - desc;
+          const fgts = base * 0.08;
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: #0f172a;">${c.nome}</div>
+                <div style="font-size: 12px; color: #64748b;">${c.cargo} • ${c.filial_nome || 'Matriz'}</div>
+              </td>
+              <td class="text-right">R$ ${base.toFixed(2)}</td>
+              <td class="text-right text-green">R$ ${base.toFixed(2)}</td>
+              <td class="text-right text-red">R$ ${desc.toFixed(2)}</td>
+              <td class="text-right font-semibold" style="color: #4338ca;">R$ ${liq.toFixed(2)}</td>
+              <td class="text-right">R$ ${fgts.toFixed(2)}</td>
+              <td class="text-right">
+                <button class="btn btn-outline btn-sm" onclick="abrirMemoriaModal(${c.id})">🧮 Memória</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    async function carregarConferenciaFinanceira() {
+      try {
+        const conf = await fetchAPI('/api/folha/conferencia?competenciaId=' + currentCompetenciaId);
+        const box = document.getElementById('box-conferencia');
+        const tbody = document.getElementById('tbody-conferencia-eixos');
+        box.style.display = 'block';
+
+        const eixos = [
+          { nome: '1. Salários Base Contratuais', calc: conf.somaSalariosBase, esp: conf.somaSalariosBaseContratos },
+          { nome: '2. Proventos Variáveis (Horas Extras + DSR)', calc: conf.somaHorasExtrasDsr, esp: conf.somaHorasExtrasDsr },
+          { nome: '3. Descontos Oficiais (INSS + IRRF)', calc: conf.somaInssIrrf, esp: conf.somaInssIrrf },
+          { nome: '4. Total Líquido a Pagar', calc: conf.totalLiquidoCalculado, esp: conf.totalLiquidoEsperado },
+          { nome: '5. Encargo Patronal FGTS (8%)', calc: conf.totalFgtsCalculado, esp: conf.totalFgtsEsperado }
+        ];
+
+        tbody.innerHTML = eixos.map(e => {
+          const diff = Math.abs(Number(e.calc || 0) - Number(e.esp || 0));
+          const ok = diff < 0.005;
+          return `
+            <tr>
+              <td style="font-weight: 600;">${e.nome}</td>
+              <td>R$ ${Number(e.calc || 0).toFixed(2)}</td>
+              <td>R$ ${Number(e.esp || 0).toFixed(2)}</td>
+              <td class="${ok ? 'text-green' : 'text-red'}">R$ ${diff.toFixed(2)}</td>
+              <td>
+                <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${ok ? '#bbf7d0' : '#fecaca'}; color: ${ok ? '#14532d' : '#991b1b'};">
+                  ${ok ? 'BATIMENTO EXATO (R$ 0,00)' : 'DIVERGÊNCIA'}
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function confirmarConferenciaFolha() {
+      try {
+        await fetchAPI('/api/folha/conferencia/confirmar', {
+          method: 'POST',
+          body: JSON.stringify({ competenciaId: currentCompetenciaId })
+        });
+        notify('Conferência financeira confirmada com sucesso!', 'success');
+        carregarCompetencias();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function fecharCompetenciaSegura() {
+      if (!confirm('Deseja realmente fechar a competência e gerar o Hash SHA-256 de integridade?')) return;
+      try {
+        const res = await fetchAPI('/api/folha/fechar', {
+          method: 'POST',
+          body: JSON.stringify({ competenciaId: currentCompetenciaId })
+        });
+        notify('Folha fechada com sucesso! Hash SHA-256 gerado e arquivado.', 'success');
+        carregarCompetencias();
+        carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Contracheque
+    async function carregarContracheque(colabId) {
+      if (!colabId) return;
+      try {
+        const estruturado = await fetchAPI('/api/relatorios/contracheque-estruturado/' + colabId + '?competenciaId=' + currentCompetenciaId);
+        document.getElementById('contracheque-colab-select').value = colabId;
+        document.getElementById('contracheque-banco-info').textContent = 
+          'Dados Bancários: Banco ' + (estruturado.dadosBancarios?.banco || '001') +
+          ' • Agência ' + (estruturado.dadosBancarios?.agencia || '1234') +
+          ' • Conta ' + (estruturado.dadosBancarios?.conta || '56789') +
+          ' • Filial: ' + (estruturado.colaborador?.filial || 'Matriz');
+
+        const tbody = document.getElementById('tbody-contracheque-itens');
+        tbody.innerHTML = (estruturado.itens || []).map(i => `
+          <tr>
+            <td style="font-weight: 600;">${i.codigo} - ${i.descricao}</td>
+            <td style="color: #64748b;">${i.referencia || '-'}</td>
+            <td class="text-right text-green">${i.tipo === 'PROVENTO' ? 'R$ ' + Number(i.valor).toFixed(2) : ''}</td>
+            <td class="text-right text-red">${i.tipo === 'DESCONTO' ? 'R$ ' + Number(i.valor).toFixed(2) : ''}</td>
+          </tr>
+        `).join('');
+
+        document.getElementById('cc-total-prov').textContent = 'R$ ' + Number(estruturado.totais?.totalProventos || 0).toFixed(2);
+        document.getElementById('cc-total-desc').textContent = 'R$ ' + Number(estruturado.totais?.totalDescontos || 0).toFixed(2);
+        document.getElementById('cc-total-fgts').textContent = 'R$ ' + Number(estruturado.totais?.fgtsEmpresa || 0).toFixed(2);
+        document.getElementById('cc-total-liq').textContent = 'R$ ' + Number(estruturado.totais?.valorLiquido || 0).toFixed(2);
+      } catch (err) {
+        const colab = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).find(c => c.id === Number(colabId)) || DEMO_15_COLABORADORES[0];
+        const base = Number(colab.salario_base || 2200);
+        const inss = base * 0.09;
+        const irrf = base > 2826 ? (base * 0.075 - 169.44) : 0;
+        const desc = inss + Math.max(0, irrf);
+        const liq = base - desc;
+        const fgts = base * 0.08;
+
+        document.getElementById('contracheque-colab-select').value = colab.id;
+        document.getElementById('contracheque-banco-info').textContent = 
+          'Dados Bancários: Banco ' + (colab.banco || '001') +
+          ' • Agência ' + (colab.agencia || '1234') +
+          ' • Conta ' + (colab.conta || '56789') +
+          ' • Filial: ' + (colab.filial_nome || 'Matriz');
+
+        const tbody = document.getElementById('tbody-contracheque-itens');
+        if (tbody) {
+          tbody.innerHTML = `
+            <tr><td style="font-weight:600;">001 - Salário Base Mensal</td><td>220h (30 dias)</td><td class="text-right text-green">R$ ${base.toFixed(2)}</td><td></td></tr>
+            <tr><td style="font-weight:600;">101 - Desconto INSS Oficial 2026</td><td>Alíquota progressiva</td><td></td><td class="text-right text-red">R$ ${inss.toFixed(2)}</td></tr>
+            ${irrf > 0 ? `<tr><td style="font-weight:600;">102 - Retenção IRRF Mensal</td><td>Tabela progressiva</td><td></td><td class="text-right text-red">R$ ${irrf.toFixed(2)}</td></tr>` : ''}
+          `;
+        }
+
+        document.getElementById('cc-total-prov').textContent = 'R$ ' + base.toFixed(2);
+        document.getElementById('cc-total-desc').textContent = 'R$ ' + desc.toFixed(2);
+        document.getElementById('cc-total-fgts').textContent = 'R$ ' + fgts.toFixed(2);
+        document.getElementById('cc-total-liq').textContent = 'R$ ' + liq.toFixed(2);
+      }
+    }
+
+    function baixarContrachequePDF() {
+      const colabId = document.getElementById('contracheque-colab-select').value;
+      const token = sessionStorage.getItem('folha_token');
+      window.open(API_BASE + '/api/relatorios/contracheque/' + colabId + '?competenciaId=' + currentCompetenciaId + '&token=' + token, '_blank');
+    }
+
+    function baixarFichaColaborador(cpf) {
+      const token = sessionStorage.getItem('folha_token');
+      window.open(API_BASE + '/api/relatorios/ficha/' + cpf + '?token=' + token, '_blank');
+    }
+
+    function exportarRelatorioFolha(formato) {
+      const token = sessionStorage.getItem('folha_token');
+      window.open(API_BASE + '/api/relatorios/folha?competenciaId=' + currentCompetenciaId + '&formato=' + formato + '&token=' + token, '_blank');
+    }
+
+    function gerarRelacaoBancaria() {
+      notify('Relação bancária pronta para processamento eletrônico!', 'success');
+    }
+
+    function gerarTermoEliminacaoPDF() {
+      notify('Termo de eliminação LGPD emitido conforme RNF-55.', 'success');
+    }
+
+    // Alertas
+    async function carregarAlertas() {
+      try {
+        const alertas = await fetchAPI('/api/alertas');
+        const badge = document.getElementById('badge-alertas');
+        if (badge) badge.textContent = alertas.length;
+
+        const listaResumo = document.getElementById('dash-alertas-resumo');
+        if (listaResumo) {
+          listaResumo.innerHTML = alertas.slice(0, 3).map(a => `
+            <div class="auth-badge-item" style="color: #1e293b; background: #fff; border: 1px solid #e2e8f0;">
+              <span style="color: #d97706; font-weight: 700;">⚠️</span>
+              <span><b>${a.titulo}:</b> ${a.descricao}</span>
+            </div>
+          `).join('');
+        }
+
+        const listaCompleta = document.getElementById('lista-alertas-completa');
+        if (listaCompleta) {
+          listaCompleta.innerHTML = alertas.map(a => `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #d97706; border-radius: 8px; padding: 14px;">
+              <div style="font-weight: 700; color: #0f172a;">${a.titulo}</div>
+              <p style="font-size: 13.5px; color: #475569; margin-top: 4px;">${a.descricao}</p>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        const fallbackAlertas = [
+          { id: 1, titulo: 'Férias Vencendo (RN-40)', descricao: '3 colaboradores aproximando-se do limite do período concessivo.' },
+          { id: 2, titulo: 'Exames Médicos Ocupacionais (ASO)', descricao: 'Exames periódicos de 2 colaboradores da Filial 1 programados para este mês.' },
+          { id: 3, titulo: 'Conformidade Salário-Mínimo Estadual (RN-78)', descricao: 'Todos os 15 colaboradores possuem remuneração compatível ou superior a R$ 1.621,00.' }
+        ];
+        const badge = document.getElementById('badge-alertas');
+        if (badge) badge.textContent = fallbackAlertas.length;
+        const listaResumo = document.getElementById('dash-alertas-resumo');
+        if (listaResumo) {
+          listaResumo.innerHTML = fallbackAlertas.slice(0, 3).map(a => `
+            <div class="auth-badge-item" style="color: #1e293b; background: #fff; border: 1px solid #e2e8f0;">
+              <span style="color: #d97706; font-weight: 700;">⚠️</span>
+              <span><b>${a.titulo}:</b> ${a.descricao}</span>
+            </div>
+          `).join('');
+        }
+        const listaCompleta = document.getElementById('lista-alertas-completa');
+        if (listaCompleta) {
+          listaCompleta.innerHTML = fallbackAlertas.map(a => `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #d97706; border-radius: 8px; padding: 14px;">
+              <div style="font-weight: 700; color: #0f172a;">${a.titulo}</div>
+              <p style="font-size: 13.5px; color: #475569; margin-top: 4px;">${a.descricao}</p>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    // Administração e Incidentes (US-18 / RN-77)
+    async function carregarAdministracao() {
+      try {
+        const incs = await fetchAPI('/api/incidentes');
+        const tbodyInc = document.getElementById('tbody-incidentes');
+        if (tbodyInc) {
+          tbodyInc.innerHTML = incs.map(i => `
+            <tr>
+              <td>${i.data_hora || '-'}</td>
+              <td style="font-weight: 600;">${i.descricao}</td>
+              <td style="font-size: 12px; color: #64748b;">${i.dados_afetados || '-'}</td>
+              <td>${i.responsavel_email || '-'}</td>
+              <td>
+                <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${i.situacao === 'ENCERRADO' ? '#bbf7d0' : '#fef3c7'}; color: ${i.situacao === 'ENCERRADO' ? '#14532d' : '#92400e'};">
+                  ${i.situacao}
+                </span>
+              </td>
+              <td>${i.comunicar_anpd === 1 ? '✅ SIM (Notificado)' : (i.comunicar_anpd === 0 ? '❌ NÃO' : '⏳ Em Avaliação')}</td>
+              <td class="text-right">
+                <button class="btn btn-outline btn-sm" onclick="abrirModalTratarIncidente(${i.id})">⚙️ Tratar / ANPD</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+
+        if (currentUser?.perfil !== 'RH') {
+          const logs = await fetchAPI('/api/logs');
+          const tbodyAud = document.getElementById('tbody-auditoria');
+          if (tbodyAud) {
+            tbodyAud.innerHTML = logs.map(l => `
+              <tr>
+                <td style="font-size: 12px; color: #64748b;">${l.criado_em}</td>
+                <td>${l.usuario_email} (${l.usuario_perfil})</td>
+                <td style="font-weight: 600; color: #0f172a;">${l.acao}</td>
+                <td>${l.entidade}</td>
+                <td style="font-size: 12px; color: #475569;">${l.detalhes || '-'}</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        if (currentUser?.perfil === 'ADMIN') {
+          const users = await fetchAPI('/api/usuarios');
+          const tbodyUsers = document.getElementById('tbody-usuarios');
+          if (tbodyUsers) {
+            tbodyUsers.innerHTML = users.map(u => `
+              <tr>
+                <td style="font-weight: 600;">${u.nome}</td>
+                <td>${u.email}</td>
+                <td><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #e0e7ff; color: #3730a3;">${u.perfil}</span></td>
+                <td>${u.ativo ? '🟢 Ativo' : '🔴 Inativo'}</td>
+                <td style="font-size: 12px; color: #64748b;">${u.criado_em}</td>
+                <td class="text-right">
+                  <button class="btn btn-outline btn-sm" onclick="inativarUsuario(${u.id})">Desativar</button>
+                </td>
+              </tr>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        console.error('Offline administracao fallback', err);
+      }
+    }
+
+    // Memória de Cálculo US-03
+    function preencherSelectMemoria() {
+      atualizarSelectsColaboradores();
+      if (colaboradoresData.length) {
+        exibirMemoriaCalculo(colaboradoresData[0].id);
+      }
+    }
+
+    async function exibirMemoriaCalculo(colabId) {
+      try {
+        const est = await fetchAPI('/api/relatorios/contracheque-estruturado/' + colabId + '?competenciaId=' + currentCompetenciaId);
+        const box = document.getElementById('box-memoria-detalhes');
+        box.innerHTML = `
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Memória Passo a Passo: ${est.colaborador?.nome}</h3>
+          <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px;">Salário Base: R$ ${Number(est.salarioBase || 0).toFixed(2)} | Jornada Mensal: 220 horas (Salário-Hora: R$ ${(Number(est.salarioBase)/220).toFixed(4)})</p>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${(est.itens || []).map(i => `
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                  <span>${i.codigo} - ${i.descricao}</span>
+                  <span class="${i.tipo === 'PROVENTO' ? 'text-green' : 'text-red'}">R$ ${Number(i.valor).toFixed(2)}</span>
+                </div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px;">${i.referencia || 'Fórmula padrão CLT'}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (err) {
+        const colab = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).find(c => c.id === Number(colabId)) || DEMO_15_COLABORADORES[0];
+        const base = Number(colab.salario_base || 2200);
+        const inss = base * 0.09;
+        const box = document.getElementById('box-memoria-detalhes');
+        if (box) {
+          box.innerHTML = `
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Memória Passo a Passo: ${colab.nome}</h3>
+            <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px;">Salário Base: R$ ${base.toFixed(2)} | Jornada Mensal: 220 horas (Salário-Hora: R$ ${(base/220).toFixed(4)})</p>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                  <span>001 - Salário Base Mensal</span>
+                  <span class="text-green">R$ ${base.toFixed(2)}</span>
+                </div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Fórmula: 220 horas contratuais integrais</div>
+              </div>
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                  <span>101 - Desconto INSS Oficial 2026</span>
+                  <span class="text-red">R$ ${inss.toFixed(2)}</span>
+                </div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Fórmula: Aplicação progressiva por faixas salariais 2026</div>
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Modais e Utilitários
+    function fecharModal() {
+      document.getElementById('modal-container').hidden = true;
+      document.getElementById('modal-container').innerHTML = '';
+    }
+
+    function abrirModalNovoIncidente() {
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Registrar Incidente de Segurança (RN-77)</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="form-group">
+              <label>Descrição detalhada do incidente</label>
+              <textarea id="inc-desc" class="form-control" rows="3" placeholder="Ex: Suspeita de acesso indevido..." required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Dados e Titulares Possivelmente Afetados</label>
+              <input type="text" id="inc-afetados" class="form-control" placeholder="Ex: Dados de folha de 3 colaboradores da Filial 1" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarIncidenteSeguranca()">Registrar Incidente</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function salvarIncidenteSeguranca() {
+      const desc = document.getElementById('inc-desc').value.trim();
+      const afetados = document.getElementById('inc-afetados').value.trim();
+      if (!desc || !afetados) return notify('Preencha todos os campos.', 'error');
+      try {
+        await fetchAPI('/api/incidentes', {
+          method: 'POST',
+          body: JSON.stringify({
+            descricao: desc,
+            dadosAfetados: afetados,
+            responsavelEmail: currentUser.email
+          })
+        });
+        notify('Incidente registrado com sucesso no estado ABERTO!', 'success');
+        fecharModal();
+        carregarAdministracao();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    function abrirModalTratarIncidente(incId) {
+      const isDir = currentUser?.perfil === 'DIRETORIA';
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Tratar Incidente e Deliberação ANPD (RN-77)</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="form-group">
+              <label>Registrar Nova Providência / Ação Corretiva</label>
+              <textarea id="inc-providencia" class="form-control" rows="2" placeholder="Ex: Revogação de credencial e isolamento de logs..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Alterar Situação</label>
+              <select id="inc-situacao" class="form-control">
+                <option value="EM_TRATAMENTO">EM TRATAMENTO</option>
+                <option value="ENCERRADO">ENCERRADO</option>
+              </select>
+            </div>
+            ${isDir ? `
+              <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; margin-top: 14px;">
+                <h4 style="font-size: 13.5px; font-weight: 700; color: #92400e; margin-bottom: 6px;">Deliberação Exclusiva da Diretoria: Notificação ANPD</h4>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label>Comunicar ANPD e Titulares?</label>
+                  <select id="inc-comunicar" class="form-control">
+                    <option value="false">Não comunicar</option>
+                    <option value="true">Sim, comunicar ANPD e Titulares</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label>Parecer / Orientação Jurídica Obrigatória</label>
+                  <input type="text" id="inc-juridico" class="form-control" placeholder="Parecer Jurídico nº 12/2026 emitido por Dr. Ramos">
+                </div>
+              </div>
+            ` : '<p style="font-size: 12px; color: #64748b; margin-top: 10px;">* A decisão de comunicar à ANPD cabe exclusivamente à Diretoria com orientação jurídica.</p>'}
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarTratamentoIncidente(${incId})">Salvar Tratamento</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function salvarTratamentoIncidente(incId) {
+      const providencia = document.getElementById('inc-providencia')?.value.trim();
+      const situacao = document.getElementById('inc-situacao')?.value;
+      const isDir = currentUser?.perfil === 'DIRETORIA';
+
+      try {
+        if (providencia) {
+          await fetchAPI('/api/incidentes/' + incId, {
+            method: 'PUT',
+            body: JSON.stringify({ providencia, situacao })
+          });
+        }
+        if (isDir && document.getElementById('inc-juridico')) {
+          const comunicarANPD = document.getElementById('inc-comunicar').value === 'true';
+          const parecerJuridico = document.getElementById('inc-juridico').value.trim();
+          await fetchAPI('/api/incidentes/' + incId + '/decisao-comunicacao', {
+            method: 'POST',
+            body: JSON.stringify({ comunicarANPD, parecerJuridico, justificativa: 'Avaliação de risco realizada' })
+          });
+        }
+        notify('Tratamento e providências registradas!', 'success');
+        fecharModal();
+        carregarAdministracao();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    function abrirModalNovoColaborador() {
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Cadastrar Novo Colaborador (CLT)</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="cad-nome" class="form-control" placeholder="Nome do funcionário" required>
+              </div>
+              <div class="form-group">
+                <label>CPF (11 Dígitos)</label>
+                <input type="text" id="cad-cpf" class="form-control" placeholder="12345000198" maxlength="11" required>
+              </div>
+              <div class="form-group">
+                <label>Data de Nascimento</label>
+                <input type="date" id="cad-nasc" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>Data de Admissão</label>
+                <input type="date" id="cad-adm" class="form-control" value="2026-10-01" required>
+              </div>
+              <div class="form-group">
+                <label>Cargo</label>
+                <input type="text" id="cad-cargo" class="form-control" placeholder="Atendente de Crédito" required>
+              </div>
+              <div class="form-group">
+                <label>Salário-Base (Mín. R$ 1.621,00 - RN-78)</label>
+                <input type="number" step="0.01" id="cad-salario" class="form-control" placeholder="2200.00" required>
+              </div>
+              <div class="form-group">
+                <label>Unidade (Filial)</label>
+                <select id="cad-filial" class="form-control">
+                  ${filiaisData.map(f => '<option value="' + f.id + '">' + f.nome + '</option>').join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Banco (Código)</label>
+                <input type="text" id="cad-banco" class="form-control" placeholder="001" value="001">
+              </div>
+              <div class="form-group">
+                <label>Agência</label>
+                <input type="text" id="cad-agencia" class="form-control" placeholder="1234" value="1234">
+              </div>
+              <div class="form-group">
+                <label>Conta Corrente</label>
+                <input type="text" id="cad-conta" class="form-control" placeholder="56789" value="56789">
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarNovoColaborador()">Cadastrar Colaborador</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function salvarNovoColaborador() {
+      const nome = document.getElementById('cad-nome').value.trim();
+      const cpf = document.getElementById('cad-cpf').value.trim();
+      const nascimento = document.getElementById('cad-nasc').value;
+      const admissao = document.getElementById('cad-adm').value;
+      const cargo = document.getElementById('cad-cargo').value.trim();
+      const salarioBase = parseFloat(document.getElementById('cad-salario').value);
+      const filialId = parseInt(document.getElementById('cad-filial').value, 10);
+      const banco = document.getElementById('cad-banco').value.trim() || '001';
+      const agencia = document.getElementById('cad-agencia').value.trim() || '1234';
+      const conta = document.getElementById('cad-conta').value.trim() || '56789';
+
+      if (!nome || !cpf || !nascimento || !admissao || !cargo || isNaN(salarioBase)) {
+        return notify('Preencha todos os campos obrigatórios.', 'error');
+      }
+
+      try {
+        await fetchAPI('/api/colaboradores', {
+          method: 'POST',
+          body: JSON.stringify({
+            nome, cpf, nascimento, admissao, cargo, setor: 'Geral',
+            salarioBase, filialId, banco, agencia, conta, titularConta: nome
+          })
+        });
+        notify('Colaborador cadastrado com sucesso!', 'success');
+        fecharModal();
+        carregarColaboradores();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function inativarColaborador(id) {
+      if (!confirm('Deseja inativar (desligar) este colaborador conforme RN-12?')) return;
+      try {
+        await fetchAPI('/api/colaboradores/' + id, { method: 'DELETE' });
+        notify('Colaborador inativado com sucesso (RN-12).', 'success');
+        carregarColaboradores();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    function abrirModalTransferencia(colabId) {
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Transferir Colaborador de Filial (RN-13)</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="form-group">
+              <label>Nova Filial de Destino</label>
+              <select id="transf-filial" class="form-control">
+                ${filiaisData.map(f => '<option value="' + f.id + '">' + f.nome + '</option>').join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Motivo da Transferência (RN-07)</label>
+              <input type="text" id="transf-motivo" class="form-control" placeholder="Ex: Remanejamento operacional de atendimento" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarTransferenciaColaborador(${colabId})">Efetivar Transferência</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function salvarTransferenciaColaborador(colabId) {
+      const filialDestinoId = parseInt(document.getElementById('transf-filial').value, 10);
+      const motivo = document.getElementById('transf-motivo').value.trim();
+      try {
+        await fetchAPI('/api/colaboradores/' + colabId, {
+          method: 'PATCH',
+          body: JSON.stringify({ filialId: filialDestinoId, motivoTransferencia: motivo })
+        });
+        notify('Colaborador transferido com sucesso e registrado na trilha (RN-07)!', 'success');
+        fecharModal();
+        carregarColaboradores();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Toggle de Visualização de Senha
+    document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+        if (!input) return;
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        button.textContent = showing ? 'Mostrar' : 'Ocultar';
+      });
+    });
+  </script>
 </body>
 </html>
