@@ -35,6 +35,7 @@ export interface CriarColaboradorDTO {
   implantacaoFeriasGozadasDias?: number; // RN-74
   implantacaoSaldoDescontar?: number | string; // RN-74
   implantacaoCompetenciaInicio?: string; // RN-74
+  permitirReenvioIdempotente?: boolean; // RNF-24: Duplo clique / reenvio de formulário
   [campoExtra: string]: any; // Para detecção de dados proibidos
 }
 
@@ -74,9 +75,23 @@ export function criarColaborador(
     throw new Error('CPF inválido. Confira os 11 dígitos.');
   }
 
-  // RN-11: CPF único
-  const buscaCPF = db.prepare('SELECT id FROM colaboradores WHERE cpf = ?');
-  if (buscaCPF.get(cpfLimpo)) {
+  // RN-11 / RNF-24: CPF único e reenvio de formulário (duplo clique)
+  const buscaCPF = db.prepare('SELECT id, nome, cargo, setor, filial_id FROM colaboradores WHERE cpf = ?');
+  const existente = buscaCPF.get(cpfLimpo) as any;
+  if (existente) {
+    if (dados.permitirReenvioIdempotente) {
+      return {
+        id: existente.id,
+        filialId: existente.filial_id,
+        nome: existente.nome,
+        cpf: formatarCPF(cpfLimpo),
+        cargo: existente.cargo,
+        setor: existente.setor,
+        mensagem: 'Operação concluída com sucesso',
+        duplicadoEvitado: true,
+        versao: 1,
+      };
+    }
     throw new Error('Já existe um colaborador com este CPF.');
   }
 
@@ -243,6 +258,8 @@ export function criarColaborador(
     implantacaoFeriasGozadasDias: feriasGozadasDias,
     implantacaoSaldoDescontar: saldoDescontarDec.toNumber(),
     situacao: 'ATIVO',
+    versao: 1,
+    mensagem: 'Operação concluída com sucesso',
   };
 }
 
@@ -295,8 +312,9 @@ export function atualizarColaborador(
     cargo?: string;
     setor?: string;
     filialId?: number;
+    versaoEsperada?: number; // RNF-25: Concorrência otimista (versão do registro)
   }
-): void {
+): { id: number; versao: number; mensagem: string } {
   if (usuarioSolicitante.perfil !== 'RH') {
     throw new Error('Você não tem permissão para esta ação.');
   }
@@ -306,7 +324,16 @@ export function atualizarColaborador(
     throw new Error('Colaborador não encontrado.');
   }
 
+  // RNF-25: Concorrência otimista via número de versão do registro
+  if (alteracoes.versaoEsperada !== undefined) {
+    const versaoBanco = atual.versao !== undefined ? Number(atual.versao) : 1;
+    if (versaoBanco !== alteracoes.versaoEsperada) {
+      throw new Error('O registro foi alterado por outra pessoa (RNF-25). Recarregue a página antes de salvar.');
+    }
+  }
+
   const agora = new Date().toISOString();
+  let houveAlteracao = false;
   const histStmt = db.prepare(`
     INSERT INTO historico_colaborador (colaborador_id, campo, valor_anterior, valor_novo, data_hora, usuario_id)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -336,6 +363,7 @@ export function atualizarColaborador(
       db.prepare('UPDATE colaboradores SET salario_base_centavos = ?, atualizado_em = ? WHERE id = ?')
         .run(Number(novoSalario.centavos), agora, colaboradorId);
       histStmt.run(colaboradorId, 'salario_base', salarioAntigoDec.toString(), novoSalario.toString(), agora, usuarioSolicitante.id);
+      houveAlteracao = true;
     }
   }
 
@@ -343,12 +371,14 @@ export function atualizarColaborador(
     db.prepare('UPDATE colaboradores SET cargo = ?, atualizado_em = ? WHERE id = ?')
       .run(alteracoes.cargo.trim(), agora, colaboradorId);
     histStmt.run(colaboradorId, 'cargo', atual.cargo, alteracoes.cargo.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
   }
 
   if (alteracoes.setor && alteracoes.setor.trim() !== atual.setor) {
     db.prepare('UPDATE colaboradores SET setor = ?, atualizado_em = ? WHERE id = ?')
       .run(alteracoes.setor.trim(), agora, colaboradorId);
     histStmt.run(colaboradorId, 'setor', atual.setor, alteracoes.setor.trim(), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
   }
 
   if (alteracoes.filialId && alteracoes.filialId !== atual.filial_id) {
@@ -361,6 +391,7 @@ export function atualizarColaborador(
     db.prepare('UPDATE colaboradores SET filial_id = ?, atualizado_em = ? WHERE id = ?')
       .run(alteracoes.filialId, agora, colaboradorId);
     histStmt.run(colaboradorId, 'filial_id', String(atual.filial_id), String(alteracoes.filialId), agora, usuarioSolicitante.id);
+    houveAlteracao = true;
 
     registrarLog(db, {
       usuarioId: usuarioSolicitante.id,
@@ -374,6 +405,18 @@ export function atualizarColaborador(
       valorNovo: String(alteracoes.filialId),
     });
   }
+
+  const novaVersao = (atual.versao || 1) + (houveAlteracao ? 1 : 0);
+  if (houveAlteracao) {
+    db.prepare('UPDATE colaboradores SET versao = ?, atualizado_em = ? WHERE id = ?')
+      .run(novaVersao, agora, colaboradorId);
+  }
+
+  return {
+    id: colaboradorId,
+    versao: novaVersao,
+    mensagem: 'Operação concluída com sucesso',
+  };
 }
 
 export function consultarColaborador(

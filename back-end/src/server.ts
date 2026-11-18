@@ -40,6 +40,7 @@ import {
 } from './services/eventoService.js';
 import {
   calcularFolhaColaborador,
+  calcularFolhaCompetenciaLote,
   executarConferenciaFinanceira,
   confirmarConferenciaFolha,
   devolverFolhaParaAjuste,
@@ -395,16 +396,13 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJSONBody(req);
 
       if (body.todosColaboradores && body.competenciaId) {
-        const ativos = db.prepare("SELECT id FROM colaboradores WHERE situacao = 'ATIVO'").all() as any[];
-        const resultados = ativos.map((c) =>
-          calcularFolhaColaborador(db, usuario, {
-            colaboradorId: c.id,
-            competenciaId: body.competenciaId,
-            diasUteisMes: body.diasUteisMes,
-            domingosEFeriadosMes: body.domingosEFeriadosMes,
-          })
-        );
-        return enviarJSON(res, 200, { calculados: resultados.length, resultados });
+        const resultadoLote = calcularFolhaCompetenciaLote(db, usuario, {
+          competenciaId: body.competenciaId,
+          diasUteisMes: body.diasUteisMes,
+          domingosEFeriadosMes: body.domingosEFeriadosMes,
+        });
+        const statusHttp = resultadoLote.sucesso ? 200 : 400;
+        return enviarJSON(res, statusHttp, resultadoLote);
       }
 
       const resCalculo = calcularFolhaColaborador(db, usuario, body);

@@ -157,14 +157,24 @@ export function reabrirCompetencia(
   });
 }
 
-export function verificarCompetenciaAberta(db: DatabaseSync, competenciaId: number): void {
-  const comp = db.prepare('SELECT mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
+export function verificarCompetenciaAberta(db: DatabaseSync, competenciaId: number, permitirProcessamentoProprio: boolean = false): void {
+  const comp = db.prepare('SELECT mes_ano, situacao, em_processamento FROM competencias WHERE id = ?').get(competenciaId) as any;
   if (!comp) {
     throw new Error('Competência inexistente.');
+  }
+
+  // RN-71: Bloqueio durante processamento concorrente
+  if (comp.em_processamento && !permitirProcessamentoProprio) {
+    throw new Error('A competência está em processamento por outra operação crítica (RN-71). Edição bloqueada.');
   }
 
   // RN-04: Competência fechada não aceita alteração
   if (comp.situacao === 'FECHADA') {
     throw new Error('Esta competência está fechada. Para alterar, reabra informando a justificativa.');
   }
+}
+
+export function definirProcessamentoCompetencia(db: DatabaseSync, competenciaId: number, emProcessamento: boolean): void {
+  db.prepare('UPDATE competencias SET em_processamento = ? WHERE id = ?')
+    .run(emProcessamento ? 1 : 0, competenciaId);
 }

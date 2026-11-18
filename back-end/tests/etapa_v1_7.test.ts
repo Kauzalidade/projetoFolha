@@ -36,6 +36,7 @@ import {
 } from '../src/services/eventoService.js';
 import {
   calcularFolhaColaborador,
+  calcularFolhaCompetenciaLote,
   executarConferenciaFinanceira,
   confirmarConferenciaFolha,
   devolverFolhaParaAjuste,
@@ -899,5 +900,348 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
       () => gerarContrachequeEstruturado(db, adminUser, colab.id, comp.id),
       /Você não tem permissão para esta ação/
     );
+  });
+
+  // --- US-15 / RN-64, RN-65, RN-71, RNF-22 a RNF-25: OPERAÇÕES CONCLUÍDAS POR INTEIRO, ATOMICIDADE, ANTI-DUPLICIDADE E CONCORRÊNCIA ---
+
+  it('Cenário US-15 / RN-64: Cálculo atômico da folha em lote desfaz tudo em caso de falha em colaborador e lista motivos', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2027-01');
+    const colab1 = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Valido 1',
+      cpf: '52998224725',
+      nascimento: '1990-01-01',
+      admissao: '2024-01-01',
+      cargo: 'Analista',
+      setor: 'TI',
+      salarioBase: '3000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '567890',
+    });
+
+    const colab2 = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Valido 2',
+      cpf: '01234567890',
+      cpfValidoIgnorar: true,
+      nascimento: '1992-02-02',
+      admissao: '2024-01-01',
+      cargo: 'Assistente',
+      setor: 'TI',
+      salarioBase: '2500.00',
+      banco: '237',
+      agencia: '4321',
+      conta: '987654',
+    });
+
+    // Colaborador com salário-base zerado/corrompido no banco para forçar erro no cálculo
+    const colabInvalido = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Com Falha',
+      cpf: '11122233344',
+      cpfValidoIgnorar: true,
+      nascimento: '1985-05-05',
+      admissao: '2024-01-01',
+      cargo: 'Operador',
+      setor: 'Produção',
+      salarioBase: '2000.00',
+      banco: '341',
+      agencia: '0001',
+      conta: '112233',
+    });
+    db.prepare('UPDATE colaboradores SET salario_base_centavos = -100 WHERE id = ?').run(colabInvalido.id);
+
+    // Executa cálculo em lote (RN-64)
+    const resultado = calcularFolhaCompetenciaLote(db, rhUser, { competenciaId: comp.id });
+
+    // Deve informar falha, não concluir e listar colaborador e motivo (RN-64 e RNF-23)
+    assert.strictEqual(resultado.sucesso, false);
+    assert.strictEqual(resultado.concluida, false);
+    assert.ok(resultado.falhas.length > 0, 'Deve listar as falhas encontradas');
+    assert.ok(resultado.falhas.some((f) => f.colaboradorNome === 'Colab Com Falha'));
+    assert.ok(resultado.mensagem.includes('A folha mantém o resultado anterior'));
+
+    // Atomicidade: NENHUMA folha pode ter sido persistida para esta competência (RN-64)
+    const folhasGravadas = db.prepare('SELECT COUNT(*) as total FROM folhas WHERE competencia_id = ?').get(comp.id) as any;
+    assert.strictEqual(folhasGravadas.total, 0, 'Nenhum dado parcial pode ficar salvo em caso de falha');
+
+    // Competência continua na situação anterior (ABERTA)
+    const compVerif = db.prepare('SELECT situacao, em_processamento FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compVerif.situacao, 'ABERTA');
+    assert.strictEqual(compVerif.em_processamento, 0);
+
+    // Verifica log de operação crítica cancelada (RN-71 / RNF-39)
+    const logs = db.prepare("SELECT * FROM logs_auditoria WHERE acao = 'OPERACAO_CALCULO' AND valor_novo = 'CANCELADA'").all() as any[];
+    assert.ok(logs.length > 0, 'Deve registrar operação crítica cancelada no log');
+  });
+
+  it('Cenário US-15 / RN-64: Cálculo em lote concluído com sucesso comita todas as folhas e grava log', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2027-02');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Sucesso Total',
+      cpf: '52998224725',
+      nascimento: '1993-03-03',
+      admissao: '2024-01-01',
+      cargo: 'Engenheiro',
+      setor: 'Engenharia',
+      salarioBase: '5000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '998877',
+    });
+
+    // Inativa colaboradores inválidos de outros testes para garantir lote 100% limpo
+    db.prepare("UPDATE colaboradores SET situacao = 'INATIVO' WHERE id != ?").run(colab.id);
+
+    const resultado = calcularFolhaCompetenciaLote(db, rhUser, { competenciaId: comp.id });
+
+    assert.strictEqual(resultado.sucesso, true);
+    assert.strictEqual(resultado.concluida, true);
+    assert.strictEqual(resultado.falhas.length, 0);
+    assert.strictEqual(resultado.totalCalculados, 1);
+    assert.ok(resultado.mensagem.includes('Operação concluída com sucesso'));
+
+    // Competência atualizada para CALCULADA
+    const compVerif = db.prepare('SELECT situacao, em_processamento FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compVerif.situacao, 'CALCULADA');
+    assert.strictEqual(compVerif.em_processamento, 0);
+
+    // Log de operação crítica CONCLUIDA gravado
+    const logs = db.prepare("SELECT * FROM logs_auditoria WHERE acao = 'OPERACAO_CALCULO' AND valor_novo = 'CONCLUIDA'").all() as any[];
+    assert.ok(logs.length > 0);
+  });
+
+  it('Cenário US-15 / RN-65 & RN-71: Duplo clique no fechamento da folha não duplica registros nem gera versão extra', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2027-03');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Idempotente Colab',
+      cpf: '52998224725',
+      nascimento: '1990-09-09',
+      admissao: '2024-01-01',
+      cargo: 'Auditor',
+      setor: 'Compliance',
+      salarioBase: '4500.00',
+      banco: '237',
+      agencia: '0001',
+      conta: '556677',
+    });
+    db.prepare("UPDATE colaboradores SET situacao = 'INATIVO' WHERE id != ?").run(colab.id);
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: comp.id });
+    confirmarConferenciaFolha(db, rhUser, comp.id, 'Conferência OK');
+
+    // 1º Clique em Fechar
+    const fechamento1 = fecharFolhaSegura(db, rhUser, comp.id);
+    assert.strictEqual(fechamento1.versao, 'V1');
+
+    // 2º Clique em Fechar (Duplo clique imediato do usuário / rede)
+    const fechamento2 = fecharFolhaSegura(db, rhUser, comp.id);
+    assert.strictEqual(fechamento2.versao, 'V1');
+    assert.strictEqual(fechamento2.duploCliqueIgnorado, true);
+
+    // Valida que existe APENAS 1 versão V1 gravada
+    const totalVersoes = db.prepare('SELECT COUNT(*) as total FROM folha_versoes WHERE competencia_id = ?').get(comp.id) as any;
+    assert.strictEqual(totalVersoes.total, 1, 'Duplo clique não pode gerar duas versões');
+
+    // Valida que existe APENAS 1 log de fechamento
+    const logsFechamento = db.prepare(`
+      SELECT COUNT(*) as total FROM logs_auditoria
+      WHERE acao = 'FECHAR_FOLHA_COMPETENCIA' AND registro_id = ?
+    `).get(String(comp.id)) as any;
+    assert.strictEqual(logsFechamento.total, 1, 'Duplo clique deve gerar apenas 1 registro no log imutável');
+  });
+
+  it('Cenário US-15 / RN-65: Lançamento de evento duplicado exige confirmação do RH', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2027-04');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Eventos Colab',
+      cpf: '52998224725',
+      nascimento: '1995-05-15',
+      admissao: '2024-01-01',
+      cargo: 'Técnico',
+      setor: 'Suporte',
+      salarioBase: '3000.00',
+      banco: '104',
+      agencia: '1111',
+      conta: '223344',
+    });
+
+    // 1º Lançamento de hora extra
+    const ev1 = lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 2,
+      data: '2027-04-10',
+    });
+    assert.ok(ev1.id > 0);
+
+    // 2º Lançamento exatamente igual sem confirmação -> Rejeição por aviso de duplicidade (RN-65)
+    assert.throws(
+      () =>
+        lancarHorasExtras(db, rhUser, {
+          colaboradorId: colab.id,
+          competenciaId: comp.id,
+          tipo: 'UTIL',
+          quantidadeHoras: 2,
+          data: '2027-04-10',
+          confirmarDuplicidade: false,
+        }),
+      /Aviso de possível duplicidade: este evento já foi lançado para o colaborador/
+    );
+
+    // 3º Lançamento igual com confirmação explícita do RH -> Grava com sucesso (RN-65)
+    const ev2 = lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 2,
+      data: '2027-04-10',
+      confirmarDuplicidade: true,
+    });
+    assert.ok(ev2.id > 0);
+    assert.notStrictEqual(ev1.id, ev2.id);
+  });
+
+  it('Cenário US-15 / RNF-24: Reenvio de formulário de cadastro de colaborador não duplica registros', () => {
+    const colab1 = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Reenvio',
+      cpf: '52998224725',
+      nascimento: '1991-07-07',
+      admissao: '2024-01-01',
+      cargo: 'Especialista',
+      setor: 'Projetos',
+      salarioBase: '6000.00',
+      banco: '033',
+      agencia: '0010',
+      conta: '990011',
+      permitirReenvioIdempotente: true,
+    });
+
+    assert.ok(colab1.id > 0);
+
+    // Segundo clique imediato em "Salvar" com a mesma requisição
+    const colab2 = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Reenvio',
+      cpf: '52998224725',
+      nascimento: '1991-07-07',
+      admissao: '2024-01-01',
+      cargo: 'Especialista',
+      setor: 'Projetos',
+      salarioBase: '6000.00',
+      banco: '033',
+      agencia: '0010',
+      conta: '990011',
+      permitirReenvioIdempotente: true,
+    });
+
+    assert.strictEqual(colab1.id, colab2.id, 'Deve retornar o mesmo identificador sem duplicar');
+    assert.strictEqual(colab2.duplicadoEvitado, true);
+
+    // Valida que existe apenas um colaborador no banco com este CPF
+    const qtdColabs = db.prepare("SELECT COUNT(*) as total FROM colaboradores WHERE cpf = '52998224725'").get() as any;
+    assert.strictEqual(qtdColabs.total, 1, 'Existe apenas um colaborador cadastrado com aquele CPF');
+  });
+
+  it('Cenário US-15 / RN-71: Competência em processamento bloqueia edição concorrente', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2027-05');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Bloqueio Colab',
+      cpf: '52998224725',
+      nascimento: '1992-08-08',
+      admissao: '2024-01-01',
+      cargo: 'Auxiliar',
+      setor: 'Financeiro',
+      salarioBase: '2200.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '445566',
+    });
+
+    // Simula bloqueio de operação concorrente em andamento (RN-71)
+    db.prepare('UPDATE competencias SET em_processamento = 1 WHERE id = ?').run(comp.id);
+
+    // Tentativa de calcular bloqueada
+    assert.throws(
+      () => calcularFolhaCompetenciaLote(db, rhUser, { competenciaId: comp.id }),
+      /A competência está em processamento por outra operação crítica \(RN-71\)\. Edição bloqueada\./
+    );
+
+    // Tentativa de lançar evento bloqueada
+    assert.throws(
+      () =>
+        lancarHorasExtras(db, rhUser, {
+          colaboradorId: colab.id,
+          competenciaId: comp.id,
+          tipo: 'UTIL',
+          quantidadeHoras: 1,
+        }),
+      /A competência está em processamento por outra operação crítica \(RN-71\)\. Edição bloqueada\./
+    );
+
+    // Tentativa de fechar bloqueada
+    assert.throws(
+      () => fecharFolhaSegura(db, rhUser, comp.id),
+      /A competência está em processamento por outra operação crítica \(RN-71\)\. Edição bloqueada\./
+    );
+
+    // Libera processamento e valida que operação volta a ser permitida
+    db.prepare('UPDATE competencias SET em_processamento = 0 WHERE id = ?').run(comp.id);
+    const ev = lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 1,
+    });
+    assert.ok(ev.id > 0);
+  });
+
+  it('Cenário US-15 / RNF-25: Concorrência otimista impede sobrescrita de cadastro desatualizado', () => {
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Concorrencia Versao',
+      cpf: '52998224725',
+      nascimento: '1988-12-12',
+      admissao: '2024-01-01',
+      cargo: 'Arquiteto',
+      setor: 'Sistemas',
+      salarioBase: '8000.00',
+      banco: '237',
+      agencia: '5544',
+      conta: '112233',
+    });
+
+    assert.strictEqual(colab.versao, 1, 'Versão inicial deve ser 1 (RNF-25)');
+
+    // Usuário 1 salva com base na versão 1 -> Sucesso, versão incrementada para 2
+    const res1 = atualizarColaborador(db, rhUser, colab.id, {
+      cargo: 'Arquiteto Sênior',
+      versaoEsperada: 1,
+    });
+    assert.strictEqual(res1.versao, 2);
+
+    // Usuário 2, com a tela aberta na versão 1 antiga, tenta salvar -> Bloqueado com aviso (RNF-25)
+    assert.throws(
+      () =>
+        atualizarColaborador(db, rhUser, colab.id, {
+          cargo: 'Arquiteto Especialista',
+          versaoEsperada: 1,
+        }),
+      /O registro foi alterado por outra pessoa \(RNF-25\)\. Recarregue a página antes de salvar\./
+    );
+
+    // Usuário 2 recarrega e envia com a versão 2 atualizada -> Sucesso, versão incrementada para 3
+    const res2 = atualizarColaborador(db, rhUser, colab.id, {
+      cargo: 'Arquiteto Especialista',
+      versaoEsperada: 2,
+    });
+    assert.strictEqual(res2.versao, 3);
   });
 });

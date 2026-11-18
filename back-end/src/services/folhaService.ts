@@ -19,7 +19,7 @@ import { DatabaseSync } from 'node:sqlite';
 import crypto from 'node:crypto';
 import { Dec } from '../dec.js';
 import { calcularINSS, calcularIRRF, calcularDSRExtras } from '../calculo.js';
-import { registrarLog } from './logService.js';
+import { registrarLog, registrarOperacaoCritica } from './logService.js';
 import { verificarCompetenciaAberta } from './competenciaService.js';
 
 export interface ItemMemoriaVerba {
@@ -59,16 +59,22 @@ export function calcularFolhaColaborador(
     competenciaId: number;
     diasUteisMes?: number;
     domingosEFeriadosMes?: number;
+    permitirEmProcessamento?: boolean;
   }
 ): any {
   if (usuarioSolicitante.perfil !== 'RH') {
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  verificarCompetenciaAberta(db, dados.competenciaId);
+  verificarCompetenciaAberta(db, dados.competenciaId, dados.permitirEmProcessamento);
 
   const colab = db.prepare('SELECT * FROM colaboradores WHERE id = ?').get(dados.colaboradorId) as any;
   if (!colab) throw new Error('Colaborador não encontrado.');
+
+  // RN-10: Salário zero ou negativo não pode ser calculado
+  if (!colab.salario_base_centavos || colab.salario_base_centavos <= 0) {
+    throw new Error(`Salário-base inválido ou zerado para o colaborador ${colab.nome} (RN-10).`);
+  }
 
   const comp = db.prepare('SELECT id, mes_ano FROM competencias WHERE id = ?').get(dados.competenciaId) as any;
   const verbasMemoria: ItemMemoriaVerba[] = [];
@@ -477,6 +483,134 @@ export function calcularFolhaColaborador(
 }
 
 /**
+ * RN-64, RN-71, RNF-22 e RNF-23: Cálculo em lote da folha com garantia de atomicidade (tudo ou nada).
+ * - Se falhar para qualquer colaborador, a transação inteira é revertida (nenhum dado parcial fica salvo).
+ * - Mantém o resultado anterior e lista quem falhou e por quê.
+ * - Bloqueia edição concorrente com status 'em processamento' durante a operação (RN-71).
+ * - Registra operação crítica concluída ou cancelada no log (RNF-39).
+ */
+export function calcularFolhaCompetenciaLote(
+  db: DatabaseSync,
+  usuarioSolicitante: { id: number; email: string; perfil: string },
+  dados: {
+    competenciaId: number;
+    diasUteisMes?: number;
+    domingosEFeriadosMes?: number;
+  }
+): {
+  sucesso: boolean;
+  concluida: boolean;
+  mensagem: string;
+  totalCalculados: number;
+  falhas: { colaboradorId: number; colaboradorNome: string; motivo: string }[];
+  resultados?: any[];
+} {
+  if (usuarioSolicitante.perfil !== 'RH') {
+    throw new Error('Você não tem permissão para esta ação.');
+  }
+
+  const comp = db.prepare('SELECT id, mes_ano, situacao, em_processamento FROM competencias WHERE id = ?').get(dados.competenciaId) as any;
+  if (!comp) {
+    throw new Error('Competência não encontrada.');
+  }
+
+  // RN-71: Bloqueio de concorrência se já estiver em processamento
+  if (comp.em_processamento) {
+    throw new Error('A competência está em processamento por outra operação crítica (RN-71). Edição bloqueada.');
+  }
+
+  if (comp.situacao === 'FECHADA') {
+    throw new Error('Esta competência está fechada. Para alterar, reabra informando a justificativa.');
+  }
+
+  const tInicio = Date.now();
+  const operacaoId = `CALC_${comp.mes_ano}_${tInicio}`;
+
+  // Ativa bloqueio de edição concorrente (RN-71)
+  db.prepare('UPDATE competencias SET em_processamento = 1 WHERE id = ?').run(dados.competenciaId);
+
+  // Ponto de restauração atômico (RN-64 / RNF-22)
+  db.exec('SAVEPOINT sp_calculo_lote');
+
+  const colaboradoresAtivos = db.prepare(`
+    SELECT id, nome FROM colaboradores WHERE situacao = 'ATIVO'
+  `).all() as any[];
+
+  const falhas: { colaboradorId: number; colaboradorNome: string; motivo: string }[] = [];
+  const resultados: any[] = [];
+
+  for (const c of colaboradoresAtivos) {
+    try {
+      const resColab = calcularFolhaColaborador(db, usuarioSolicitante, {
+        colaboradorId: c.id,
+        competenciaId: dados.competenciaId,
+        diasUteisMes: dados.diasUteisMes,
+        domingosEFeriadosMes: dados.domingosEFeriadosMes,
+        permitirEmProcessamento: true,
+      });
+      resultados.push(resColab);
+    } catch (err: any) {
+      falhas.push({
+        colaboradorId: c.id,
+        colaboradorNome: c.nome,
+        motivo: err.message || 'Erro durante o cálculo do colaborador',
+      });
+    }
+  }
+
+  const tFim = Date.now();
+  const duracaoMs = tFim - tInicio;
+
+  if (falhas.length > 0) {
+    // Falha em 1 ou mais colaboradores: desfaz tudo sem salvar dados parciais (RN-64)
+    db.exec('ROLLBACK TO sp_calculo_lote');
+    db.exec('RELEASE sp_calculo_lote');
+    db.prepare('UPDATE competencias SET em_processamento = 0 WHERE id = ?').run(dados.competenciaId);
+
+    // Registra falha e diagnóstico da operação crítica (RN-71 / RNF-39)
+    registrarOperacaoCritica(db, {
+      operacaoId,
+      tipo: 'CALCULO',
+      resultado: 'CANCELADA',
+      usuario: usuarioSolicitante,
+      tempoExecucaoMs: duracaoMs,
+      detalhes: `Falha no cálculo para ${falhas.length} colaborador(es). Folha anterior preservada. Motivos: ${falhas.map((f) => `${f.colaboradorNome}: ${f.motivo}`).join('; ')}`,
+    });
+
+    return {
+      sucesso: false,
+      concluida: false,
+      mensagem: `Cálculo não concluído devido a falha em ${falhas.length} colaborador(es). A folha mantém o resultado anterior (RN-64 / RNF-23).`,
+      totalCalculados: 0,
+      falhas,
+    };
+  }
+
+  // Sucesso integral: comita a transação atômica
+  db.exec('RELEASE sp_calculo_lote');
+  db.prepare("UPDATE competencias SET em_processamento = 0, situacao = 'CALCULADA', calculado_por = ? WHERE id = ?")
+    .run(usuarioSolicitante.id, dados.competenciaId);
+
+  registrarOperacaoCritica(db, {
+    operacaoId,
+    tipo: 'CALCULO',
+    resultado: 'CONCLUIDA',
+    usuario: usuarioSolicitante,
+    tempoExecucaoMs: duracaoMs,
+    detalhes: `Cálculo da folha ${comp.mes_ano} concluído com sucesso para ${resultados.length} colaborador(es).`,
+  });
+
+  return {
+    sucesso: true,
+    concluida: true,
+    mensagem: 'Operação concluída com sucesso (RNF-23)',
+    totalCalculados: resultados.length,
+    falhas: [],
+    resultados,
+  };
+}
+
+/**
  * RN-59: Conferência Financeira Interna da Folha.
  * Confere itens (a) a (e) com tolerância de R$ 0,00.
  */
@@ -695,8 +829,29 @@ export function fecharFolhaSegura(
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  const comp = db.prepare('SELECT id, mes_ano, situacao, conferido_por FROM competencias WHERE id = ?').get(competenciaId) as any;
+  const comp = db.prepare('SELECT id, mes_ano, situacao, conferido_por, em_processamento, fechado_em FROM competencias WHERE id = ?').get(competenciaId) as any;
   if (!comp) throw new Error('Competência não encontrada.');
+
+  // RN-71: Bloqueio de concorrência se já estiver em processamento
+  if (comp.em_processamento) {
+    throw new Error('A competência está em processamento por outra operação crítica (RN-71). Edição bloqueada.');
+  }
+
+  // RN-65 / RN-71: Duplo clique no fechamento (idempotência - fechamento feito uma única vez sem duplicar log)
+  if (comp.situacao === 'FECHADA') {
+    const ultimaVersao = db.prepare(`
+      SELECT * FROM folha_versoes WHERE competencia_id = ? ORDER BY id DESC LIMIT 1
+    `).get(competenciaId) as any;
+    return {
+      competenciaId,
+      versao: ultimaVersao ? ultimaVersao.versao_numero : 'V1',
+      fechadoEm: comp.fechado_em || new Date().toISOString(),
+      hashSha256: ultimaVersao ? ultimaVersao.hash_sha256 : '',
+      totalLiquido: ultimaVersao ? (ultimaVersao.liquido_centavos / 100) : 0,
+      duploCliqueIgnorado: true,
+      mensagem: 'Competência já se encontra fechada. Operação executada sem duplicação (RN-65/RN-71).'
+    };
+  }
 
   // RN-63: Ordem das competências - só se fecha se a anterior estiver fechada
   const todasCompetencias = db.prepare('SELECT id, mes_ano, situacao FROM competencias ORDER BY mes_ano ASC').all() as any[];

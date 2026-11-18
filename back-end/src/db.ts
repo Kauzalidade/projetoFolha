@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   implantacao_saldo_descontar_centavos INTEGER NOT NULL DEFAULT 0,
   implantacao_competencia_inicio TEXT NULL,
   situacao TEXT NOT NULL DEFAULT 'ATIVO' CHECK(situacao IN ('ATIVO', 'INATIVO', 'EM_FERIAS', 'AFASTADO', 'DESLIGADO')),
+  versao INTEGER NOT NULL DEFAULT 1, -- RNF-25: Controle de versão para concorrência otimista
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
 );
@@ -114,6 +115,7 @@ CREATE TABLE IF NOT EXISTS competencias (
   motivo_devolucao TEXT NULL,
   pago_em TEXT NULL,
   pago_por INTEGER NULL REFERENCES usuarios(id),
+  em_processamento INTEGER NOT NULL DEFAULT 0, -- RN-71: Bloqueio de edição concorrente durante operações críticas
   criado_em TEXT NOT NULL
 );
 
@@ -314,6 +316,11 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   const local = caminhoArquivo || path.join(process.cwd(), 'rh_folha.db');
   const db = new DatabaseSync(local);
   db.exec(SCHEMA_SQL);
+
+  // Migrações dinâmicas para bases SQLite existentes (RN-71, RNF-25)
+  try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE colaboradores ADD COLUMN versao INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+
   return db;
 }
 
