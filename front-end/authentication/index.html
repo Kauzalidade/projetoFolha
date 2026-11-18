@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/authentication/styles.css">
+  <script src="/authentication/app.js" defer></script>
 </head>
 <body>
   <div class="page-shell">
@@ -38,7 +38,7 @@
           <p class="eyebrow">Bem-vindo de volta</p>
           <h2 id="login-title" tabindex="-1">Entre na sua conta</h2>
           <p class="intro">Use seu e-mail e sua senha para continuar.</p>
-          <form id="login-form" novalidate>
+          <form id="login-form" method="post" novalidate>
             <div class="field">
               <label for="login-email">E-mail</label>
               <input id="login-email" name="email" type="email" autocomplete="username" required>
@@ -65,7 +65,7 @@
           <p class="eyebrow">Verificação em duas etapas</p>
           <h2 id="mfa-title" tabindex="-1">Confirme sua identidade</h2>
           <p class="intro">Abra o aplicativo autenticador e informe o código de 6 dígitos.</p>
-          <form id="mfa-form" novalidate>
+          <form id="mfa-form" method="post" novalidate>
             <div class="field">
               <label for="mfa-code">Código do aplicativo</label>
               <input id="mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-describedby="mfa-help" required>
@@ -83,7 +83,7 @@
           <p class="eyebrow">Primeiro acesso</p>
           <h2 id="change-title" tabindex="-1">Crie sua nova senha</h2>
           <p class="intro">Por segurança, troque a senha temporária antes de continuar.</p>
-          <form id="change-form" novalidate>
+          <form id="change-form" method="post" novalidate>
             <div class="field">
               <label for="current-password">Senha atual</label>
               <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required>
@@ -108,7 +108,7 @@
           <p class="eyebrow">Recuperação segura</p>
           <h2 id="forgot-title" tabindex="-1">Recupere sua senha</h2>
           <p class="intro">Informe seu e-mail. Se a conta estiver cadastrada, enviaremos um link de uso único válido por 15 minutos.</p>
-          <form id="forgot-form" novalidate>
+          <form id="forgot-form" method="post" novalidate>
             <div class="field">
               <label for="forgot-email">E-mail</label>
               <input id="forgot-email" name="email" type="email" autocomplete="email" required>
@@ -125,7 +125,7 @@
           <p class="eyebrow">Link de uso único</p>
           <h2 id="reset-title" tabindex="-1">Defina uma nova senha</h2>
           <p class="intro">O segundo fator continuará obrigatório no próximo login.</p>
-          <form id="reset-form" novalidate>
+          <form id="reset-form" method="post" novalidate>
             <div class="field">
               <label for="reset-password">Nova senha</label>
               <input id="reset-password" name="password" type="password" autocomplete="new-password" aria-describedby="reset-password-rules" required>
