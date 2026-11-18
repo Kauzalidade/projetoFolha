@@ -28,7 +28,7 @@ import {
   consultarColaborador,
 } from '../src/services/colaboradorService.js';
 import { inicializarFeriadosEParametros, cadastrarParametro } from '../src/services/parametroFeriadoService.js';
-import { abrirOuObterCompetencia } from '../src/services/competenciaService.js';
+import { abrirOuObterCompetencia, reabrirCompetencia } from '../src/services/competenciaService.js';
 import { consultarLogs, registrarOperacaoCritica } from '../src/services/logService.js';
 import {
   lancarHorasExtras,
@@ -43,6 +43,8 @@ import {
   fecharFolhaSegura,
   registrarPagamentoFolha,
   consultarVersoesFolha,
+  consultarTrilhaAprovacaoCompetencia,
+  obterDetalheVersaoFolha,
 } from '../src/services/folhaService.js';
 import { solicitarFerias, listarFerias } from '../src/services/feriasService.js';
 import {
@@ -1243,5 +1245,326 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
       versaoEsperada: 2,
     });
     assert.strictEqual(res2.versao, 3);
+  });
+
+  // =========================================================================
+  // US-16: TRILHA DE APROVAÇÃO, DEVOLUÇÃO E VERSIONAMENTO (RN-04, RN-67, RN-68, RNF-54)
+  // =========================================================================
+
+  it('Cenário US-16 / Critério 1: Registro de usuários, datas e horas de lançamento, cálculo, conferência e fechamento', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Trilha',
+      cpf: '52998224725',
+      nascimento: '1992-05-10',
+      admissao: '2025-01-01',
+      cargo: 'Analista de Operações',
+      setor: 'Operações',
+      salarioBase: '3000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '56789',
+    });
+
+    // 1. Lançamento de Evento por outroRhUser
+    lancarHorasExtras(db, outroRhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 2,
+    });
+
+    const compAposLanc = db.prepare('SELECT lancado_por, lancado_em FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compAposLanc.lancado_por, outroRhUser.id, 'Deve registrar o ID do usuário que lançou eventos');
+    assert.ok(compAposLanc.lancado_em, 'Deve registrar data/hora do lançamento');
+
+    // 2. Cálculo da Folha por rhUser
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      diasUteisMes: 25,
+      domingosEFeriadosMes: 5,
+    });
+
+    const compAposCalc = db.prepare('SELECT calculado_por, calculado_em FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compAposCalc.calculado_por, rhUser.id, 'Deve registrar o ID do usuário que calculou a folha');
+    assert.ok(compAposCalc.calculado_em, 'Deve registrar data/hora do cálculo');
+
+    // 3. Confirmação da Conferência por outroRhUser
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+
+    const compAposConf = db.prepare('SELECT conferido_por, conferido_em FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compAposConf.conferido_por, outroRhUser.id, 'Deve registrar o ID do usuário que confirmou a conferência');
+    assert.ok(compAposConf.conferido_em, 'Deve registrar data/hora da confirmação da conferência');
+
+    // 4. Fechamento da Folha por rhUser
+    fecharFolhaSegura(db, rhUser, comp.id);
+
+    const compAposFech = db.prepare('SELECT fechado_por, fechado_em, situacao FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compAposFech.situacao, 'FECHADA');
+    assert.strictEqual(compAposFech.fechado_por, rhUser.id, 'Deve registrar o ID do usuário que fechou a folha');
+    assert.ok(compAposFech.fechado_em, 'Deve registrar data/hora do fechamento');
+  });
+
+  it('Cenário US-16 / Critério 2: Devolução de folha para ajuste com motivo volta a Aberta e invalida conferência', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Devolucao',
+      cpf: '52998224725',
+      nascimento: '1990-03-15',
+      admissao: '2025-01-01',
+      cargo: 'Caixa',
+      setor: 'Atendimento',
+      salarioBase: '2500.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '998877',
+    });
+
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+    });
+
+    // Confirma conferência inicialmente
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    const compConf = db.prepare('SELECT conferido_por, conferido_em, situacao FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.ok(compConf.conferido_por);
+    assert.ok(compConf.conferido_em);
+
+    // Devolve para ajuste com motivo
+    devolverFolhaParaAjuste(db, rhUser, comp.id, 'Corrigir faltas injustificadas lançadas indevidamente');
+
+    const compDevolvida = db.prepare('SELECT situacao, conferido_por, conferido_em, motivo_devolucao FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compDevolvida.situacao, 'ABERTA', 'Competência deve voltar a Aberta');
+    assert.strictEqual(compDevolvida.conferido_por, null, 'Conferência deve perder validade (conferido_por = null)');
+    assert.strictEqual(compDevolvida.conferido_em, null, 'Conferência deve perder validade (conferido_em = null)');
+    assert.strictEqual(compDevolvida.motivo_devolucao, 'Corrigir faltas injustificadas lançadas indevidamente');
+
+    // Valida registro no log de auditoria
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'COMPETENCIA', registroId: comp.id });
+    const logDevolucao = logs.find((l: any) => l.acao === 'DEVOLVER_FOLHA_AJUSTE');
+    assert.ok(logDevolucao, 'Deve registrar log da ação DEVOLVER_FOLHA_AJUSTE');
+    assert.ok(logDevolucao.detalhes.includes('Corrigir faltas injustificadas'));
+
+    // Validações de erro
+    assert.throws(
+      () => devolverFolhaParaAjuste(db, rhUser, comp.id, '  '),
+      /Informe o motivo da devolução para ajuste\./
+    );
+
+    assert.throws(
+      () => devolverFolhaParaAjuste(db, diretoriaUser as any, comp.id, 'Motivo qualquer'),
+      /Você não tem permissão para esta ação\./
+    );
+  });
+
+  it('Cenário US-16 / Critério 3: Fechamento V1 guarda snapshot completo com valores, totais, eventos, parâmetros, usuários, data/hora e hash', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Snapshot V1',
+      cpf: '52998224725',
+      nascimento: '1985-04-20',
+      admissao: '2024-01-01',
+      cargo: 'Coordenador',
+      setor: 'Operações',
+      salarioBase: '4000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '12345',
+    });
+
+    lancarHorasExtras(db, outroRhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 4,
+    });
+
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      diasUteisMes: 25,
+      domingosEFeriadosMes: 5,
+    });
+
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    const resFechamento = fecharFolhaSegura(db, rhUser, comp.id);
+
+    assert.strictEqual(resFechamento.versao, 'V1');
+    assert.ok(resFechamento.hashSha256);
+    assert.strictEqual(resFechamento.hashSha256.length, 64, 'Hash SHA-256 deve ter 64 caracteres hex');
+
+    // Valida dados gravados na tabela folha_versoes
+    const versoes = consultarVersoesFolha(db, comp.id);
+    assert.strictEqual(versoes.length, 1);
+    const v1 = versoes[0];
+    assert.strictEqual(v1.versao_numero, 'V1');
+    assert.strictEqual(v1.hash_sha256, resFechamento.hashSha256);
+
+    const snapshot = JSON.parse(v1.dados_json);
+    assert.strictEqual(snapshot.versao, 'V1');
+    assert.strictEqual(snapshot.competencia, '2026-10');
+    assert.ok(snapshot.dataHora);
+    assert.ok(snapshot.totais.liquido > 0);
+    assert.ok(snapshot.colaboradores.length === 1);
+    assert.ok(snapshot.colaboradores[0].verbas.length > 0, 'Snapshot deve guardar as verbas e valores detalhados');
+    assert.ok(snapshot.eventos.length === 1, 'Snapshot deve guardar a lista de eventos');
+    assert.ok(snapshot.parametros.length > 0, 'Snapshot deve guardar os parâmetros legais vigentes');
+    assert.ok(snapshot.usuarios.lancamento.dataHora, 'Snapshot deve guardar data/hora de lançamento');
+    assert.ok(snapshot.usuarios.calculo.dataHora, 'Snapshot deve guardar data/hora de cálculo');
+    assert.ok(snapshot.usuarios.conferencia.dataHora, 'Snapshot deve guardar data/hora de conferência');
+    assert.ok(snapshot.usuarios.fechamento.dataHora, 'Snapshot deve guardar data/hora de fechamento');
+  });
+
+  it('Cenário US-16 / Critério 4: Reabrir, recalcular e fechar gera V2 sem apagar V1', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Multiplas Versoes',
+      cpf: '52998224725',
+      nascimento: '1989-08-10',
+      admissao: '2024-01-01',
+      cargo: 'Analista Pleno',
+      setor: 'TI',
+      salarioBase: '5000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '98765',
+    });
+
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+    });
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    const resV1 = fecharFolhaSegura(db, rhUser, comp.id);
+    assert.strictEqual(resV1.versao, 'V1');
+
+    // Reabertura com justificativa obrigatória
+    reabrirCompetencia(db, rhUser, comp.mes_ano, 'Ajuste de adicional de transferência retroativo');
+    const compReaberta = db.prepare('SELECT situacao, conferido_em FROM competencias WHERE id = ?').get(comp.id) as any;
+    assert.strictEqual(compReaberta.situacao, 'ABERTA');
+    assert.strictEqual(compReaberta.conferido_em, null, 'Conferência perde validade na reabertura');
+
+    // Verifica que V1 continua salva e intacta
+    const versoesAposReabrir = consultarVersoesFolha(db, comp.id);
+    assert.strictEqual(versoesAposReabrir.length, 1);
+    assert.strictEqual(versoesAposReabrir[0].versao_numero, 'V1');
+
+    // Recalcula a folha com novos lançamentos
+    lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 2,
+    });
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+    });
+
+    // Revalida conferência e fecha novamente -> Gera V2
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    const resV2 = fecharFolhaSegura(db, rhUser, comp.id);
+    assert.strictEqual(resV2.versao, 'V2');
+    assert.notStrictEqual(resV2.hashSha256, resV1.hashSha256, 'Hash de V2 deve ser diferente de V1 devido aos novos eventos');
+
+    // Verifica que ambas as versões V1 e V2 existem e nenhuma foi apagada
+    const todasVersoes = consultarVersoesFolha(db, comp.id);
+    assert.strictEqual(todasVersoes.length, 2, 'Devem existir exatamente 2 versões salvas (V1 e V2)');
+    assert.strictEqual(todasVersoes[0].versao_numero, 'V1');
+    assert.strictEqual(todasVersoes[1].versao_numero, 'V2');
+    assert.strictEqual(todasVersoes[0].hash_sha256, resV1.hashSha256, 'V1 original permanece inalterada');
+    assert.strictEqual(todasVersoes[1].hash_sha256, resV2.hashSha256, 'V2 registrada corretamente');
+  });
+
+  it('Cenário US-16 / Critério 5: Diretoria consulta trilha completa e relatórios/contracheques identificam versão', () => {
+    const comp = abrirOuObterCompetencia(db, rhUser, '2026-10');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Trilha Diretoria',
+      cpf: '52998224725',
+      nascimento: '1987-02-18',
+      admissao: '2024-01-01',
+      cargo: 'Supervisora',
+      setor: 'Crédito',
+      salarioBase: '3500.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '43210',
+    });
+
+    // Lança, calcula, confere e fecha V1
+    lancarHorasExtras(db, outroRhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'UTIL',
+      quantidadeHoras: 1,
+    });
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+    });
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    fecharFolhaSegura(db, rhUser, comp.id);
+
+    // Reabre e fecha V2
+    reabrirCompetencia(db, rhUser, comp.mes_ano, 'Inclusão de hora extra complementar');
+    lancarHorasExtras(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+      tipo: 'DOMINGO',
+      quantidadeHoras: 2,
+    });
+    calcularFolhaColaborador(db, rhUser, {
+      colaboradorId: colab.id,
+      competenciaId: comp.id,
+    });
+    confirmarConferenciaFolha(db, outroRhUser, comp.id);
+    fecharFolhaSegura(db, rhUser, comp.id);
+
+    // 1. Diretoria consulta a trilha completa de aprovação
+    const trilha = consultarTrilhaAprovacaoCompetencia(db, diretoriaUser, comp.id);
+    assert.strictEqual(trilha.mesAno, '2026-10');
+    assert.strictEqual(trilha.situacao, 'FECHADA');
+    assert.strictEqual(trilha.etapas.lancamento.concluido, true);
+    assert.strictEqual(trilha.etapas.calculo.concluido, true);
+    assert.strictEqual(trilha.etapas.conferencia.valida, true);
+    assert.strictEqual(trilha.etapas.fechamento.fechada, true);
+    assert.strictEqual(trilha.etapas.fechamento.versaoAtual, 'V2');
+    assert.strictEqual(trilha.totalVersoes, 2);
+    assert.strictEqual(trilha.versoes[0].versao, 'V1');
+    assert.strictEqual(trilha.versoes[1].versao, 'V2');
+
+    // 2. Diretoria consulta detalhe de snapshot de versão anterior V1
+    const detalheV1 = obterDetalheVersaoFolha(db, diretoriaUser, comp.id, 'V1');
+    assert.strictEqual(detalheV1.versaoNumero, 'V1');
+    assert.strictEqual(detalheV1.dadosSnapshot.eventos.length, 1);
+
+    // 3. Relatórios identificam a versão atual (V2)
+    const relFolha = gerarRelatorioFolhaMes(db, diretoriaUser, comp.id);
+    assert.strictEqual(relFolha.versao, 'V2');
+    assert.ok(relFolha.titulo.includes('V2'));
+
+    const relPag = gerarRelatorioDadosPagamento(db, diretoriaUser, comp.id);
+    assert.strictEqual(relPag.versao, 'V2');
+
+    // 4. Contracheques identificam a versão e permitem consultar versão anterior
+    const ccAtual = gerarContrachequeEstruturado(db, diretoriaUser, colab.id, comp.id);
+    assert.strictEqual(ccAtual.cabecalho.versao, 'V2');
+
+    const ccV1 = gerarContrachequeEstruturado(db, diretoriaUser, colab.id, comp.id, 'V1');
+    assert.strictEqual(ccV1.cabecalho.versao, 'V1');
+    assert.notStrictEqual(ccV1.totais.liquido, ccAtual.totais.liquido, 'Líquido de V1 deve ser diferente de V2');
+
+    // 5. Perfil não autorizado é bloqueado
+    assert.throws(
+      () => consultarTrilhaAprovacaoCompetencia(db, { perfil: 'COLABORADOR' } as any, comp.id),
+      /Você não tem permissão para esta ação\./
+    );
   });
 });

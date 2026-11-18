@@ -47,6 +47,8 @@ import {
   fecharFolhaSegura,
   registrarPagamentoFolha,
   consultarVersoesFolha,
+  consultarTrilhaAprovacaoCompetencia,
+  obterDetalheVersaoFolha,
 } from './services/folhaService.js';
 import { solicitarFerias, listarFerias } from './services/feriasService.js';
 import { calcularDecimoTerceiro } from './services/decimoTerceiroService.js';
@@ -60,6 +62,7 @@ import {
 } from './services/documentosAlertasService.js';
 import {
   gerarRelatorioFolhaMes,
+  gerarContrachequeEstruturado,
   gerarContrachequePDF,
   exportarRelatorioPDF,
   exportarRelatorioExcel,
@@ -457,6 +460,23 @@ const server = http.createServer(async (req, res) => {
       return enviarJSON(res, 200, versoes);
     }
 
+    // US-16 / RNF-54: Consulta da Trilha de Aprovação e Responsabilidade (Diretoria e RH)
+    if (method === 'GET' && pathname === '/api/folha/trilha') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const trilha = consultarTrilhaAprovacaoCompetencia(db, usuario, compId);
+      return enviarJSON(res, 200, trilha);
+    }
+
+    // US-16 / RN-68: Consulta de Detalhes e Snapshot de Versão Específica
+    if (method === 'GET' && pathname === '/api/folha/versao-detalhe') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const versao = parsedUrl.query.versao as string;
+      const detalhe = obterDetalheVersaoFolha(db, usuario, compId, versao);
+      return enviarJSON(res, 200, detalhe);
+    }
+
     // Férias e 13º
     if (pathname === '/api/ferias') {
       const usuario = autenticarRequisicao(req);
@@ -520,8 +540,18 @@ const server = http.createServer(async (req, res) => {
       const usuario = autenticarRequisicao(req);
       const colabId = parseInt(pathname.split('/')[4], 10);
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
-      const pdf = gerarContrachequePDF(db, usuario, colabId, compId);
+      const versaoQ = parsedUrl.query.versao as string | undefined;
+      const pdf = gerarContrachequePDF(db, usuario, colabId, compId, versaoQ);
       return enviarArquivo(res, 200, 'application/pdf', `contracheque_${colabId}.pdf`, pdf);
+    }
+
+    if (method === 'GET' && pathname.startsWith('/api/relatorios/contracheque-estruturado/')) {
+      const usuario = autenticarRequisicao(req);
+      const colabId = parseInt(pathname.split('/')[4], 10);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const versaoQ = parsedUrl.query.versao as string | undefined;
+      const estruturado = gerarContrachequeEstruturado(db, usuario, colabId, compId, versaoQ);
+      return enviarJSON(res, 200, estruturado);
     }
 
     if (method === 'GET' && pathname.startsWith('/api/relatorios/ficha/')) {
@@ -1047,9 +1077,11 @@ function renderizarInterfaceWebHTML(): string {
           <button class="btn btn-danger" onclick="fecharFolhaPainel()">🔒 3. Fechar Folha Seguro (RN-68)</button>
           <button class="btn btn-outline" onclick="registrarPagamentoPainel()">💳 4. Registrar Pagamento (RN-61)</button>
           <button class="btn btn-outline" onclick="devolverParaAjustePainel()">↩️ Devolver para Ajuste</button>
+          <button class="btn btn-outline" onclick="consultarTrilhaPainel()">📜 Trilha de Aprovação (US-16)</button>
         </div>
 
         <div id="painelConferenciaResult"></div>
+        <div id="painelTrilhaAprovacao"></div>
       </div>
 
       <div class="card">
@@ -1931,7 +1963,36 @@ function renderizarInterfaceWebHTML(): string {
       });
       const d = await res.json();
       if (!res.ok) toast('erro', d.erro);
-      else toast('sucesso', 'Folha devolvida para ajuste com justificativa gravada.');
+      else {
+        toast('sucesso', 'Folha devolvida para ajuste com justificativa gravada.');
+        atualizarPainelFolha();
+      }
+    }
+
+    async function consultarTrilhaPainel() {
+      const compId = document.getElementById('selFolhaComp').value;
+      if (!compId) return;
+      const res = await fetch('/api/folha/trilha?competenciaId=' + compId, { headers: { Authorization: 'Bearer ' + token } });
+      const d = await res.json();
+      const div = document.getElementById('painelTrilhaAprovacao');
+      if (!res.ok) {
+        toast('erro', d.erro || 'Erro ao consultar trilha');
+        return;
+      }
+      let html = '<div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:16px; margin-top:12px;">' +
+        '<h3 style="margin-bottom:8px; font-size:1rem; color:#1e293b;">Trilha de Aprovação e Responsabilidade (US-16 / RN-04, RN-67, RN-68)</h3>' +
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:0.85rem;">' +
+        '<div><strong>1. Lançamento:</strong><br>' + (d.etapas.lancamento.concluido ? '✅ ' + (d.etapas.lancamento.usuarioEmail || 'ID ' + d.etapas.lancamento.usuarioId) + '<br><small>' + (d.etapas.lancamento.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : '⏳ Pendente') + '</div>' +
+        '<div><strong>2. Cálculo:</strong><br>' + (d.etapas.calculo.concluido ? '✅ ' + (d.etapas.calculo.usuarioEmail || 'ID ' + d.etapas.calculo.usuarioId) + '<br><small>' + (d.etapas.calculo.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : '⏳ Pendente') + '</div>' +
+        '<div><strong>3. Conferência:</strong><br>' + (d.etapas.conferencia.valida ? '✅ ' + (d.etapas.conferencia.usuarioEmail || 'ID ' + d.etapas.conferencia.usuarioId) + '<br><small>' + (d.etapas.conferencia.dataHora || '').slice(0, 19).replace('T', ' ') + '</small>' : (d.etapas.conferencia.motivoDevolucao ? '↩️ Devolvida: ' + d.etapas.conferencia.motivoDevolucao : '⏳ Pendente')) + '</div>' +
+        '<div><strong>4. Fechamento:</strong><br>' + (d.etapas.fechamento.fechada ? '🔒 ' + (d.etapas.fechamento.usuarioEmail || 'ID ' + d.etapas.fechamento.usuarioId) + '<br><small>' + (d.etapas.fechamento.dataHora || '').slice(0, 19).replace('T', ' ') + ' (' + d.etapas.fechamento.versaoAtual + ')</small>' : '⏳ Aberta') + '</div>' +
+        '<div><strong>5. Pagamento:</strong><br>' + (d.etapas.pagamento.pago ? '💳 ' + (d.etapas.pagamento.usuarioEmail || 'ID ' + d.etapas.pagamento.usuarioId) + '<br><small>' + (d.etapas.pagamento.dataHora || '') + '</small>' : '⏳ Não pago') + '</div>' +
+        '</div>' +
+        '<div style="margin-top:12px; font-size:0.82rem; color:var(--text-muted);">' +
+        'Total de Versões Registradas: <strong>' + d.totalVersoes + '</strong>' +
+        (d.etapas.fechamento.justificativaReabertura ? '<br>Última Justificativa de Reabertura: <em>"' + d.etapas.fechamento.justificativaReabertura + '"</em>' : '') +
+        '</div></div>';
+      div.innerHTML = html;
     }
 
     // --- FUNÇÕES DA TAB 5 (FÉRIAS & 13º) ---

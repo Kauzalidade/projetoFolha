@@ -139,8 +139,8 @@ export function reabrirCompetencia(
   }
 
   const agora = new Date().toISOString();
-  // Homologa na hora: volta para ABERTA sem aguardar aprovação externa (RN-04)
-  db.prepare("UPDATE competencias SET situacao = 'ABERTA', justificativa_reabertura = ?, fechado_em = NULL WHERE id = ?")
+  // Homologa na hora: volta para ABERTA sem aguardar aprovação externa (RN-04) e conferência perde validade
+  db.prepare("UPDATE competencias SET situacao = 'ABERTA', justificativa_reabertura = ?, fechado_em = NULL, conferido_por = NULL, conferido_em = NULL WHERE id = ?")
     .run(justificativa.trim(), comp.id);
 
   // Grava evento destacado no Log de Auditoria imutável (RN-04 e Cenário: Reabertura de competencia pelo RH)

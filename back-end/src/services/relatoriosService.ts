@@ -72,10 +72,75 @@ export function gerarContrachequeEstruturado(
   db: DatabaseSync,
   usuarioSolicitante: { perfil: string },
   colaboradorId: number,
-  competenciaId: number
+  competenciaId: number,
+  versaoSolicitada?: string
 ): any {
   if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
     throw new Error('Você não tem permissão para esta ação.');
+  }
+
+  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
+  if (!comp) throw new Error('Competência não encontrada.');
+
+  // Se versão específica foi solicitada, busca snapshot histórico daquela versão (US-16)
+  if (versaoSolicitada) {
+    const versaoRow = db.prepare(`
+      SELECT * FROM folha_versoes WHERE competencia_id = ? AND versao_numero = ?
+    `).get(competenciaId, versaoSolicitada) as any;
+
+    if (!versaoRow) {
+      throw new Error(`Versão ${versaoSolicitada} não encontrada para a competência.`);
+    }
+
+    const snap = JSON.parse(versaoRow.dados_json);
+    const colabSnap = snap.colaboradores?.find((c: any) => c.colaborador_id === colaboradorId || c.id === colaboradorId);
+    if (!colabSnap) {
+      throw new Error(`Colaborador não encontrado na versão ${versaoSolicitada} da folha.`);
+    }
+
+    const colab = db.prepare(`
+      SELECT c.*, f.nome as filial_nome
+      FROM colaboradores c
+      JOIN filiais f ON f.id = c.filial_id
+      WHERE c.id = ?
+    `).get(colaboradorId) as any;
+
+    const verbasSnap = colabSnap.verbas || [];
+
+    return {
+      cabecalho: {
+        empresa: 'Correspondente Bancário S.A.',
+        filial: colab?.filial_nome || 'Matriz',
+        competencia: comp.mes_ano,
+        situacao: 'FECHADA',
+        versao: versaoRow.versao_numero,
+        hashSha256: versaoRow.hash_sha256,
+        dataGeracao: new Date().toISOString(),
+      },
+      colaborador: {
+        nome: colabSnap.colaborador_nome || colab?.nome,
+        cpf: colabSnap.cpf || colab?.cpf,
+        cargo: colab?.cargo,
+        admissao: colab?.admissao,
+        banco: colab?.banco,
+        agencia: colab?.agencia,
+        conta: colab?.conta,
+      },
+      verbas: verbasSnap.map((v: any) => ({
+        descricao: v.descricao,
+        natureza: v.natureza,
+        provento: v.natureza === 'PROVENTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
+        desconto: v.natureza === 'DESCONTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
+        baseCalculo: new Dec(BigInt(v.base_calculo_centavos)).toNumber(),
+        memoriaResumida: v.regra_aplicada,
+      })),
+      totais: {
+        totalProventos: new Dec(BigInt(colabSnap.total_proventos_centavos)).toNumber(),
+        totalDescontos: new Dec(BigInt(colabSnap.total_descontos_centavos)).toNumber(),
+        liquido: new Dec(BigInt(colabSnap.liquido_centavos)).toNumber(),
+        fgtsEmpresa: new Dec(BigInt(colabSnap.fgts_centavos)).toNumber(),
+      },
+    };
   }
 
   const folha = db.prepare('SELECT * FROM folhas WHERE colaborador_id = ? AND competencia_id = ?')
@@ -89,7 +154,6 @@ export function gerarContrachequeEstruturado(
     WHERE c.id = ?
   `).get(colaboradorId) as any;
 
-  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
   const versaoRow = comp && comp.situacao === 'FECHADA'
     ? (db.prepare('SELECT versao_numero, hash_sha256 FROM folha_versoes WHERE competencia_id = ? ORDER BY id DESC LIMIT 1').get(competenciaId) as any)
     : null;
@@ -137,13 +201,14 @@ export function gerarContrachequePDF(
   db: DatabaseSync,
   usuarioSolicitante: { email: string; perfil: string },
   colaboradorId: number,
-  competenciaId: number
+  competenciaId: number,
+  versaoSolicitada?: string
 ): Buffer {
   if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  const dados = gerarContrachequeEstruturado(db, usuarioSolicitante, colaboradorId, competenciaId);
+  const dados = gerarContrachequeEstruturado(db, usuarioSolicitante, colaboradorId, competenciaId, versaoSolicitada);
 
   const linhasPDF: { texto: string; negrito?: boolean; tamanho?: number; dy?: number }[] = [
     { texto: 'CORRESPONDENTE BANCARIO S.A. - DEMONSTRATIVO DE PAGAMENTO', negrito: true, tamanho: 14, dy: 10 },
@@ -514,6 +579,11 @@ export function gerarRelatorioDadosPagamento(
   const rows = db.prepare(sql).all(...params) as any[];
   let somaLiquido = Dec.zero();
 
+  const versaoRow = comp && comp.situacao === 'FECHADA'
+    ? (db.prepare('SELECT versao_numero, hash_sha256 FROM folha_versoes WHERE competencia_id = ? ORDER BY id DESC LIMIT 1').get(competenciaId) as any)
+    : null;
+  const versao = versaoRow ? versaoRow.versao_numero : (comp?.situacao === 'FECHADA' ? 'V1' : 'Prévia');
+
   const linhas = rows.map((r) => {
     const liqDec = new Dec(BigInt(r.liquido_centavos));
     somaLiquido = somaLiquido.add(liqDec);
@@ -534,6 +604,8 @@ export function gerarRelatorioDadosPagamento(
     competenciaId,
     competencia: comp.mes_ano,
     situacao: comp.situacao,
+    versao,
+    hashSha256: versaoRow?.hash_sha256 || null,
     totalColaboradores: linhas.length,
     linhas,
     totalLiquido: somaLiquido.toNumber(),

@@ -61,6 +61,21 @@ export interface LancarAtrasoDTO {
   observacao?: string;
 }
 
+function registrarLancamentoCompetencia(
+  db: DatabaseSync,
+  competenciaId: number,
+  usuarioId: number,
+  agora: string
+): void {
+  try {
+    db.prepare(`
+      UPDATE competencias
+      SET lancado_por = ?, lancado_em = ?
+      WHERE id = ?
+    `).run(usuarioId, agora, competenciaId);
+  } catch (_) {}
+}
+
 export function lancarHorasExtras(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
@@ -156,6 +171,8 @@ export function lancarHorasExtras(
     agora
   );
 
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
+
   return {
     id: Number(res.lastInsertRowid),
     tipo: tipoBanco,
@@ -216,6 +233,8 @@ export function lancarFaltaInjustificada(
     agora
   );
 
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
+
   return {
     id: Number(res.lastInsertRowid),
     diasFalta: dados.diasFalta,
@@ -275,6 +294,8 @@ export function lancarAtrasoSaidaAntecipada(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),
@@ -337,6 +358,8 @@ export function lancarAtestado(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),
@@ -426,6 +449,8 @@ export function lancarValeTransporte(
     agora
   );
 
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
+
   return {
     id: Number(res.lastInsertRowid),
     optante: true,
@@ -483,6 +508,8 @@ export function lancarVerbaAvulsa(
     usuarioSolicitante.id,
     agora
   );
+
+  registrarLancamentoCompetencia(db, dados.competenciaId, usuarioSolicitante.id, agora);
 
   return {
     id: Number(res.lastInsertRowid),

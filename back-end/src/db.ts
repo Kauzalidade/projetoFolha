@@ -108,7 +108,9 @@ CREATE TABLE IF NOT EXISTS competencias (
   fechado_em TEXT NULL,
   fechado_por INTEGER NULL REFERENCES usuarios(id),
   lancado_por INTEGER NULL REFERENCES usuarios(id),
+  lancado_em TEXT NULL,
   calculado_por INTEGER NULL REFERENCES usuarios(id),
+  calculado_em TEXT NULL,
   conferido_por INTEGER NULL REFERENCES usuarios(id),
   conferido_em TEXT NULL,
   justificativa_reabertura TEXT NULL,
@@ -317,9 +319,11 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   const db = new DatabaseSync(local);
   db.exec(SCHEMA_SQL);
 
-  // Migrações dinâmicas para bases SQLite existentes (RN-71, RNF-25)
+  // Migrações dinâmicas para bases SQLite existentes (RN-71, RNF-25, US-16)
   try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE colaboradores ADD COLUMN versao INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+  try { db.exec('ALTER TABLE competencias ADD COLUMN lancado_em TEXT NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE competencias ADD COLUMN calculado_em TEXT NULL'); } catch (_) {}
 
   return db;
 }
