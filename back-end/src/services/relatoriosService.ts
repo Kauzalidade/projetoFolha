@@ -205,11 +205,20 @@ export function gerarContrachequePDF(
 
 export function gerarRelatorioFolhaMes(
   db: DatabaseSync,
-  usuarioSolicitante: { perfil: string },
+  usuarioSolicitante: { id?: number; email?: string; perfil: string },
   competenciaId: number,
   filialId?: number
 ): any {
   if (usuarioSolicitante.perfil !== 'RH' && usuarioSolicitante.perfil !== 'DIRETORIA') {
+    registrarLog(db, {
+      usuarioId: usuarioSolicitante.id,
+      usuarioEmail: usuarioSolicitante.email || 'admin@empresa.com',
+      usuarioPerfil: usuarioSolicitante.perfil,
+      acao: 'ACESSO_NEGADO_FOLHA',
+      entidade: 'FOLHA',
+      registroId: competenciaId,
+      detalhes: 'Tentativa não autorizada de abrir a folha do mês pelo Administrador (Seção 4 / US-12)',
+    });
     throw new Error('Você não tem permissão para esta ação.');
   }
 

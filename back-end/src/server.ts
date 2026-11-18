@@ -8,7 +8,16 @@
 import http from 'node:http';
 import url from 'node:url';
 import { obterBanco, inicializarBanco } from './db.js';
-import { autenticarUsuario, criarUsuario, inativarUsuario } from './services/usuarioService.js';
+import {
+  autenticarUsuario,
+  confirmarSegundoFator,
+  criarUsuario,
+  inativarUsuario,
+  redefinirSenha,
+  listarUsuarios,
+  configurarSegundoFator,
+} from './services/usuarioService.js';
+import { registrarLog } from './services/logService.js';
 import { criarFilial, listarFiliais } from './services/filialService.js';
 import {
   criarColaborador,
@@ -182,11 +191,70 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Login Público
+    // Login Público (com suporte a 2FA e bloqueio por tentativas - RNF-01 / RNF-19 / US-12)
     if (method === 'POST' && pathname === '/api/auth/login') {
       const body = await parseJSONBody(req);
-      const resultado = autenticarUsuario(db, body.email, body.senha);
-      return enviarJSON(res, 200, resultado);
+      const resultadoLogin = autenticarUsuario(db, body.email, body.senha, { exigir2FA: body.exigir2FA });
+      return enviarJSON(res, 200, resultadoLogin);
+    }
+
+    // Confirmação do Segundo Fator de Autenticação (2FA - US-12)
+    if (method === 'POST' && pathname === '/api/auth/2fa/confirmar') {
+      const body = await parseJSONBody(req);
+      const resultado2FA = confirmarSegundoFator(db, {
+        desafioToken: body.desafioToken,
+        codigo: body.codigo,
+      });
+      return enviarJSON(res, 200, resultado2FA);
+    }
+
+    // Gestão de Usuários: Listagem e Criação (Restrito a ADMIN - Seção 4 / US-12)
+    if (pathname === '/api/usuarios') {
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
+      if (method === 'GET') {
+        const lista = listarUsuarios(db, usuario);
+        return enviarJSON(res, 200, lista);
+      }
+      if (method === 'POST') {
+        const body = await parseJSONBody(req);
+        const criado = criarUsuario(db, usuario, body);
+        return enviarJSON(res, 201, criado);
+      }
+    }
+
+    // Inativação de Usuário (ADMIN - US-12)
+    const matchInativarUser = pathname.match(/^\/api\/usuarios\/(\d+)\/inativar$/);
+    if ((method === 'POST' || method === 'PATCH') && matchInativarUser) {
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
+      const userId = parseInt(matchInativarUser[1], 10);
+      const resInat = inativarUsuario(db, usuario, userId);
+      return enviarJSON(res, 200, resInat);
+    }
+
+    // Redefinição de Senha (ADMIN ou Próprio Usuário - US-12)
+    const matchRedefinirUser = pathname.match(/^\/api\/usuarios\/(\d+)\/redefinir-senha$/);
+    if (method === 'POST' && matchRedefinirUser) {
+      const usuario = autenticarRequisicao(req);
+      const userId = parseInt(matchRedefinirUser[1], 10);
+      const body = await parseJSONBody(req);
+      const resRedef = redefinirSenha(db, usuario, userId, body.novaSenha || body.senha);
+      return enviarJSON(res, 200, resRedef);
+    }
+
+    // Configuração de Segundo Fator (ADMIN ou Próprio Usuário - US-12)
+    const match2FAUser = pathname.match(/^\/api\/usuarios\/(\d+)\/2fa$/);
+    if (method === 'POST' && match2FAUser) {
+      const usuario = autenticarRequisicao(req);
+      const userId = parseInt(match2FAUser[1], 10);
+      const body = await parseJSONBody(req);
+      const res2FA = configurarSegundoFator(db, usuario, userId, Boolean(body.ativo));
+      return enviarJSON(res, 200, res2FA);
     }
 
     // Validar Me (Sessão Atual)
