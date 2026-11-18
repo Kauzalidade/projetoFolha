@@ -412,14 +412,20 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && pathname === '/api/folha/conferencia') {
-      autenticarRequisicao(req);
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil === 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
-      const conferencia = executarConferenciaFinanceira(db, compId);
+      const conferencia = executarConferenciaFinanceira(db, compId, usuario);
       return enviarJSON(res, 200, conferencia);
     }
 
     if (method === 'POST' && pathname === '/api/folha/conferencia/confirmar') {
       const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'RH') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       const body = await parseJSONBody(req);
       const resConf = confirmarConferenciaFolha(db, usuario, body.competenciaId, body.justificativaMesmoUsuario);
       return enviarJSON(res, 200, resConf);

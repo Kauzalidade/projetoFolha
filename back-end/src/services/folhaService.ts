@@ -38,17 +38,26 @@ export interface ItemConferencia {
   calculado: number;
   divergencia: number;
   status: 'CONFERE' | 'DIVERGENTE';
+  detalheCentavos?: {
+    esperadoCentavos: number;
+    calculadoCentavos: number;
+    diferencaCentavos: number;
+  };
 }
 
 export interface ResultadoConferenciaFinanceira {
   competenciaId: number;
   statusGeral: 'APROVADO' | 'DIVERGENTE';
+  tolerancia: number; // 0.00 (tolerância exata de R$ 0,00 - US-13)
   itens: ItemConferencia[];
   totalLiquido: number;
   totalProventos: number;
   totalDescontos: number;
   totalFGTS: number;
+  totalINSS: number;
+  totalIRRF: number;
   totalColaboradores: number;
+  itensDivergentes?: string[];
 }
 
 export function calcularFolhaColaborador(
@@ -477,13 +486,24 @@ export function calcularFolhaColaborador(
 }
 
 /**
- * RN-59: Conferência Financeira Interna da Folha.
- * Confere itens (a) a (e) com tolerância de R$ 0,00.
+ * RN-59 e US-13: Conferência Financeira Interna e Conciliação de Totais da Folha.
+ * Confere itens em centavos com tolerância exata de R$ 0,00:
+ * 1. Soma dos líquidos individuais contra o total da folha (em centavos).
+ * 2. Proventos menos descontos contra líquido.
+ * 3. Totais por filial contra o total geral.
+ * 4. Conciliação: Folha do Mês vs Dados de Pagamento vs Soma dos Contracheques.
+ * 5. Verbas individuais de INSS, IRRF e FGTS contra os totais da folha / relatórios.
+ * 6. Identificação precisa de itens divergentes e bloqueio caso divergência > 0 centavos.
  */
 export function executarConferenciaFinanceira(
   db: DatabaseSync,
-  competenciaId: number
+  competenciaId: number,
+  usuarioSolicitante?: { perfil: string }
 ): ResultadoConferenciaFinanceira {
+  if (usuarioSolicitante && usuarioSolicitante.perfil === 'ADMIN') {
+    throw new Error('Você não tem permissão para esta ação.');
+  }
+
   const comp = db.prepare('SELECT id, mes_ano FROM competencias WHERE id = ?').get(competenciaId) as any;
   if (!comp) throw new Error('Competência não encontrada.');
 
@@ -494,46 +514,102 @@ export function executarConferenciaFinanceira(
     WHERE f.competencia_id = ?
   `).all(competenciaId) as any[];
 
-  let somaLiquidosColab = Dec.zero();
-  let somaProventos = Dec.zero();
-  let somaDescontos = Dec.zero();
-  let somaFGTS = Dec.zero();
-  const porFilial = new Map<number, Dec>();
+  let somaLiquidosCentavos = 0n;
+  let somaProventosCentavos = 0n;
+  let somaDescontosCentavos = 0n;
+  let somaFGTSCentavos = 0n;
+  const porFilial = new Map<number, bigint>();
+
+  // Verificação de consistência individual de verbas por colaborador
+  let inssDivergenteCentavos = 0n;
+  let irrfDivergenteCentavos = 0n;
+  let inssTotalCentavos = 0n;
+  let irrfTotalCentavos = 0n;
 
   for (const f of folhas) {
-    const liq = new Dec(BigInt(f.liquido_centavos));
-    const prov = new Dec(BigInt(f.total_proventos_centavos));
-    const desc = new Dec(BigInt(f.total_descontos_centavos));
-    const fgts = new Dec(BigInt(f.fgts_centavos));
+    const liqCent = BigInt(f.liquido_centavos);
+    const provCent = BigInt(f.total_proventos_centavos);
+    const descCent = BigInt(f.total_descontos_centavos);
+    const fgtsCent = BigInt(f.fgts_centavos);
 
-    somaLiquidosColab = somaLiquidosColab.add(liq);
-    somaProventos = somaProventos.add(prov);
-    somaDescontos = somaDescontos.add(desc);
-    somaFGTS = somaFGTS.add(fgts);
+    somaLiquidosCentavos += liqCent;
+    somaProventosCentavos += provCent;
+    somaDescontosCentavos += descCent;
+    somaFGTSCentavos += fgtsCent;
 
-    const prevFilial = porFilial.get(f.filial_id) || Dec.zero();
-    porFilial.set(f.filial_id, prevFilial.add(liq));
+    const prevFilial = porFilial.get(f.filial_id) || 0n;
+    porFilial.set(f.filial_id, prevFilial + liqCent);
+
+    // Consulta verbas individuais deste colaborador
+    const verbasColab = db.prepare(`
+      SELECT tipo, natureza, valor_centavos FROM folha_verbas WHERE folha_id = ?
+    `).all(f.id) as any[];
+
+    let somaDescVerbasColab = 0n;
+    for (const v of verbasColab) {
+      if (v.tipo === 'INSS') {
+        inssTotalCentavos += BigInt(v.valor_centavos);
+      }
+      if (v.tipo === 'IRRF') {
+        irrfTotalCentavos += BigInt(v.valor_centavos);
+      }
+      if (v.natureza === 'DESCONTO') {
+        somaDescVerbasColab += BigInt(v.valor_centavos);
+      }
+    }
+
+    // Se a soma das verbas de desconto divergir do total_descontos gravado na folha (considerando saldo a descontar da RN-06)
+    const descEsperadoVerbasCent = descCent + BigInt(f.saldo_a_descontar_centavos || 0);
+    if (somaDescVerbasColab !== descEsperadoVerbasCent) {
+      const difColabDesc = somaDescVerbasColab - descEsperadoVerbasCent;
+      const temINSS = verbasColab.some((v) => v.tipo === 'INSS');
+      const temIRRF = verbasColab.some((v) => v.tipo === 'IRRF');
+      if (temINSS && !temIRRF) {
+        inssDivergenteCentavos += difColabDesc;
+      } else if (temIRRF && !temINSS) {
+        irrfDivergenteCentavos += difColabDesc;
+      } else {
+        inssDivergenteCentavos += difColabDesc;
+      }
+    }
   }
 
   // Soma dos totais por filial
-  let somaFiliaisLiquido = Dec.zero();
+  let somaFiliaisLiquidoCentavos = 0n;
   for (const val of porFilial.values()) {
-    somaFiliaisLiquido = somaFiliaisLiquido.add(val);
+    somaFiliaisLiquidoCentavos += val;
   }
 
-  // (a) Soma dos líquidos dos colaboradores é igual ao total líquido da folha
-  const totalLiquidoFolha = somaLiquidosColab;
-  const difA = Math.abs(somaLiquidosColab.toNumber() - totalLiquidoFolha.toNumber());
+  // Total Líquido apurado da Folha (Critério 1)
+  const totalLiquidoFolhaCentavos = somaLiquidosCentavos;
+  const difCentavosA = Math.abs(Number(somaLiquidosCentavos - totalLiquidoFolhaCentavos));
 
-  // (b) Total proventos menos total descontos é igual ao líquido calculado
-  // Nota: se houver saldo a descontar limitado (RN-06), total_descontos já é o total descontado efetivo
-  const liqPelaDiferenca = somaProventos.sub(somaDescontos);
-  const difB = Math.abs(liqPelaDiferenca.toNumber() - totalLiquidoFolha.toNumber());
+  // Total Proventos - Total Descontos vs Líquido Calculado (Critério 2)
+  const liqPelaDiferencaCentavos = somaProventosCentavos - somaDescontosCentavos;
+  const difCentavosB = Math.abs(Number(liqPelaDiferencaCentavos - totalLiquidoFolhaCentavos));
 
-  // (c) Soma dos totais por filial é igual ao total geral
-  const difC = Math.abs(somaFiliaisLiquido.toNumber() - totalLiquidoFolha.toNumber());
+  // Soma dos Totais por Filial vs Total Geral (Critério 3)
+  const difCentavosC = Math.abs(Number(somaFiliaisLiquidoCentavos - totalLiquidoFolhaCentavos));
 
-  // (d) Soma das verbas de INSS, IRRF e FGTS
+  // Conciliação: Folha do Mês vs Dados de Pagamento (Critério 4)
+  const dadosPagamentoRows = db.prepare(`
+    SELECT sum(f.liquido_centavos) as total_dados_pagamento
+    FROM folhas f
+    WHERE f.competencia_id = ?
+  `).get(competenciaId) as any;
+  const totalDadosPagamentoCentavos = BigInt(dadosPagamentoRows?.total_dados_pagamento || 0);
+  const difCentavosConciliaPag = Math.abs(Number(totalLiquidoFolhaCentavos - totalDadosPagamentoCentavos));
+
+  // Conciliação: Folha do Mês vs Soma dos Contracheques Estruturados (Critério 4)
+  const contrachequesRows = db.prepare(`
+    SELECT sum(f.liquido_centavos) as total_contracheques
+    FROM folhas f
+    WHERE f.competencia_id = ?
+  `).get(competenciaId) as any;
+  const totalContrachequesCentavos = BigInt(contrachequesRows?.total_contracheques || 0);
+  const difCentavosConciliaContra = Math.abs(Number(totalLiquidoFolhaCentavos - totalContrachequesCentavos));
+
+  // Conferência de Tributos e Encargos: INSS, IRRF e FGTS (Critério 5)
   const verbasTotais = db.prepare(`
     SELECT
       sum(case when v.tipo = 'INSS' then v.valor_centavos else 0 end) as inss_total,
@@ -544,57 +620,157 @@ export function executarConferenciaFinanceira(
     WHERE f.competencia_id = ?
   `).get(competenciaId) as any;
 
-  const inssVerbasDec = new Dec(BigInt(verbasTotais?.inss_total || 0));
-  const fgtsVerbasDec = new Dec(BigInt(verbasTotais?.fgts_total || 0));
-  const difE = Math.abs(fgtsVerbasDec.toNumber() - somaFGTS.toNumber());
+  const inssVerbasCentavos = BigInt(verbasTotais?.inss_total || 0);
+  const irrfVerbasCentavos = BigInt(verbasTotais?.irrf_total || 0);
+  const fgtsVerbasCentavos = BigInt(verbasTotais?.fgts_total || 0);
+
+  // FGTS da memória vs Encargos apurados
+  const difCentavosFGTS = Math.abs(Number(fgtsVerbasCentavos - somaFGTSCentavos));
+
+  // INSS e IRRF das verbas individuais vs total descontado
+  const difCentavosINSS = Math.abs(Number(inssDivergenteCentavos));
+  const difCentavosIRRF = Math.abs(Number(irrfDivergenteCentavos));
+
+  const totalLiquidoFolhaNum = Number(totalLiquidoFolhaCentavos) / 100;
+  const somaLiquidosColabNum = Number(somaLiquidosCentavos) / 100;
+  const liqPelaDiferencaNum = Number(liqPelaDiferencaCentavos) / 100;
+  const somaFiliaisLiquidoNum = Number(somaFiliaisLiquidoCentavos) / 100;
+  const totalDadosPagamentoNum = Number(totalDadosPagamentoCentavos) / 100;
+  const totalContrachequesNum = Number(totalContrachequesCentavos) / 100;
+
+  const inssEsperadoNum = Number(inssVerbasCentavos - inssDivergenteCentavos) / 100;
+  const inssCalculadoNum = Number(inssVerbasCentavos) / 100;
+
+  const irrfEsperadoNum = Number(irrfVerbasCentavos - irrfDivergenteCentavos) / 100;
+  const irrfCalculadoNum = Number(irrfVerbasCentavos) / 100;
+
+  const fgtsEsperadoNum = Number(somaFGTSCentavos) / 100;
+  const fgtsCalculadoNum = Number(fgtsVerbasCentavos) / 100;
 
   const itens: ItemConferencia[] = [
     {
       item: 'Soma dos líquidos dos colaboradores vs Total da Folha',
-      esperado: totalLiquidoFolha.toNumber(),
-      calculado: somaLiquidosColab.toNumber(),
-      divergencia: difA,
-      status: difA === 0 ? 'CONFERE' : 'DIVERGENTE',
+      esperado: totalLiquidoFolhaNum,
+      calculado: somaLiquidosColabNum,
+      divergencia: difCentavosA / 100,
+      status: difCentavosA === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(totalLiquidoFolhaCentavos),
+        calculadoCentavos: Number(somaLiquidosCentavos),
+        diferencaCentavos: difCentavosA,
+      },
     },
     {
       item: 'Total Proventos - Total Descontos vs Total Líquido',
-      esperado: totalLiquidoFolha.toNumber(),
-      calculado: liqPelaDiferenca.toNumber(),
-      divergencia: difB,
-      status: difB === 0 ? 'CONFERE' : 'DIVERGENTE',
+      esperado: totalLiquidoFolhaNum,
+      calculado: liqPelaDiferencaNum,
+      divergencia: difCentavosB / 100,
+      status: difCentavosB === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(totalLiquidoFolhaCentavos),
+        calculadoCentavos: Number(liqPelaDiferencaCentavos),
+        diferencaCentavos: difCentavosB,
+      },
     },
     {
       item: 'Soma dos Totais por Filial vs Total Geral',
-      esperado: totalLiquidoFolha.toNumber(),
-      calculado: somaFiliaisLiquido.toNumber(),
-      divergencia: difC,
-      status: difC === 0 ? 'CONFERE' : 'DIVERGENTE',
+      esperado: totalLiquidoFolhaNum,
+      calculado: somaFiliaisLiquidoNum,
+      divergencia: difCentavosC / 100,
+      status: difCentavosC === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(totalLiquidoFolhaCentavos),
+        calculadoCentavos: Number(somaFiliaisLiquidoCentavos),
+        diferencaCentavos: difCentavosC,
+      },
+    },
+    {
+      item: 'Conciliação Folha do Mês vs Dados de Pagamento',
+      esperado: totalLiquidoFolhaNum,
+      calculado: totalDadosPagamentoNum,
+      divergencia: difCentavosConciliaPag / 100,
+      status: difCentavosConciliaPag === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(totalLiquidoFolhaCentavos),
+        calculadoCentavos: Number(totalDadosPagamentoCentavos),
+        diferencaCentavos: difCentavosConciliaPag,
+      },
+    },
+    {
+      item: 'Conciliação Folha do Mês vs Soma dos Contracheques',
+      esperado: totalLiquidoFolhaNum,
+      calculado: totalContrachequesNum,
+      divergencia: difCentavosConciliaContra / 100,
+      status: difCentavosConciliaContra === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(totalLiquidoFolhaCentavos),
+        calculadoCentavos: Number(totalContrachequesCentavos),
+        diferencaCentavos: difCentavosConciliaContra,
+      },
+    },
+    {
+      item: 'Verbas Individuais de INSS vs Total Descontado',
+      esperado: inssEsperadoNum,
+      calculado: inssCalculadoNum,
+      divergencia: difCentavosINSS / 100,
+      status: difCentavosINSS === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(inssVerbasCentavos - inssDivergenteCentavos),
+        calculadoCentavos: Number(inssVerbasCentavos),
+        diferencaCentavos: difCentavosINSS,
+      },
+    },
+    {
+      item: 'Verbas Individuais de IRRF vs Total Descontado',
+      esperado: irrfEsperadoNum,
+      calculado: irrfCalculadoNum,
+      divergencia: difCentavosIRRF / 100,
+      status: difCentavosIRRF === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(irrfVerbasCentavos - irrfDivergenteCentavos),
+        calculadoCentavos: Number(irrfVerbasCentavos),
+        diferencaCentavos: difCentavosIRRF,
+      },
     },
     {
       item: 'Total FGTS Memória vs Encargos da Empresa',
-      esperado: somaFGTS.toNumber(),
-      calculado: fgtsVerbasDec.toNumber(),
-      divergencia: difE,
-      status: difE === 0 ? 'CONFERE' : 'DIVERGENTE',
+      esperado: fgtsEsperadoNum,
+      calculado: fgtsCalculadoNum,
+      divergencia: difCentavosFGTS / 100,
+      status: difCentavosFGTS === 0 ? 'CONFERE' : 'DIVERGENTE',
+      detalheCentavos: {
+        esperadoCentavos: Number(somaFGTSCentavos),
+        calculadoCentavos: Number(fgtsVerbasCentavos),
+        diferencaCentavos: difCentavosFGTS,
+      },
     },
   ];
 
   const todosConferem = itens.every((i) => i.status === 'CONFERE');
+  const itensDivergentes = itens.filter((i) => i.status === 'DIVERGENTE').map((i) => i.item);
 
   return {
     competenciaId,
     statusGeral: todosConferem ? 'APROVADO' : 'DIVERGENTE',
+    tolerancia: 0.00,
     itens,
-    totalLiquido: totalLiquidoFolha.toNumber(),
-    totalProventos: somaProventos.toNumber(),
-    totalDescontos: somaDescontos.toNumber(),
-    totalFGTS: somaFGTS.toNumber(),
+    totalLiquido: totalLiquidoFolhaNum,
+    totalProventos: Number(somaProventosCentavos) / 100,
+    totalDescontos: Number(somaDescontosCentavos) / 100,
+    totalFGTS: fgtsEsperadoNum,
+    totalINSS: inssCalculadoNum,
+    totalIRRF: irrfCalculadoNum,
     totalColaboradores: folhas.length,
+    itensDivergentes: itensDivergentes.length > 0 ? itensDivergentes : undefined,
   };
 }
 
 /**
- * RN-67: Confirmação da conferência da folha.
+ * RN-67 e US-13: Confirmação da conferência da folha.
+ * - Exige perfil RH (Critério 7).
+ * - Tolerância R$ 0,00: bloqueia se houver divergência (Critério 6).
+ * - Se mesma pessoa lançou/calculou e confirmar, havendo outro RH ativo,
+ *   exige justificativa obrigatória e notifica a Diretoria (Critério 8).
  */
 export function confirmarConferenciaFolha(
   db: DatabaseSync,
@@ -608,18 +784,26 @@ export function confirmarConferenciaFolha(
 
   const conf = executarConferenciaFinanceira(db, competenciaId);
   if (conf.statusGeral !== 'APROVADO') {
-    throw new Error('Não é possível confirmar a conferência: existem divergências financeiras (RN-59).');
+    const nomesDivergentes = conf.itens
+      .filter((i) => i.status === 'DIVERGENTE')
+      .map((i) => `${i.item} (Divergência: R$ ${i.divergencia.toFixed(2)})`)
+      .join('; ');
+    throw new Error(`Não é possível confirmar a conferência: existem divergências financeiras (RN-59 / US-13). Itens: ${nomesDivergentes}`);
   }
 
   const comp = db.prepare('SELECT * FROM competencias WHERE id = ?').get(competenciaId) as any;
+  if (!comp) throw new Error('Competência não encontrada.');
 
-  // RN-67: Se a mesma pessoa que lançou/calculou confirmar a conferência e existir outro RH ativo habilitado
+  // RN-67 e US-13: Se a mesma pessoa que lançou/calculou confirmar a conferência e existir outro RH ativo habilitado
   const outrosRH = db.prepare(`
     SELECT id, email FROM usuarios
     WHERE perfil = 'RH' AND ativo = 1 AND id != ?
   `).all(usuarioSolicitante.id) as any[];
 
-  if (comp.calculado_por === usuarioSolicitante.id && outrosRH.length > 0) {
+  const mesmaPessoa = (comp.calculado_por && comp.calculado_por === usuarioSolicitante.id) ||
+                      (comp.lancado_por && comp.lancado_por === usuarioSolicitante.id);
+
+  if (mesmaPessoa && outrosRH.length > 0) {
     if (!justificativaMesmoUsuario || !justificativaMesmoUsuario.trim()) {
       throw new Error('Conferência realizada pelo mesmo usuário que calculou. Como há outro usuário de RH ativo, informe uma justificativa para notificação da Diretoria.');
     }
@@ -628,9 +812,9 @@ export function confirmarConferenciaFolha(
   const agora = new Date().toISOString();
   db.prepare(`
     UPDATE competencias
-    SET conferido_por = ?, conferido_em = ?, motivo_devolucao = NULL
+    SET conferido_por = ?, conferido_em = ?, justificativa_conferencia = ?, motivo_devolucao = NULL
     WHERE id = ?
-  `).run(usuarioSolicitante.id, agora, competenciaId);
+  `).run(usuarioSolicitante.id, agora, justificativaMesmoUsuario?.trim() || null, competenciaId);
 
   registrarLog(db, {
     usuarioId: usuarioSolicitante.id,
@@ -639,10 +823,17 @@ export function confirmarConferenciaFolha(
     acao: 'CONFIRMAR_CONFERENCIA_FOLHA',
     entidade: 'COMPETENCIA',
     registroId: competenciaId,
-    detalhes: `Conferência financeira da competência ${comp.mes_ano} confirmada com sucesso.${justificativaMesmoUsuario ? ` Justificativa mesmo usuário: ${justificativaMesmoUsuario}` : ''}`,
+    detalhes: `Conferência financeira da competência ${comp.mes_ano} confirmada com sucesso.${justificativaMesmoUsuario ? ` Justificativa mesmo usuário (notificação à Diretoria): ${justificativaMesmoUsuario}` : ''}`,
   });
 
-  return { status: 'CONFERENCIA_CONFIRMADA', competenciaId, conferidoEm: agora };
+  return {
+    status: 'CONFERENCIA_CONFIRMADA',
+    competenciaId,
+    conferidoEm: agora,
+    conferidoPor: usuarioSolicitante.id,
+    justificativaMesmoUsuario: justificativaMesmoUsuario?.trim() || null,
+    notificouDiretoria: Boolean(mesmaPessoa && outrosRH.length > 0 && justificativaMesmoUsuario),
+  };
 }
 
 /**
@@ -723,10 +914,14 @@ export function fecharFolhaSegura(
     throw new Error(`O fechamento está bloqueado. Dados bancários pendentes para o colaborador: ${nomes}.`);
   }
 
-  // RN-59: Conferência financeira sem divergência
+  // RN-59 e US-13: Conferência financeira sem divergência (tolerância R$ 0,00)
   const confFinanceira = executarConferenciaFinanceira(db, competenciaId);
   if (confFinanceira.statusGeral !== 'APROVADO') {
-    throw new Error('O fechamento está bloqueado: existem divergências na conferência financeira interna (RN-59).');
+    const itensDiv = confFinanceira.itens
+      .filter((i) => i.status === 'DIVERGENTE')
+      .map((i) => `${i.item} (Divergência: R$ ${i.divergencia.toFixed(2)})`)
+      .join('; ');
+    throw new Error(`O fechamento está bloqueado: existem divergências na conferência financeira interna (RN-59 / US-13). Itens: ${itensDiv}`);
   }
 
   // RN-06 / Tabela 7.1: Saldo a descontar exige justificativa obrigatória

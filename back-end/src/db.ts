@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS competencias (
   calculado_por INTEGER NULL REFERENCES usuarios(id),
   conferido_por INTEGER NULL REFERENCES usuarios(id),
   conferido_em TEXT NULL,
+  justificativa_conferencia TEXT NULL,
   justificativa_reabertura TEXT NULL,
   motivo_devolucao TEXT NULL,
   pago_em TEXT NULL,
@@ -314,6 +315,11 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   const local = caminhoArquivo || path.join(process.cwd(), 'rh_folha.db');
   const db = new DatabaseSync(local);
   db.exec(SCHEMA_SQL);
+  try {
+    db.exec('ALTER TABLE competencias ADD COLUMN justificativa_conferencia TEXT NULL');
+  } catch {
+    // Coluna já existe
+  }
   return db;
 }
 
