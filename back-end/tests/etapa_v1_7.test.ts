@@ -372,6 +372,70 @@ describe('ETAPA v1.7: Requisitos e Critérios de Aceite Avançados (RN-59 a RN-8
     // Agora registra pagamento
     const resPag = registrarPagamentoFolha(db, rhUser, comp.id, '2026-11-05');
     assert.strictEqual(resPag.status, 'PAGAMENTO_REGISTRADO');
+    assert.strictEqual(resPag.dataPagamento, '2026-11-05');
+
+    // RN-61: Tentativa de correção sem justificativa deve ser rejeitada
+    assert.throws(
+      () => registrarPagamentoFolha(db, rhUser, comp.id, '2026-11-06'),
+      /A correção da data de pagamento exige justificativa obrigatória/
+    );
+    assert.throws(
+      () => registrarPagamentoFolha(db, rhUser, comp.id, '2026-11-06', '   '),
+      /A correção da data de pagamento exige justificativa obrigatória/
+    );
+
+    // RN-61: Correção com justificativa válida é aceita e preserva valor anterior
+    const resCorrigido = registrarPagamentoFolha(
+      db,
+      rhUser,
+      comp.id,
+      '2026-11-06',
+      'Ajuste conforme comprovante bancário da compensação TED'
+    );
+    assert.strictEqual(resCorrigido.status, 'PAGAMENTO_CORRIGIDO');
+    assert.strictEqual(resCorrigido.dataAnterior, '2026-11-05');
+    assert.strictEqual(resCorrigido.dataPagamento, '2026-11-06');
+
+    // Valida log imutável da correção
+    const logs = consultarLogs(db, diretoriaUser, { entidade: 'COMPETENCIA', registroId: comp.id });
+    const logCorrecao = logs.find((l: any) => l.acao === 'CORRIGIR_PAGAMENTO_FOLHA');
+    assert.ok(logCorrecao, 'Deve gerar log imutável de correção com ação CORRIGIR_PAGAMENTO_FOLHA');
+    assert.strictEqual(logCorrecao.valor_anterior, '2026-11-05');
+    assert.strictEqual(logCorrecao.valor_novo, '2026-11-06');
+    assert.ok(logCorrecao.detalhes.includes('comprovante bancário'));
+  });
+
+  it('Cenário US-14 / RN-58: Registro de pagamento encerra alerta de prazo da folha', () => {
+    const compAlerta = abrirOuObterCompetencia(db, rhUser, '2026-09');
+    const colab = criarColaborador(db, rhUser, {
+      filialId: matrizId,
+      nome: 'Colab Prazo',
+      cpf: '52998224725',
+      nascimento: '1990-01-01',
+      admissao: '2023-01-01',
+      cargo: 'Atendente',
+      setor: 'Atendimento',
+      salarioBase: '3000.00',
+      banco: '001',
+      agencia: '1234',
+      conta: '5678',
+    });
+
+    calcularFolhaColaborador(db, rhUser, { colaboradorId: colab.id, competenciaId: compAlerta.id });
+    fecharFolhaSegura(db, rhUser, compAlerta.id);
+
+    // Folha fechada mas sem pagamento registrado -> Alerta ativo
+    const alertasAntes = consultarAlertas(db, rhUser, '2026-10-03');
+    const alertaAntes = alertasAntes.find((a) => a.referenciaId === compAlerta.id && a.tipo === 'PRAZO_PAGAMENTO_FOLHA');
+    assert.ok(alertaAntes, 'Deve exibir alerta de prazo enquanto não houver pagamento registrado');
+
+    // RH registra a data do pagamento
+    registrarPagamentoFolha(db, rhUser, compAlerta.id, '2026-10-05');
+
+    // Agora o alerta de prazo deve sumir
+    const alertasDepois = consultarAlertas(db, rhUser, '2026-10-03');
+    const alertaDepois = alertasDepois.find((a) => a.referenciaId === compAlerta.id && a.tipo === 'PRAZO_PAGAMENTO_FOLHA');
+    assert.strictEqual(alertaDepois, undefined, 'Registro de pagamento deve encerrar o alerta de prazo');
   });
 
   // --- RN-79: FÉRIAS VENCIDAS PAGAS EM DOBRO ---

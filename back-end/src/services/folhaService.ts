@@ -827,18 +827,20 @@ export function fecharFolhaSegura(
 
 /**
  * RN-61: Registro de pagamento da folha pelo RH após fechamento.
+ * Um registro por competência; correção exige justificativa, identifica responsável e preserva registro anterior.
  */
 export function registrarPagamentoFolha(
   db: DatabaseSync,
   usuarioSolicitante: { id: number; email: string; perfil: string },
   competenciaId: number,
-  dataPagamento: string
+  dataPagamento: string,
+  justificativaCorrecao?: string
 ): any {
   if (usuarioSolicitante.perfil !== 'RH') {
     throw new Error('Você não tem permissão para esta ação.');
   }
 
-  const comp = db.prepare('SELECT id, mes_ano, situacao FROM competencias WHERE id = ?').get(competenciaId) as any;
+  const comp = db.prepare('SELECT id, mes_ano, situacao, pago_em, pago_por FROM competencias WHERE id = ?').get(competenciaId) as any;
   if (!comp) throw new Error('Competência não encontrada.');
 
   if (comp.situacao !== 'FECHADA') {
@@ -848,6 +850,16 @@ export function registrarPagamentoFolha(
   if (!dataPagamento || !/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)) {
     throw new Error('Informe uma data de pagamento válida (AAAA-MM-DD).');
   }
+
+  const ehCorrecao = !!comp.pago_em;
+
+  if (ehCorrecao) {
+    if (!justificativaCorrecao || justificativaCorrecao.trim().length === 0) {
+      throw new Error('A correção da data de pagamento exige justificativa obrigatória (RN-61).');
+    }
+  }
+
+  const dataAnterior = comp.pago_em;
 
   db.prepare(`
     UPDATE competencias
@@ -859,13 +871,24 @@ export function registrarPagamentoFolha(
     usuarioId: usuarioSolicitante.id,
     usuarioEmail: usuarioSolicitante.email,
     usuarioPerfil: usuarioSolicitante.perfil,
-    acao: 'REGISTRAR_PAGAMENTO_FOLHA',
+    acao: ehCorrecao ? 'CORRIGIR_PAGAMENTO_FOLHA' : 'REGISTRAR_PAGAMENTO_FOLHA',
     entidade: 'COMPETENCIA',
     registroId: competenciaId,
-    detalhes: `Pagamento da folha ${comp.mes_ano} registrado em ${dataPagamento} pelo usuário ${usuarioSolicitante.email}`,
+    campo: 'pago_em',
+    valorAnterior: dataAnterior || null,
+    valorNovo: dataPagamento,
+    detalhes: ehCorrecao
+      ? `Correção de data de pagamento da folha ${comp.mes_ano}: alterado de ${dataAnterior} para ${dataPagamento} pelo usuário ${usuarioSolicitante.email}. Justificativa: ${justificativaCorrecao!.trim()}`
+      : `Pagamento da folha ${comp.mes_ano} registrado em ${dataPagamento} pelo usuário ${usuarioSolicitante.email}`,
   });
 
-  return { status: 'PAGAMENTO_REGISTRADO', competenciaId, dataPagamento };
+  return {
+    status: ehCorrecao ? 'PAGAMENTO_CORRIGIDO' : 'PAGAMENTO_REGISTRADO',
+    competenciaId,
+    dataPagamento,
+    dataAnterior: dataAnterior || null,
+    justificativa: justificativaCorrecao ? justificativaCorrecao.trim() : null,
+  };
 }
 
 /**

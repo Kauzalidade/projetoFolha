@@ -442,7 +442,13 @@ const server = http.createServer(async (req, res) => {
     if (method === 'POST' && pathname === '/api/folha/pagamento') {
       const usuario = autenticarRequisicao(req);
       const body = await parseJSONBody(req);
-      const resPag = registrarPagamentoFolha(db, usuario, body.competenciaId, body.dataPagamento);
+      const resPag = registrarPagamentoFolha(
+        db,
+        usuario,
+        body.competenciaId,
+        body.dataPagamento,
+        body.justificativa || body.justificativaCorrecao
+      );
       return enviarJSON(res, 200, resPag);
     }
 
