@@ -14,6 +14,7 @@ Este documento registra todas as pendências formais, hipóteses não confirmada
 | **P-02** | **Conferência das tabelas e regras por contador** | Cliente / Contador | Não (necessária antes de produção) | Aberto | O contador do cliente validou os cálculos de 2026 (Portaria MPS/MF 13/2026 e Lei 15.270/2025 para IRRF com redução progressiva)? |
 | **P-03** | **Tratamento de afastados na folha** | Grupo de RH | Não na 1ª versão | Aberto | Como tratar afastamento por INSS (>15 dias), licença maternidade e paternidade no cálculo do salário e nos encargos? |
 | **P-04** | **Confirmação dos itens adotados [ADOTADO]** | Grupo de RH | Não (parâmetros configuráveis) | Aberto | Confirmar os padrões definidos pelo GTI 4º período (arredondamento, prazos de retenção LGPD, relatórios e layout de contracheque). |
+| **P-05** | **Proporcionalidade em meses de 31, 28 e 29 dias (RN-20)** | Grupo de RH / GTI 4º período | Não (aguardando validação de regra definitiva) | Aberto | Como apurar os dias trabalhados e a remuneração proporcional na admissão e desligamento em meses com 31 dias e em fevereiro (28 ou 29 dias bissexto)? O código atual utiliza a fórmula fixa `(30 - diaAdm + 1)`, gerando: (1) Admissão em 31/10/2026 com salário R$ 3.000,00 resulta em 0 dias trabalhados (R$ 0,00), deixando o colaborador sem remuneração pelo dia trabalhado; (2) Desligamento em 31/10/2026 com salário R$ 3.000,00 resulta em 31 dias (R$ 3.100,00), superando o salário contratual integral; (3) Admissão no último dia de fevereiro (28/02 em ano comum ou 29/02 em ano bissexto) resulta em 3 ou 2 dias pagos para 1 dia trabalhado. A regra definitiva depende de validação formal pelo grupo de RH e pelos responsáveis técnicos (GTI 4º período). |
 
 ---
 
@@ -53,4 +54,5 @@ Ao encontrar uma nova dúvida durante o desenvolvimento, utilize a tabela abaixo
 | Data | Questão Encontrada | Responsável | Resposta / Decisão | Data da Resolução |
 | :---: | :--- | :---: | :--- | :---: |
 | 14/10/2026 | Divergência no número de colaboradores e filiais | GTI 4º | Confirmado pelo cliente: 15 colaboradores, 1 matriz + 2 filiais | 14/10/2026 |
+| 31/10/2026 | Inconsistência na proporcionalidade em meses de 31, 28 e 29 dias (admissão em 31/10 resulta em R$ 0,00; desligamento em 31/10 resulta em R$ 3.100,00) | Grupo de RH e GTI 4º | Aberto — Registrado em P-05. Aguardando validação da regra definitiva | — |
 | — | *(Adicione novas dúvidas aqui)* | — | — | — |
