@@ -67,7 +67,7 @@ export function cadastrarExameOcupacional(
 }
 
 export interface AlertaItem {
-  tipo: 'DOCUMENTO_VENCENDO' | 'EXAME_VENCENDO' | 'FERIAS_CONCESSIVO' | 'PRAZO_PAGAMENTO_FOLHA' | 'DECIMO_TERCEIRO' | 'DADOS_FORA_PRAZO_GUARDA';
+  tipo: 'DOCUMENTO_VENCENDO' | 'EXAME_VENCENDO' | 'FERIAS_CONCESSIVO' | 'PRAZO_PAGAMENTO_FOLHA' | 'DECIMO_TERCEIRO' | 'DADOS_FORA_PRAZO_GUARDA' | 'NOTIFICACAO_DIRETORIA_CONFERENCIA';
   titulo: string;
   detalhes: string;
   referenciaId?: number;
@@ -213,6 +213,27 @@ export function consultarAlertas(
       detalhes: `O pagamento da 2ª parcela do 13º salário deve ocorrer até 20/12/${anoAtual}.`,
       diasRestantes: diff2a,
     });
+  }
+
+  // 7. Notificações à Diretoria e RH: Conferência realizada pelo mesmo usuário que calculou (RN-67 / US-13)
+  try {
+    const compsJustificadas = db.prepare(`
+      SELECT c.id, c.mes_ano, c.conferido_em, c.justificativa_conferencia, u.email as conferente_email
+      FROM competencias c
+      JOIN usuarios u ON u.id = c.conferido_por
+      WHERE c.justificativa_conferencia IS NOT NULL AND c.justificativa_conferencia != ''
+    `).all() as any[];
+
+    for (const c of compsJustificadas) {
+      alertas.push({
+        tipo: 'NOTIFICACAO_DIRETORIA_CONFERENCIA',
+        titulo: `Notificação à Diretoria: Conferência pelo mesmo usuário (${c.mes_ano})`,
+        detalhes: `A conferência da folha ${c.mes_ano} foi confirmada pelo mesmo analista de RH (${c.conferente_email}) com a justificativa: "${c.justificativa_conferencia}".`,
+        referenciaId: c.id,
+      });
+    }
+  } catch {
+    // Coluna pode não existir em esquemas não migrados
   }
 
   return alertas;

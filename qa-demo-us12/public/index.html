@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Demo — US-12: Gestão de Usuários e Perfis (Spec v1.7)</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-content">
+      <div class="brand">
+        <span class="brand-badge">QA EVIDENCE &bull; US-12</span>
+        <h1>Sistema RH Folha <span>US-12 (Spec v1.7)</span></h1>
+        <p class="subtitle">Demonstração Interativa de Gestão de Usuários, Perfis, Segundo Fator (2FA), Sessões e Bloqueio</p>
+      </div>
+      <div class="header-badges">
+        <span class="env-pill"><span class="dot live"></span> SQLite :memory: (Isolado)</span>
+        <span class="branch-pill">Branch: <code>feat/us-12-gestao-usuarios</code></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Banner de Métricas e KPIs -->
+    <section class="summary-section">
+      <div class="summary-card">
+        <div class="summary-label">Cenários Avaliados</div>
+        <div class="summary-value" id="kpi-total">12</div>
+        <div class="summary-sub">Cobertura Integral da US-12</div>
+      </div>
+      <div class="summary-card status-success">
+        <div class="summary-label">Critérios Aprovados</div>
+        <div class="summary-value" id="kpi-aprovados">12</div>
+        <div class="summary-sub">100% conforme regras da Spec</div>
+      </div>
+      <div class="summary-card status-danger">
+        <div class="summary-label">Critérios Reprovados</div>
+        <div class="summary-value" id="kpi-reprovados">0</div>
+        <div class="summary-sub">Zero falhas de conformidade</div>
+      </div>
+      <div class="summary-card status-warning">
+        <div class="summary-label">Não Executados</div>
+        <div class="summary-value" id="kpi-nao-executados">0</div>
+        <div class="summary-sub">Auditados com backend real</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Status da Validação</div>
+        <div class="summary-value status-badge-kpi" id="kpi-status">100% CONFORME</div>
+        <div class="summary-sub">Spec v1.7 (Seção 4, RNF-01/19)</div>
+      </div>
+    </section>
+
+    <!-- Barra de Ações Rápidas -->
+    <section class="actions-bar">
+      <div class="action-buttons">
+        <button id="btn-run-all" class="btn btn-primary">
+          <span class="icon">▶</span> Executar Todos os Cenários
+        </button>
+        <button id="btn-reset" class="btn btn-secondary">
+          <span class="icon">↺</span> Reiniciar Banco Demo (:memory:)
+        </button>
+      </div>
+      <div class="filter-tabs">
+        <button class="tab active" data-filter="all">Todos (<span id="tab-count-all">12</span>)</button>
+        <button class="tab" data-filter="aprovados">Aprovados (<span id="tab-count-aprovados">12</span>)</button>
+        <button class="tab" data-filter="reprovados">Reprovados (<span id="tab-count-reprovados">0</span>)</button>
+      </div>
+    </section>
+
+    <!-- Navegação de Abas do Portal de QA -->
+    <nav class="nav-tabs-main">
+      <button class="nav-tab-main active" data-tab="tab-cenarios">
+        <span>📋</span> Cenários de Aceite (12)
+      </button>
+      <button class="nav-tab-main" data-tab="tab-simulador">
+        <span>👥</span> Simulador de Usuários
+      </button>
+      <button class="nav-tab-main" data-tab="tab-seguranca">
+        <span>🔐</span> Painel de Segurança (2FA & Bloqueio)
+      </button>
+      <button class="nav-tab-main" data-tab="tab-permissoes">
+        <span>🛡️</span> Matriz de Permissões
+      </button>
+      <button class="nav-tab-main" data-tab="tab-logs">
+        <span>📜</span> Log de Auditoria Imutável
+      </button>
+    </nav>
+
+    <!-- ============================================================= -->
+    <!-- ABA 1: CENÁRIOS DE ACEITE -->
+    <!-- ============================================================= -->
+    <div id="tab-cenarios" class="tab-content-panel active">
+      <div id="scenarios-container" class="scenarios-grid">
+        <!-- Preenchido dinamicamente pelo app.js -->
+        <div class="loading-box">Carregando cenários da US-12...</div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- ABA 2: SIMULADOR DE USUÁRIOS -->
+    <!-- ============================================================= -->
+    <div id="tab-simulador" class="tab-content-panel">
+      <div class="dashboard-split" style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+        <!-- Formulário de Criação -->
+        <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <h2 style="font-size: 1.15rem; margin-bottom: 14px; color: #fff;">Cadastrar Novo Usuário</h2>
+          <form id="form-criar-usuario">
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">Nome Completo (mín. 3 letras):</label>
+              <input type="text" id="user-nome" required placeholder="Ex: Fernanda Lima" style="width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">E-mail Corporativo (Válido e Único):</label>
+              <input type="email" id="user-email" required placeholder="Ex: fernanda@empresa.com" style="width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">Senha Inicial (mín. 10 chars com letras e números - RNF-19):</label>
+              <input type="password" id="user-senha" required placeholder="Ex: SenhaForte2026" style="width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">Perfil de Acesso (Seção 4):</label>
+              <select id="user-perfil" style="width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+                <option value="RH">RH (Operações de Pessoal e Folha)</option>
+                <option value="DIRETORIA">DIRETORIA (Consultas e Relatórios)</option>
+                <option value="ADMIN">ADMIN (Gestão de Usuários e Logs)</option>
+              </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: #fff;">
+                <input type="checkbox" id="user-2fa">
+                Ativar Segundo Fator de Autenticação (2FA)
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Criar Usuário no SQLite</button>
+          </form>
+          <div id="msg-criar-usuario" style="margin-top: 12px; font-size: 0.85rem;"></div>
+        </div>
+
+        <!-- Tabela de Usuários Cadastrados -->
+        <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h2 style="font-size: 1.15rem; color: #fff;">Usuários no SQLite Isolado (:memory:)</h2>
+            <button id="btn-atualizar-usuarios" class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem;">Atualizar Lista</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="perm-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Perfil</th>
+                  <th>Status</th>
+                  <th>2FA</th>
+                  <th>Sessões</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-usuarios">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">Carregando usuários...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- ABA 3: PAINEL DE SEGURANÇA (2FA, BLOQUEIO E HISTÓRICO) -->
+    <!-- ============================================================= -->
+    <div id="tab-seguranca" class="tab-content-panel">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        
+        <!-- Bloco 1: Segundo Fator (2FA) -->
+        <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <h2 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">🔐 Demonstração do Segundo Fator (2FA)</h2>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
+            Simula o fluxo completo de autenticação em duas etapas com geração de desafio criptográfico e entrega de código numérico out-of-band.
+          </p>
+
+          <!-- Etapa 1: Iniciar Login -->
+          <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 14px;">
+            <strong style="font-size: 0.88rem; color: #fff;">1ª Etapa: Credenciais de Acesso</strong>
+            <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="email" id="login-2fa-email" value="rh@empresa.com" placeholder="E-mail" style="flex: 1; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+              <input type="password" id="login-2fa-senha" value="SenhaForte123" placeholder="Senha" style="flex: 1; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+              <button id="btn-iniciar-login-2fa" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem;">Iniciar Login</button>
+            </div>
+            <div id="res-etapa1-2fa" style="margin-top: 10px; font-size: 0.82rem; color: var(--text-secondary);"></div>
+          </div>
+
+          <!-- Caixa de Entrada Outbox Simulada -->
+          <div class="inbox-box" id="box-inbox-2fa" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #38bdf8;">📬 CANAL OUT-OF-BAND SIMULADO (E-mail Corporativo / SMS)</span>
+              <span style="font-size: 0.72rem; color: var(--text-secondary);">Ambiente Homologação</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+              Notificação segura despachada. Seu código numérico de 6 dígitos para autenticação é:
+            </p>
+            <div class="inbox-code" id="inbox-code-value">------</div>
+            <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Validade: 5 minutos. Nunca compartilhe este código.</p>
+          </div>
+
+          <!-- Etapa 2: Confirmar Código -->
+          <div id="box-etapa2-2fa" style="margin-top: 14px; display: none;">
+            <strong style="font-size: 0.88rem; color: #fff;">2ª Etapa: Confirmação do Código</strong>
+            <div style="margin-top: 8px; display: flex; gap: 8px;">
+              <input type="text" id="input-codigo-2fa" maxlength="6" placeholder="000000" style="width: 140px; font-family: var(--font-mono); font-size: 1.1rem; letter-spacing: 4px; text-align: center; padding: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+              <button id="btn-confirmar-2fa" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem;">Validar Código e Emitir Sessão</button>
+            </div>
+            <div id="res-etapa2-2fa" style="margin-top: 10px; font-size: 0.85rem;"></div>
+          </div>
+        </div>
+
+        <!-- Bloco 2: Bloqueio por Tentativas (RNF-19) -->
+        <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <h2 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">🛡️ Bloqueio por 5 Tentativas (RNF-19)</h2>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px;">
+            Conforme a especificação (RNF-19), 5 falhas consecutivas de senha bloqueiam temporariamente a conta por <strong>15 minutos</strong>.
+          </p>
+
+          <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-sm);">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+              <label style="font-size: 0.82rem; color: var(--text-secondary);">Usuário Alvo:</label>
+              <input type="email" id="bloq-email" value="rh@empresa.com" style="flex: 1; padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button id="btn-tentativa-errada" class="btn btn-secondary" style="background: #7f1d1d; border-color: #991b1b; color: #fecaca;">
+                ⚠️ Simular Senha Incorreta
+              </button>
+              <button id="btn-tentativa-correta" class="btn btn-secondary" style="background: #064e3b; border-color: #047857; color: #a7f3d0;">
+                ✔ Simular Senha Correta
+              </button>
+              <button id="btn-limpar-bloqueio" class="btn btn-secondary">
+                ↺ Resetar Falhas
+              </button>
+            </div>
+
+            <!-- Visualizador de progresso do bloqueio -->
+            <div class="lockout-box" id="box-lockout-status">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.8rem; font-weight: 700;">Contador de Falhas Consecutivas:</span>
+                <span id="txt-falhas-contagem" style="font-size: 0.85rem; font-weight: 800;">0 / 5</span>
+              </div>
+              <div class="lockout-progress" id="dots-lockout">
+                <div class="lockout-dot" id="dot-1"></div>
+                <div class="lockout-dot" id="dot-2"></div>
+                <div class="lockout-dot" id="dot-3"></div>
+                <div class="lockout-dot" id="dot-4"></div>
+                <div class="lockout-dot" id="dot-5"></div>
+              </div>
+              <div id="txt-bloqueio-aviso" style="margin-top: 10px; font-size: 0.82rem; color: var(--text-secondary);">
+                Status: Conta liberada para autenticação.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloco 3: Histórico das Últimas 3 Senhas -->
+      <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1.15rem; color: #fff;">🔑 Histórico das Últimas Senhas (Proteção contra Reutilização)</h2>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">
+              Armazenadas em tabela dedicada (<code>historico_senhas</code>) com hash scrypt e salt aleatório. Senhas e hashes nunca são exibidos.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 0.82rem; color: var(--text-secondary);">Consultar Usuário ID:</label>
+            <input type="number" id="hist-user-id" value="1" min="1" style="width: 60px; padding: 4px 8px; background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; border-radius: var(--radius-sm);">
+            <button id="btn-carregar-historico" class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem;">Consultar</button>
+          </div>
+        </div>
+        <table class="perm-table">
+          <thead>
+            <tr>
+              <th>Posição / Janela</th>
+              <th>Data do Registro</th>
+              <th>Algoritmo Criptográfico</th>
+              <th>Confidencialidade</th>
+              <th>Regra de Reutilização</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-historico-senhas">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Clique em Consultar para inspecionar o histórico.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- ABA 4: MATRIZ DE PERMISSÕES -->
+    <!-- ============================================================= -->
+    <div id="tab-permissoes" class="tab-content-panel">
+      <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1.15rem; color: #fff;">🛡️ Matriz de Perfis e Permissões (Seção 4 / Tabela 4.1 da Spec v1.7)</h2>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">
+              Auditoria em tempo real: Cada linha abaixo é avaliada executando as verificações reais do backend no SQLite (:memory:).
+            </p>
+          </div>
+          <button id="btn-retestar-permissoes" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem;">Reavaliar Permissões no Backend</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="perm-table">
+            <thead>
+              <tr>
+                <th>Ação / Operação do Sistema</th>
+                <th>Perfil RH</th>
+                <th>Perfil Diretoria</th>
+                <th>Perfil Administrador</th>
+                <th>Regra de Negócio na Especificação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-permissoes">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Carregando matriz de permissões...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- ABA 5: LOG DE AUDITORIA IMUTÁVEL -->
+    <!-- ============================================================= -->
+    <div id="tab-logs" class="tab-content-panel">
+      <div class="card" style="background: var(--bg-card); padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1.15rem; color: #fff;">📜 Log de Auditoria Imutável (RNF-03 / US-07 / US-12)</h2>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">
+              Trilha de auditoria gerada durante a demonstração. Protegida por triggers SQLite contra UPDATE e DELETE.
+            </p>
+          </div>
+          <button id="btn-atualizar-logs" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">Atualizar Logs</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="perm-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data / Hora</th>
+                <th>Usuário</th>
+                <th>Perfil</th>
+                <th>Ação</th>
+                <th>Entidade</th>
+                <th>Detalhes da Operação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-logs">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">Carregando logs de auditoria...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer style="margin-top: 40px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+    Sistema de RH e Folha de Pagamento &bull; QA Demonstrativo US-12 &bull; Spec v1.7 &bull; Prof. Dr. Juan Apolinario &bull; GTI
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
