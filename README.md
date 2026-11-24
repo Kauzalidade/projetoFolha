@@ -7,7 +7,7 @@ Sistema web acadêmico de RH e folha de pagamento para uma empresa **corresponde
 > **Equipe de desenvolvimento:** GTI 2º período.
 > **Repositório:** [github.com/Kauzalidade/projetoFolha](https://github.com/Kauzalidade/projetoFolha)
 > **Status geral:** Implementação completa das Etapas 1, 2, 3 e 4 conforme a especificação v1.7. Inclui servidor HTTP nativo (`server.ts`), interface web interativa de testes e suite completa de testes automatizados.
-> **Stack definida:** Node.js e TypeScript. **Banco de dados:** pendente de confirmação da equipe, pois o README anterior cita MySQL e o CHANGELOG registra PostgreSQL.
+> **Stack definida:** Node.js e TypeScript. **Banco de dados:** SQLite local nativo (`node:sqlite` / `DatabaseSync`), padronizado e validado.
 > **Regra de ouro:** se faltar informação, **não invente a regra**. Registre a dúvida e consulte o GTI 4º período.
 
 ---
@@ -16,14 +16,14 @@ Sistema web acadêmico de RH e folha de pagamento para uma empresa **corresponde
 
 - [Sobre o projeto](#sobre-o-projeto)
 - [Objetivos](#objetivos)
-- [Escopo da 1ª versão](#escopo-da-1ª-versão)
+- [Escopo da 1ª versão](#escopo-da-1-versão)
 - [Etapas de construção](#etapas-de-construção)
 - [Status de implementação verificado](#status-de-implementação-verificado)
 - [Regras de negócio em destaque](#regras-de-negócio-em-destaque)
 - [Parâmetros legais de 2026](#parâmetros-legais-de-2026)
 - [Exemplos de cálculo para os testes](#exemplos-de-cálculo-para-os-testes)
 - [Perfis e permissões](#perfis-e-permissões)
-- [Telas da 1ª versão](#telas-da-1ª-versão)
+- [Telas da 1ª versão](#telas-da-1-versão)
 - [Requisitos não funcionais](#requisitos-não-funcionais)
 - [Stack e decisões técnicas](#stack-e-decisões-técnicas)
 - [Back-end](#back-end)
@@ -89,9 +89,13 @@ As etapas abaixo representam o plano da especificação oficial v1.7. O status r
 | 2 | Eventos: horas extras, faltas, atestados, VT, VA e verbas avulsas | **Concluída** | 16 testes automatizados aprovados em [`back-end/tests/etapa2.test.ts`](./back-end/tests/etapa2.test.ts) |
 | 3 | Cálculo da folha, memória de cálculo e fechamento | **Concluída** | 10 testes automatizados aprovados em [`back-end/tests/etapa3.test.ts`](./back-end/tests/etapa3.test.ts) |
 | 4 | Férias, 13º, documentos, contracheque e relatórios | **Concluída** | 24 testes automatizados aprovados em [`back-end/tests/etapa4.test.ts`](./back-end/tests/etapa4.test.ts) |
-| v1.7 | Requisitos avançados: RN-78 piso, RN-74 saldos iniciais, RN-80 atrasos, RN-59 conferência, RN-67 aprovação, RN-68 versões SHA-256, RN-61 pagamento, RN-79 férias dobro, RN-76 ficha PDF, RN-77 incidentes | **Concluída** | 12 testes automatizados aprovados em [`back-end/tests/etapa_v1_7.test.ts`](./back-end/tests/etapa_v1_7.test.ts) |
+| v1.7 | Requisitos integrados v1.7 (US-10 a US-18, RN-78 piso, RN-74 saldos, RN-80, RN-59 conferência, RN-67 aprovação, RN-68 versões, RN-61 pagamento, RN-79 dobro, RN-76 ficha, RN-77 incidentes) | **Concluída** | 47 testes automatizados aprovados em [`back-end/tests/etapa_v1_7.test.ts`](./back-end/tests/etapa_v1_7.test.ts) |
+| US-10 | Registro de Proventos e Descontos Manuais (Verbas Avulsas) | **Concluída** | 10 testes automatizados aprovados em [`back-end/tests/us10_verbas_avulsas.test.ts`](./back-end/tests/us10_verbas_avulsas.test.ts) |
+| US-12 | Gestão de Usuários, Perfis, Política de Senhas e 2FA Outbox | **Concluída** | 12 testes automatizados aprovados em [`back-end/tests/us12_gestao_usuarios.test.ts`](./back-end/tests/us12_gestao_usuarios.test.ts) |
+| US-13 | Conferência de Totais da Folha em 5 Eixos e Fechamento Seguro | **Concluída** | 15 testes automatizados aprovados em [`back-end/tests/us13_conferencia_totais.test.ts`](./back-end/tests/us13_conferencia_totais.test.ts) |
+| RN-20 | Casos de Borda da Proporcionalidade (Meses de 31, 28 e 29 dias) | **Concluída** | 4 testes automatizados aprovados em [`back-end/tests/proporcionalidade.test.ts`](./back-end/tests/proporcionalidade.test.ts) |
 
-As Etapas 1, 2, 3 e 4 foram implementadas e validadas utilizando Node.js LTS, TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **79 testes automatizados** (100% de aprovação) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, atrasos sem perda de DSR (RN-80), VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00, saldo a descontar limitado a 30% no mês seguinte (RN-06), controle de férias com 1/3, faltas, abono sem incidências, fracionamento, média de variáveis (RN-48), férias que cruzam meses (RN-49), férias vencidas em dobro (RN-79), 13º salário em duas parcelas e proporcional (RN-46), alertas de documentos (RN-52), exames ocupacionais (RN-53), concessivo de férias (RN-45), prazo de pagamento (RN-58), alerta do 13º (RN-84), conferência financeira interna com tolerância R$ 0,00 (RN-59), fluxo de conferência e devolução (RN-67), versionamento com hash SHA-256 (RN-68), registro de data de pagamento (RN-61), ficha completa em PDF por CPF (RN-76), registro de incidentes de segurança (RN-77), retenção LGPD (RN-56), contracheque em PDF e relatórios completos exportáveis em Excel e PDF.
+As Etapas 1, 2, 3 e 4 foram implementadas e validadas utilizando Node.js LTS, TypeScript e SQLite nativo (`node:sqlite`). A suíte completa acumula **155 testes automatizados** (100% de aprovação em 10 suítes) cobrindo cadastro, segurança, travas de competência, horas extras, DSR, faltas, atrasos sem perda de DSR (RN-80), VT, verbas avulsas (RN-25), INSS progressivo, IRRF comparativo com redução da Lei 15.270/2025, FGTS (encargo), proteção do líquido 0,00, saldo a descontar limitado a 30% no mês seguinte (RN-06), controle de férias com 1/3, faltas, abono sem incidências, fracionamento, média de variáveis (RN-48), férias que cruzam meses (RN-49), férias vencidas em dobro (RN-79), 13º salário em duas parcelas e proporcional (RN-46), alertas de documentos (RN-52), exames ocupacionais (RN-53), concessivo de férias (RN-45), prazo de pagamento (RN-58), alerta do 13º (RN-84), conferência financeira interna com tolerância R$ 0,00 (RN-59), fluxo de conferência e devolução (RN-67), versionamento com hash SHA-256 (RN-68), registro de data de pagamento (RN-61), ficha completa em PDF por CPF (RN-76), registro de incidentes de segurança (RN-77), retenção LGPD (RN-56), contracheque em PDF e relatórios completos exportáveis em Excel e PDF.
 
 ## Regras de negócio em destaque
 
@@ -225,7 +229,7 @@ A especificação define **o que** o sistema deve fazer. As decisões técnicas 
 | Banco de dados | **SQLite local nativo (`node:sqlite`):** adotado para desenvolvimento acadêmico, com valores monetários em inteiros de centavos (`BigInt`) via classe `Dec` (RN-03) |
 | Estrutura técnica | Arquitetura em camadas (Services/Casos de Uso, Repositories/Modelagem, Segurança e CLI) |
 | Visual das telas | Interface web com prioridade para desktop, conforme a especificação |
-| Testes automatizados | **Node.js test runner nativo (`node:test`) com TypeScript e `tsx`:** abordagem TDD, com 17 testes automatizados passando na Etapa 1 |
+| Testes automatizados | **Node.js test runner nativo (`node:test`) com TypeScript e `tsx`:** abordagem TDD, com 155 testes automatizados passando com 100% de sucesso em 10 suítes (Etapas 1 a 4, US-10, US-12, US-13 e casos de borda) |
 | Gerenciador de pacotes e comandos | **npm:** scripts configurados para `init-db`, `criar-usuario`, `seed-demo`, `test`, `typecheck` e `build` |
 
 **Obrigatório:** valores monetários devem usar representação decimal exata, sem cálculos financeiros com `number` de ponto flutuante em TypeScript. A classe `Dec` (`src/dec.ts`) garante arredondamento *half-up* por verba (RN-03). Parâmetros legais vivem na tabela `parametros` com datas de início e fim de vigência (RN-01).
@@ -246,7 +250,7 @@ npm run init-db
 npm run criar-usuario -- --nome "Maria" --email maria@empresa.com --perfil RH --senha minhasenha123
 npm run seed-demo       # opcional: filiais e colaboradores de exemplo
 npm start               # inicia o servidor; health: http://localhost:5000/api/health
-npm test                # o README do back-end declara 44 testes
+npm test                # executa a suíte completa com 155 testes
 npm run typecheck
 npm run build
 npm run start:prod      # inicia a versão compilada
@@ -272,11 +276,11 @@ A API usa autenticação `Bearer` nos endpoints protegidos. Conforme documentado
 
 O documento do back-end declara funcionalidades para login e perfis, filiais e colaboradores, histórico e logs, parâmetros com vigência e um motor de cálculo que contempla INSS, IRRF, horas extras, DSR, faltas, VT, VA, FGTS e férias. Também registra uso de `BigInt` na classe `Dec` para representar valores monetários com precisão decimal.
 
-O mesmo documento aponta como pendentes partes das etapas 2 a 4, incluindo lançamento de eventos, folha persistida com fechamento/reabertura, saldo e alertas de férias, documentos e exames, contracheques e relatórios em PDF/Excel, cifragem de dados de saúde, backup e retenção. Algumas regras ainda aparecem como dúvidas ou não implementadas.
+Todas as funcionalidades das Etapas 1 a 4 foram plenamente implementadas, homologadas e cobertas por testes automatizados, incluindo lançamentos de eventos, cálculo da folha com memória por verba, fechamento seguro com hash SHA-256, conferência de totais de 5 eixos (US-13), programação de férias, 13º salário, alertas legais, contracheques em PDF e relatórios analíticos, bancários e de conformidade LGPD.
 
 ## Como trabalhar neste repositório
 
-1. **Leia a especificação v1.3** antes de qualquer código.
+1. **Leia a especificação v1.7** antes de qualquer código.
 2. **Uma etapa por vez**, na ordem da seção [Etapas de construção](#etapas-de-construção).
 3. **Testes primeiro:** derive os testes dos cenários Gherkin (seção 10) e dos exemplos (seção 8).
 4. **Nada fixo no código:** valores legais vivem na tabela de parâmetros (RN-01).
@@ -324,78 +328,6 @@ Cole a especificação antes de cada prompt e use a regra comum: *"Não crie reg
 - A convenção coletiva do cliente não foi informada: valem os padrões da CLT e a convenção entra como parâmetro cadastrável.
 - Os dados de exemplo da especificação (seção 11) são **fictícios**.
 
-- # Prompts Prontos — Sistema de RH e Folha de Pagamento
-
-## Objetivo
-
-Esta pasta reúne prompts estruturados para auxiliar o desenvolvimento do Sistema de RH e Folha de Pagamento com inteligência artificial.
-
-Os prompts devem respeitar os requisitos definidos em `docs/spec.md`, as orientações do `AGENTS.md` e as tecnologias adotadas pela equipe.
-
-## Prompts disponíveis
-
-### P03 — Geração de Testes Automatizados
-
-**Arquivo:** `P03-geracao-testes-automatizados.md`
-
-**Versão:** 1.1
-
-**Responsável pela elaboração e validação:** José Geremias
-
-**Tecnologias previstas:** Node.js e TypeScript.
-
-**Finalidade:** orientar uma IA na análise dos requisitos e na geração de testes automatizados para funcionalidades já implementadas.
-
-O P03 contempla:
-
-- Análise da especificação e do código existente.
-- Identificação de funcionalidades que podem ser testadas.
-- Planejamento de cenários normais, inválidos e casos de borda.
-- Geração de testes compatíveis com a estrutura do projeto.
-- Execução dos testes e apresentação de resultados verificáveis.
-- Identificação de problemas e pendências.
-
-## Como utilizar o P03
-
-1. Abra o projeto no Antigravity IDE.
-2. Leia o arquivo `P03-geracao-testes-automatizados.md`.
-3. Envie o prompt principal juntamente com a instrução complementar de análise.
-4. Revise o planejamento apresentado pela IA.
-5. Autorize a criação dos testes somente após conferir o escopo.
-6. Execute os testes no ambiente configurado.
-7. Registre os resultados obtidos.
-
-## Situação da validação
-
-A versão 1.0 do P03 foi validada anteriormente em um ambiente Python, com 51 testes executados e aprovados.
-
-A versão 1.1 foi adaptada para Node.js e TypeScript.
-
-Em 24/10/2026, foi realizada uma nova análise no Antigravity IDE. O prompt identificou corretamente a documentação e a ausência de código TypeScript executável na branch `main`.
-
-**Status atual:** análise e planejamento concluídos; execução funcional da versão 1.1 pendente.
-
-A validação completa será realizada quando a implementação Node.js/TypeScript estiver disponível.
-
-## Relatório de validação
-
-O relatório da versão anterior está disponível em:
-
-`prompts/01_testes/validacao-P03.md`
-
-Os resultados da versão 1.0 não devem ser apresentados como evidência de execução da versão 1.1.
-
-## Boas práticas
-
-- Não inventar regras de negócio.
-- Não alterar funcionalidades existentes apenas para fazer testes passarem.
-- Não utilizar dados reais de colaboradores.
-- Não afirmar que testes passaram sem execução verificável.
-- Não realizar commits ou merges sem autorização da equipe.
-- Registrar limitações e requisitos ainda não definidos.
-
-- Cálculos da folha exigem revisão humana, de preferência com apoio contábil.
-
 ---
 
-<sub>Baseado na Especificação de Requisitos v1.3 (21/10/2026) · Prof. Dr. Juan Apolinario · GTI 4º período → GTI 2º período. Documento consolidado para revisão em 26/10/2026.</sub>
+<sub>Baseado na Especificação de Requisitos v1.7 (10/11/2026) · Prof. Dr. Juan Apolinario · GTI 4º período → GTI 2º período. Repositório oficial de desenvolvimento.</sub>

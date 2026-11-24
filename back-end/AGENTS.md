@@ -9,8 +9,8 @@ Este arquivo define as regras operacionais, comportamentais e técnicas obrigat�
 > **Se faltar informação ou houver qualquer ambiguidade, NÃO invente a regra de negócio.**
 
 - Marque qualquer suposição não confirmada explicitamente como **`[HIPÓTESE]`**.
-- Adicione a dúvida imediatamente no arquivo [docs/perguntas-pendentes.md](docs/perguntas-pendentes.md).
-- Consulte e respeite o documento base: [docs/spec.md](docs/spec.md).
+- Adicione a dúvida imediatamente no arquivo [../docs/perguntas-pendentes.md](../docs/perguntas-pendentes.md).
+- Consulte e respeite o documento base: [../docs/spec.md](../docs/spec.md).
 - Toda comunicação de dúvidas de negócio deve ser direcionada à liderança do **GTI 4º período** (Severino Felipe / Antônio Fabrício).
 
 ---
@@ -56,8 +56,8 @@ Respeite estritamente a fase atual solicitada pelo usuário. Não implemente adi
 
 ### 🛠️ Stack Tecnológica Oficial (Seção 15.3):
 - **Linguagem & Runtime:** Node.js com TypeScript
-- **Banco de Dados:** PostgreSQL (`DECIMAL(12, 2)`)
-- **Manipulação Monetária:** `decimal.js` (arredondamento *half-up* por verba - RN-03)
+- **Banco de Dados:** SQLite local nativo (`node:sqlite` / `DatabaseSync`)
+- **Manipulação Monetária:** `Dec` (`src/dec.ts`) com `BigInt` em centavos (arredondamento *half-up* por verba - RN-03)
 - **Testes Automatizados:** Testes unitários e de integração com cenários Gherkin (Seção 10) e tolerância de R$ 0,01.
 
 ### Itens Fora do Escopo da Versão 1:
@@ -85,4 +85,4 @@ Respeite estritamente a fase atual solicitada pelo usuário. Não implemente adi
 
 ## 🤖 7. Utilização de Prompts
 
-Quando o usuário solicitar uma tarefa com IA, use como referência os templates pré-aprovados disponíveis em [docs/uso-de-ia.md](docs/uso-de-ia.md).
+Quando o usuário solicitar uma tarefa com IA, use como referência os templates pré-aprovados disponíveis em [../docs/uso-de-ia.md](../docs/uso-de-ia.md).

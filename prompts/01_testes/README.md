@@ -1,4 +1,3 @@
-# Testes de Prompts
 # 01 — Testes e Validação de Prompts
 
 ## Objetivo

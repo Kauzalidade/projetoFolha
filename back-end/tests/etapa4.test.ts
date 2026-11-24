@@ -693,7 +693,7 @@ describe('ETAPA 4: Férias, 13º Salário, Documentos, Alertas, Contracheque e R
     assert.ok(pdfTexto.includes('2751.40'), 'PDF deve conter o valor líquido');
   });
 
-  it('Cenário: Exportar relatorio em Excel e PDF (US-08 / Seção 13)', () => {
+  it('Cenário: Exportar relatório em Excel e PDF (US-08 / Seção 13)', () => {
     const colab = criarColaborador(db, rhUser, {
       filialId: matrizId,
       nome: 'Colaborador Relatorio',

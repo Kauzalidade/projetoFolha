@@ -74,6 +74,20 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 
 ---
 
+---
+
+### [27/10/2026] - Implementação e Validação Automatizada da Etapa 3 (TDD)
+- **Categoria:** Testes automatizados / Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Adição das tabelas `folhas`, `folha_verbas` (memória de cálculo detalhada) e `saldos_a_descontar` no SQLite em `src/db.ts`.
+  - Implementação de `src/calculo.ts` com cálculo progressivo por faixas do INSS 2026, IRRF comparativo (Base Tradicional vs Simplificada com redução da Lei 15.270/2025) e fórmula do DSR sobre horas extras (RN-31).
+  - Implementação de `src/services/folhaService.ts` com cálculo completo da remuneração, FGTS (8% encargo patronal), memória explicativa por verba (RN-02), proteção ao líquido (líquido nunca negativo com geração de saldo a descontar limitado a 30% no mês seguinte - RN-06) e fechamento seguro bloqueado por dados pendentes ou saldo sem justificativa (Tabela 7.1).
+  - Criação da suíte `tests/etapa3.test.ts` com 10 testes cobrindo os exemplos numéricos da Seção 8 (A, B, C, G, H, I, M) e cenários Gherkin da Seção 10. Suíte completa acumula **43 testes aprovados com 100% de sucesso**.
+- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 3 da especificação v1.3 (*"Folha calculada com memória; fechamento bloqueado nos casos da tabela 7.1; tolerância de cálculo de até R$ 0,01"*).
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
+
+---
+
 ### [29/10/2026] - Implementação e Validação Automatizada da Etapa 4 (TDD)
 - **Categoria:** Testes automatizados / Estrutura técnica
 - **O que foi adicionado/alterado:**
@@ -89,17 +103,32 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 
 ---
 
-### [27/10/2026] - Implementação e Validação Automatizada da Etapa 3 (TDD)
-- **Categoria:** Testes automatizados / Estrutura técnica
+### [18/11/2026] - Consolidação de Branches e Harmonização da Especificação Técnica v1.7
+- **Categoria:** Estrutura técnica / Testes automatizados / Banco de dados
 - **O que foi adicionado/alterado:**
-  - Adição das tabelas `folhas`, `folha_verbas` (memória de cálculo detalhada) e `saldos_a_descontar` no SQLite em `src/db.ts`.
-  - Implementação de `src/calculo.ts` com cálculo progressivo por faixas do INSS 2026, IRRF comparativo (Base Tradicional vs Simplificada com redução da Lei 15.270/2025) e fórmula do DSR sobre horas extras (RN-31).
-  - Implementação de `src/services/folhaService.ts` com cálculo completo da remuneração, FGTS (8% encargo patronal), memória explicativa por verba (RN-02), proteção ao líquido (líquido nunca negativo com geração de saldo a descontar limitado a 30% no mês seguinte - RN-06) e fechamento seguro bloqueado por dados pendentes ou saldo sem justificativa (Tabela 7.1).
-  - Criação da suíte `tests/etapa3.test.ts` com 10 testes cobrindo os exemplos numéricos da Seção 8 (A, B, C, G, H, I, M) e cenários Gherkin da Seção 10. Suíte completa acumula **43 testes aprovados com 100% de sucesso**.
-- **Por quê (Justificativa):** Cumprir o critério de pronto da Etapa 3 da especificação v1.3 (*"Folha calculada com memória; fechamento bloqueado nos casos da tabela 7.1; tolerância de cálculo de até R$ 0,01"*).
+  - Unificação completa das branches de desenvolvimento e consolidação da Especificação Técnica v1.7 (10/11/2026).
+  - Implementação da US-10 (Registro de Proventos e Descontos Manuais / Verbas Avulsas - RN-25 a RN-27) com suíte `tests/us10_verbas_avulsas.test.ts` (10 testes).
+  - Implementação da US-12 (Gestão de Usuários, Perfis, Políticas de Senha com histórico das últimas 3, Segundo Fator 2FA out-of-band e Bloqueio por Tentativas) com suíte `tests/us12_gestao_usuarios.test.ts` (12 testes).
+  - Implementação da US-13 (Conferência de Totais da Folha em 5 Eixos, tolerância zero de R$ 0,00 e Fechamento Seguro com hash SHA-256) com suíte `tests/us13_conferencia_totais.test.ts` (15 testes).
+  - Implementação de caracterização dos casos de borda da proporcionalidade (meses de 31, 28 e 29 dias - RN-20) com suíte `tests/proporcionalidade.test.ts` (4 testes) e `tests/etapa_v1_7.test.ts` (47 testes).
+  - A suíte completa de testes automatizados foi expandida para **155 testes aprovados com 100% de sucesso**.
+- **Por quê (Justificativa):** Consolidar todo o escopo acadêmico da especificação v1.7, garantindo rastreabilidade, imutabilidade de auditoria (RNF-03) e fechamento seguro com tolerância zero.
 - **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
 
+---
 
+### [24/11/2026] - Implementação do Portal Web Completo e Resolução de Inconsistências
+- **Categoria:** Visual das telas / Estrutura técnica / Testes automatizados
+- **O que foi adicionado/alterado:**
+  - Implementação e integração completa da interface web corporativa em `front-end/index.html` consumindo diretamente os endpoints REST do servidor `back-end/src/server.ts`.
+  - Resolução de dados `undefined` e `R$ NaN` na Folha do Mês através de projeção completa de cargos, colaboradores e salários estruturados em `relatoriosService.ts`.
+  - Ativação das funções operacionais de cálculo e programação de Férias e 13º Salário com histórico dinâmico.
+  - Correção da Central de Alertas com exibição das descrições detalhadas dos prazos legais.
+  - Implementação e disponibilização para download real da Relação Bancária para Pagamento (PDF e Excel) e do Termo de Eliminação de Dados Pessoais (LGPD Art. 16 em PDF com hash SHA-256).
+  - Limpeza e profissionalização dos termos visuais do portal, removendo identificadores técnicos internos (`Etapa X`, `US-xx`, `RN-xx`).
+  - Harmonização da documentação (`README.md`, `AGENTS.md`, `CHANGELOG.md`), remoção de conteúdo duplicado, correção de links quebrados e exclusão do diretório órfão `back-end/back-end/`.
+- **Por quê (Justificativa):** Garantir usabilidade de ponta a ponta para os perfis de RH e Diretoria, conformidade legal trabalhista e integridade documental do repositório.
+- **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
 
 
 ## 📋 Modelo para Futuros Registros
