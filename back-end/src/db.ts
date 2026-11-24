@@ -398,6 +398,7 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN comunicar_titulares INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN orientacao_juridica TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_por INTEGER NULL'); } catch (_) {}
+  try { db.exec('ALTER TABLE parametros ADD COLUMN fonte TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_email TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE incidentes_seguranca ADD COLUMN decisao_comunicacao_em TEXT NULL'); } catch (_) {}
   try {

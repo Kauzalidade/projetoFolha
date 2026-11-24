@@ -1380,6 +1380,34 @@
               <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Dedução legal por dependente: <b>R$ 189,59</b> / Redução especial de IRRF para faixas R$ 5.000,01 a R$ 7.350,00.</p>
             </div>
           </div>
+
+          <!-- Parâmetros Cadastrados no Sistema (Tabela Dinâmica) -->
+          <div class="kpi-card" style="margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e293b; margin: 0;">Parâmetros e Vigências Cadastrados</h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin: 2px 0 0 0;">Histórico de parâmetros operacionais, tetos e índices legais armazenados no banco.</p>
+              </div>
+              <button class="btn btn-outline" style="font-size: 12px; padding: 4px 10px;" onclick="carregarParametrosCadastrados()">🔄 Atualizar</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nome do Parâmetro</th>
+                    <th>Valor</th>
+                    <th>Início Vigência</th>
+                    <th>Fim Vigência</th>
+                    <th>Fonte / Norma</th>
+                    <th>Versão</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-parametros-cadastrados">
+                  <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Carregando parâmetros...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- 9. ABA ALERTAS -->
@@ -1727,6 +1755,7 @@
       if (tabId === 'folha') carregarFolhaResumo();
       if (tabId === 'ferias') carregarHistoricoFerias();
       if (tabId === 'contracheque') carregarContracheque(colaboradoresData[0]?.id);
+      if (tabId === 'parametros') carregarParametrosCadastrados();
       if (tabId === 'alertas') carregarAlertas();
       if (tabId === 'administracao') carregarAdministracao();
       if (tabId === 'memoria') preencherSelectMemoria();
@@ -2145,6 +2174,68 @@
         notify('Folha fechada com sucesso! Hash SHA-256 gerado e arquivado.', 'success');
         carregarCompetencias();
         carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Reabertura de Competência (CLT / RN-04)
+    function abrirModalReabertura() {
+      const badge = document.getElementById('comp-status-badge');
+      const isFechada = badge && badge.textContent.trim() === 'FECHADA';
+      if (!isFechada) {
+        notify(`A competência atual (${currentCompetencia}) não está com status FECHADA.`, 'info');
+        return;
+      }
+
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>🔓 Reabertura de Competência (${currentCompetencia})</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+              <p style="font-size: 13px; color: #92400e; margin: 0; line-height: 1.45;">
+                <b>Atenção (Governança & CLT - RN-04):</b> A reabertura tornará a folha <b>ABERTA</b> para novos lançamentos e correções. Conforme as regras da CLT e de auditoria contábil, a conferência financeira anterior perderá a validade e uma justificativa formal é estritamente obrigatória para arquivamento na trilha imutável.
+              </p>
+            </div>
+            <div class="form-group">
+              <label>Justificativa Formal Obrigatória</label>
+              <textarea id="reabertura-justificativa" class="form-control" rows="3" placeholder="Descreva a razão formal da reabertura (ex: Correção de horas extras ou lançamento de verbas complementares)..." required></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" style="background: #d97706; border-color: #d97706;" onclick="confirmarReaberturaFolha()">Confirmar Reabertura</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function confirmarReaberturaFolha() {
+      const justEl = document.getElementById('reabertura-justificativa');
+      const justificativa = justEl ? justEl.value.trim() : '';
+      if (!justificativa) {
+        notify('Para reabrir uma competência fechada, informe a justificativa obrigatória.', 'error');
+        return;
+      }
+      try {
+        await fetchAPI('/api/competencias/reabrir', {
+          method: 'POST',
+          body: JSON.stringify({
+            mesAno: currentCompetencia,
+            competenciaId: currentCompetenciaId,
+            justificativa
+          })
+        });
+        notify(`Competência ${currentCompetencia} reaberta com sucesso!`, 'success');
+        fecharModal();
+        await carregarCompetencias();
+        await carregarFolhaResumo();
+        await carregarDadosDashboard();
       } catch (err) {
         notify(err.message, 'error');
       }
@@ -2580,6 +2671,118 @@
     function fecharModal() {
       document.getElementById('modal-container').hidden = true;
       document.getElementById('modal-container').innerHTML = '';
+    }
+
+    // Parâmetros 2026 e Vigências Legais
+    function abrirModalNovoParametro() {
+      const modal = document.getElementById('modal-container');
+      modal.hidden = false;
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Cadastrar Novo Parâmetro Legal / Vigência</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="form-group">
+              <label>Nome do Parâmetro (ex: SALARIO_MINIMO, TETO_INSS)</label>
+              <input type="text" id="param-nome" class="form-control" placeholder="Ex: SALARIO_MINIMO_2026" required>
+            </div>
+            <div class="form-group">
+              <label>Valor</label>
+              <input type="text" id="param-valor" class="form-control" placeholder="Ex: 1621.00 ou tabela em JSON" required>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>Início da Vigência</label>
+                <input type="date" id="param-inicio" class="form-control" value="2026-01-01" required>
+              </div>
+              <div class="form-group">
+                <label>Fim da Vigência (opcional)</label>
+                <input type="date" id="param-fim" class="form-control" value="2099-12-31">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>Fonte / Base Legal (opcional)</label>
+                <input type="text" id="param-fonte" class="form-control" placeholder="Ex: Medida Provisória nº 1.300/2026">
+              </div>
+              <div class="form-group">
+                <label>Versão</label>
+                <input type="text" id="param-versao" class="form-control" value="1.0">
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarNovoParametro()">Salvar Parâmetro</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function salvarNovoParametro() {
+      const nome = document.getElementById('param-nome')?.value.trim();
+      const valor = document.getElementById('param-valor')?.value.trim();
+      const dataInicio = document.getElementById('param-inicio')?.value;
+      const dataFim = document.getElementById('param-fim')?.value || undefined;
+      const fonte = document.getElementById('param-fonte')?.value.trim() || undefined;
+      const versao = document.getElementById('param-versao')?.value.trim() || '1.0';
+
+      if (!nome) {
+        notify('Informe o nome do parâmetro.', 'error');
+        return;
+      }
+      if (!valor) {
+        notify('Informe o valor do parâmetro.', 'error');
+        return;
+      }
+      if (!dataInicio) {
+        notify('Informe o campo de vigência (data de início).', 'error');
+        return;
+      }
+
+      try {
+        await fetchAPI('/api/parametros', {
+          method: 'POST',
+          body: JSON.stringify({ nome, valor, dataInicio, dataFim, fonte, versao })
+        });
+        notify('Parâmetro cadastrado com sucesso!', 'success');
+        fecharModal();
+        carregarParametrosCadastrados();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function carregarParametrosCadastrados() {
+      const tbody = document.getElementById('tbody-parametros-cadastrados');
+      if (!tbody) return;
+      try {
+        const params = await fetchAPI('/api/parametros');
+        if (!params || !params.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum parâmetro cadastrado no momento.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = params.map(p => {
+          let valFmt = p.valor || '';
+          if (valFmt.length > 50) valFmt = valFmt.substring(0, 47) + '...';
+          const dtIni = p.data_inicio || p.dataInicio || '-';
+          const dtFim = p.data_fim || p.dataFim || '-';
+          return `
+            <tr>
+              <td><b>${p.nome}</b></td>
+              <td style="font-family: monospace; font-size: 12.5px;">${valFmt}</td>
+              <td>${dtIni}</td>
+              <td>${dtFim}</td>
+              <td style="color: var(--text-muted); font-size: 12.5px;">${p.fonte || '-'}</td>
+              <td><span class="badge-status aberta" style="font-size: 11px;">v${p.versao || '1.0'}</span></td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 18px;">Erro ao carregar parâmetros: ' + err.message + '</td></tr>';
+      }
     }
 
     function abrirModalNovoIncidente() {

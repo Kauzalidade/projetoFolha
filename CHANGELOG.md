@@ -145,6 +145,17 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 - **Por quê (Justificativa):** Deixar o projeto limpo, enxuto, prático e sem código morto ou servidores duplicados, mantendo 100% da funcionalidade e integridade dos 155 testes automatizados.
 - **Aprovado por:** Kauã (solicitação e autorização expressa do usuário nesta conversa).
 
+---
+
+### [24/11/2026] - Ativação do Cadastro de Parâmetros e Reabertura de Folha com Justificativa
+- **Categoria:** Visual das telas / Estrutura técnica / Banco de dados
+- **O que foi adicionado/alterado:**
+  - **Reabertura de Folha (CLT / RN-04):** Implementado o modal de reabertura (`abrirModalReabertura()`) no botão "🔓 Reabrir", exigindo justificativa formal obrigatória, invalidando a conferência prévia e atualizando em tempo real o status para `ABERTA`, além de registrar o evento destacado na trilha de auditoria imutável. Ajustada rota `POST /api/competencias/reabrir` com suporte resiliente a `mesAno` e `competenciaId`.
+  - **Novo Parâmetro Vigente (RN-01):** Implementado o modal (`abrirModalNovoParametro()`) no botão "+ Novo Parâmetro", persistindo `nome`, `valor`, `dataInicio`, `dataFim`, `fonte` e `versao` via `POST /api/parametros`. Adicionada tabela dinâmica em "Tabelas e Parâmetros Vigentes de 2026" com atualização automática via `GET /api/parametros` (`carregarParametrosCadastrados()`).
+  - **Migração Dinâmica de Banco:** Adicionada migração `ALTER TABLE parametros ADD COLUMN fonte TEXT NULL` em `db.ts`, garantindo compatibilidade retroativa e integridade da coluna legal.
+- **Por quê (Justificativa):** Permitir a governança completa da folha pelo perfil RH, sanando os botões sem manipulador de evento e garantindo conformidade com a CLT e trilha de auditoria contábil.
+- **Aprovado por:** Kauã (solicitação e autorização expressa do usuário nesta conversa).
+
 ## 📋 Modelo para Futuros Registros
 
 Para cada nova adição ou atualização aprovada pelo usuário, registre uma nova entrada seguindo o formato:

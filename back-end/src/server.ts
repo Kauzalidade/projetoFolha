@@ -427,8 +427,13 @@ const server = http.createServer(async (req, res) => {
     if (method === 'POST' && pathname === '/api/competencias/reabrir') {
       const usuario = autenticarRequisicao(req);
       const body = await parseJSONBody(req);
-      reabrirCompetencia(db, usuario, body.mesAno, body.justificativa);
-      return enviarJSON(res, 200, { status: 'REABERTA', mesAno: body.mesAno });
+      let mesAno = body.mesAno;
+      if (!mesAno && body.competenciaId) {
+        const comp = db.prepare('SELECT mes_ano FROM competencias WHERE id = ?').get(body.competenciaId) as any;
+        if (comp) mesAno = comp.mes_ano;
+      }
+      reabrirCompetencia(db, usuario, mesAno, body.justificativa);
+      return enviarJSON(res, 200, { status: 'REABERTA', mesAno });
     }
 
     // Eventos: Horas extras, faltas, atrasos, VT, verbas avulsas
@@ -803,8 +808,8 @@ const server = http.createServer(async (req, res) => {
       if (method === 'POST') {
         const usuario = autenticarRequisicao(req);
         const body = await parseJSONBody(req);
-        const novo = cadastrarParametro(db, usuario, body);
-        return enviarJSON(res, 201, novo);
+        cadastrarParametro(db, usuario, body);
+        return enviarJSON(res, 201, { success: true, message: 'Parâmetro cadastrado com sucesso.' });
       }
     }
 
