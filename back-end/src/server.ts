@@ -215,7 +215,7 @@ const server = http.createServer(async (req, res) => {
       return res.end(renderizarInterfaceWebHTML());
     }
 
-    if (method === 'GET' && (pathname.startsWith('/authentication/') || pathname.startsWith('/css/') || pathname.startsWith('/js/'))) {
+    if (method === 'GET' && (pathname.startsWith('/css/') || pathname.startsWith('/js/') || pathname.startsWith('/assets/'))) {
       const relPath = pathname.replace(/^\//, '');
       const candidates = [
         path.resolve(process.cwd(), '..', 'front-end', relPath),

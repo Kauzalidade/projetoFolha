@@ -131,6 +131,20 @@ Todas as alterações técnicas do sistema devem ser categorizadas e justificada
 - **Aprovado por:** Kauã (solicitação e autorização do usuário nesta conversa).
 
 
+---
+
+### [24/11/2026] - Otimização Estrutural: Remoção de Protótipos Redundantes e Arquivos Órfãos
+- **Categoria:** Estrutura técnica
+- **O que foi adicionado/alterado:**
+  - Remoção de 50 arquivos redundantes e legados decorrentes de merges históricos, tornando o repositório enxuto e direto:
+    - Exclusão dos 4 diretórios de demonstrações isoladas (`qa-demo/`, `qa-demo-us10/`, `qa-demo-us12/`, `qa-demo-us13/`), cujas regras e testes já estão unificados no backend e frontend oficiais.
+    - Exclusão dos submódulos de protótipo de autenticação paralela (`back-end/authentication/` e `front-end/authentication/`).
+    - Exclusão de 7 arquivos HTML de testes preliminares em `front-end/` (`testador-criterios.html`, `teste-auditoria-operacoes.html`, `teste-contracheque.html`, `teste-documentos-alertas.html`, `teste-fechamento.html`, `teste-ferias.html`, `teste-relatorios-diretoria.html`), integralmente absorvidos pelo portal `front-end/index.html`.
+    - Exclusão do arquivo duplicado `Apresentacao_RH_projetoFolha.pdf` na raiz (preservada a via oficial em `docs/`).
+  - Remoção da importação residual de script de autenticação em `front-end/index.html` e limpeza de rotas estáticas em `server.ts`.
+- **Por quê (Justificativa):** Deixar o projeto limpo, enxuto, prático e sem código morto ou servidores duplicados, mantendo 100% da funcionalidade e integridade dos 155 testes automatizados.
+- **Aprovado por:** Kauã (solicitação e autorização expressa do usuário nesta conversa).
+
 ## 📋 Modelo para Futuros Registros
 
 Para cada nova adição ou atualização aprovada pelo usuário, registre uma nova entrada seguindo o formato:
