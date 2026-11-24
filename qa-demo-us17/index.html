@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Demo US-17 — Direitos do Titular, Gestão LGPD, Ficha e Descarte</title>
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --surface: #ffffff;
+      --border: #d7dee8;
+      --text: #17212b;
+      --muted: #5a6777;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --pass-bg: #dcfce7;
+      --pass-fg: #166534;
+      --pass-bd: #86efac;
+      --fail-bg: #fee2e2;
+      --fail-fg: #991b1b;
+      --fail-bd: #fca5a5;
+      --block-bg: #fef3c7;
+      --block-fg: #92400e;
+      --block-bd: #fcd34d;
+      --code-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 18px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    header h1 { margin: 0; font-size: 19px; font-weight: 700; }
+    header p { margin: 3px 0 0; font-size: 13px; color: #cbd5e1; }
+    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    button, .btn-link {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: #eef2f6; }
+    .btn-pdf { background: #0f766e; color: #fff; padding: 6px 12px; font-size: 12px; }
+    .btn-pdf:hover { background: #115e59; }
+    .btn-reset { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+    .btn-reset:hover:not(:disabled) { background: #334155; }
+    .btn-tab { background: var(--surface); color: var(--muted); border-color: var(--border); padding: 6px 12px; font-size: 12px; }
+    .btn-tab.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+    main { max-width: 1240px; margin: 20px auto; padding: 0 20px 48px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+    }
+    .kpi-card:hover { border-color: #94a3b8; }
+    .kpi-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+    .kpi-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .summary-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .badge-pass { background: var(--pass-bg); color: var(--pass-fg); border-color: var(--pass-bd); }
+    .badge-fail { background: var(--fail-bg); color: var(--fail-fg); border-color: var(--fail-bd); }
+    .badge-block { background: var(--block-bg); color: var(--block-fg); border-color: var(--block-bd); }
+    .badge-idle { background: #e2e8f0; color: #334155; border-color: #cbd5e1; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .card-head {
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-code {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--primary);
+      letter-spacing: 0.04em;
+    }
+    .card-title { margin: 2px 0 4px; font-size: 16px; font-weight: 700; }
+    .card-rule { margin: 0; font-size: 13px; color: var(--muted); }
+    .card-actions { display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 16px 18px; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: var(--code-bg);
+    }
+    .box h4 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    th { background: #f1f5f9; font-size: 12px; color: #334155; font-weight: 700; }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; }
+    pre { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; color: #0f172a; }
+    .steps-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .step-item { border: 1px solid var(--border); border-left-width: 4px; border-radius: 6px; padding: 10px 12px; background: #fff; }
+    .step-item.OK { border-left-color: #16a34a; }
+    .step-item.BLOQUEADO { border-left-color: #d97706; background: #fffbeb; }
+    .step-item.ERRO { border-left-color: #dc2626; background: #fef2f2; }
+    .step-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .step-msg { font-size: 13px; color: #1e293b; margin: 2px 0 0; }
+    .alert { padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .alert-ok { background: var(--pass-bg); color: var(--pass-fg); border-color: var(--pass-bd); }
+    .alert-block { background: var(--block-bg); color: var(--block-fg); border-color: var(--block-bd); }
+    .alert-fail { background: var(--fail-bg); color: var(--fail-fg); border-color: var(--fail-bd); }
+    .empty-state { font-size: 13px; color: var(--muted); font-style: italic; }
+    .meta-foot { margin-top: 10px; font-size: 11px; color: var(--muted); text-align: right; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary); }
+    .kv-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; font-size: 13px; }
+    .kv-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+    .kv-item span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .kv-item strong { font-size: 13px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>US-17 — Direitos do Titular, Gestão LGPD, Ficha e Descarte de Dados</h1>
+      <p>Evidências QA com serviços reais do backend, SQLite isolado e dados fictícios (RN-56, RN-76, RNF-29, RNF-55)</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn-reset" id="btn-reset">Restaurar Ambiente</button>
+      <button class="btn-primary" id="btn-run-all">Executar Todos os 4 Cenários</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="summary-bar">
+      <div id="summary-text">Clique em <strong>Executar Todos os 4 Cenários</strong> ou execute cada critério individualmente.</div>
+      <div id="summary-badge"><span class="badge badge-idle">0 / 4 executados</span></div>
+    </div>
+
+    <details style="margin-bottom: 16px;">
+      <summary>Perfis e usuários fictícios configurados no banco SQLite isolado (respeitando permissões reais)</summary>
+      <div class="box" style="margin-top: 8px;" id="usuarios-box"></div>
+    </details>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="cards"></div>
+  </main>
+
+  <script>
+    const state = {
+      metas: [],
+      usuarios: [],
+      resultados: {},
+      filtro: 'all',
+      bannerMsg: null,
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function fmtMoeda(v) {
+      const n = Number(v || 0);
+      return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function badgeStatus(status) {
+      if (status === 'PASSOU') return '<span class="badge badge-pass">APROVADO</span>';
+      if (status === 'FALHOU') return '<span class="badge badge-fail">FALHOU</span>';
+      return '<span class="badge badge-idle">PENDENTE</span>';
+    }
+
+    function badgePasso(res) {
+      if (res === 'OK') return '<span class="badge badge-pass">OK</span>';
+      if (res === 'BLOQUEADO') return '<span class="badge badge-block">BLOQUEIO VALIDADO</span>';
+      return '<span class="badge badge-fail">ERRO</span>';
+    }
+
+    function renderUsuarios() {
+      const el = document.getElementById('usuarios-box');
+      if (!state.usuarios.length) {
+        el.innerHTML = '<div class="empty-state">Carregando perfis...</div>';
+        return;
+      }
+      const rows = state.usuarios.map((u) => `
+        <tr>
+          <td><strong>${escapeHtml(u.nome)}</strong></td>
+          <td class="mono">${escapeHtml(u.email)}</td>
+          <td><span class="badge badge-idle">${escapeHtml(u.perfil)}</span></td>
+          <td>${escapeHtml(u.permissoesResumo)}</td>
+        </tr>
+      `).join('');
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Nome Fictício</th><th>E-mail</th><th>Perfil</th><th>Permissões Reais no Sistema</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function renderDestaque(r) {
+      const d = r.destaqueVisual || {};
+      if (!d.tipo) return '';
+
+      if (d.tipo === 'FICHA_LGPD') {
+        const f = d.ficha || {};
+        const c = f.colaborador || {};
+        const banco = c.dadosBancarios || {};
+        const depRows = (f.dependentes || []).map((dep) => `
+          <tr><td>${escapeHtml(dep.nome)}</td><td>${escapeHtml(dep.parentesco)}</td><td>${escapeHtml(dep.nascimento)}</td></tr>
+        `).join('') || '<tr><td colspan="3">Nenhum dependente</td></tr>';
+
+        const evRows = (f.eventos || []).map((ev) => `
+          <tr><td>${escapeHtml(ev.tipo)}</td><td>${escapeHtml(ev.quantidade || '-')}</td><td>${escapeHtml(ev.descricao || '-')}</td></tr>
+        `).join('') || '<tr><td colspan="3">Nenhum evento</td></tr>';
+
+        const feriasRows = (f.ferias || []).map((fe) => `
+          <tr><td>${escapeHtml(fe.data_inicio)} a ${escapeHtml(fe.data_fim)}</td><td>${escapeHtml(fe.dias_gozo)}d</td><td>${escapeHtml(fe.situacao)}</td></tr>
+        `).join('') || '<tr><td colspan="3">Nenhuma férias</td></tr>';
+
+        const docRows = (f.documentos || []).map((doc) => `
+          <tr><td>${escapeHtml(doc.tipo)}</td><td class="mono">${escapeHtml(doc.nome_arquivo)}</td><td>${escapeHtml(doc.data_validade || '-')}</td></tr>
+        `).join('') || '<tr><td colspan="3">Nenhum documento</td></tr>';
+
+        return `
+          <div class="alert alert-ok">
+            <div>
+              <strong>Busca por CPF (${escapeHtml(d.cpfBuscado)}) e Ficha PDF Real:</strong>
+              Assinatura <span class="mono">${escapeHtml(d.pdf.cabecalho)}</span> (${escapeHtml(d.pdf.tamanhoBytes)} bytes)
+            </div>
+            <a class="btn-link btn-pdf" href="${escapeHtml(d.pdf.url)}" target="_blank" rel="noopener">Abrir Ficha Completa em PDF</a>
+          </div>
+
+          <div class="box" style="margin-bottom: 14px;">
+            <h4>Cadastro Completo Localizado (Art. 18 LGPD / RN-76)</h4>
+            <div class="kv-list">
+              <div class="kv-item"><span>Nome</span><strong>${escapeHtml(c.nome)}</strong></div>
+              <div class="kv-item"><span>CPF</span><strong class="mono">${escapeHtml(c.cpf)}</strong></div>
+              <div class="kv-item"><span>Cargo / Setor</span><strong>${escapeHtml(c.cargo)} (${escapeHtml(c.setor)})</strong></div>
+              <div class="kv-item"><span>Admissão / Situação</span><strong>${escapeHtml(c.admissao)} (${escapeHtml(c.situacao)})</strong></div>
+              <div class="kv-item"><span>Salário Base</span><strong>${fmtMoeda(c.salarioBase)}</strong></div>
+              <div class="kv-item"><span>Dados Bancários</span><strong>Banco ${escapeHtml(banco.banco)} Ag ${escapeHtml(banco.agencia)} Cc ${escapeHtml(banco.conta)}</strong></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <h4>Dependentes (${(f.dependentes || []).length}) & Férias (${(f.ferias || []).length})</h4>
+              <table style="margin-bottom: 10px;">
+                <thead><tr><th>Dependente</th><th>Parentesco</th><th>Nascimento</th></tr></thead>
+                <tbody>${depRows}</tbody>
+              </table>
+              <table>
+                <thead><tr><th>Período Férias</th><th>Gozo</th><th>Situação</th></tr></thead>
+                <tbody>${feriasRows}</tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h4>Eventos da Folha (${(f.eventos || []).length}) & Documentos (${(f.documentos || []).length})</h4>
+              <table style="margin-bottom: 10px;">
+                <thead><tr><th>Evento</th><th>Qtd</th><th>Descrição</th></tr></thead>
+                <tbody>${evRows}</tbody>
+              </table>
+              <table>
+                <thead><tr><th>Documento</th><th>Arquivo</th><th>Validade</th></tr></thead>
+                <tbody>${docRows}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <h4>Log Imutável (GERAR_FICHA_COLABORADOR_LGPD)</h4>
+              <pre>${escapeHtml(JSON.stringify({
+                acao: d.logAuditoria?.acao,
+                responsavel: d.logAuditoria?.usuario_email,
+                perfil: d.logAuditoria?.usuario_perfil,
+                dataHora: d.logAuditoria?.data_hora,
+                detalhes: d.logAuditoria?.detalhes,
+              }, null, 2))}</pre>
+            </div>
+            <div class="box">
+              <h4>Controle de Acesso (Perfil Não Autorizado)</h4>
+              <div class="alert alert-block" style="margin:0;">
+                <div><strong>Perfil ${escapeHtml(d.bloqueioPerfil?.perfilTestado)}:</strong> ${escapeHtml(d.bloqueioPerfil?.mensagemErro)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (d.tipo === 'RETIFICACAO_DADOS') {
+        const histRows = (d.historicoAlteracoes || []).map((h) => `
+          <tr>
+            <td><strong>${escapeHtml(h.campo)}</strong></td>
+            <td>${escapeHtml(h.valor_anterior)}</td>
+            <td><strong>${escapeHtml(h.valor_novo)}</strong></td>
+            <td>${escapeHtml(h.responsavel_email || '-')}</td>
+            <td class="mono">${escapeHtml(h.data_hora)}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <div class="grid-2">
+            <div class="box">
+              <h4>Antes da Retificação (Versão ${escapeHtml(d.antes?.versao)})</h4>
+              <pre>${escapeHtml(JSON.stringify(d.antes, null, 2))}</pre>
+            </div>
+            <div class="box">
+              <h4>Depois da Retificação (Versão ${escapeHtml(d.depois?.versao)})</h4>
+              <pre>${escapeHtml(JSON.stringify(d.depois, null, 2))}</pre>
+            </div>
+          </div>
+          <div class="box" style="margin-bottom: 14px;">
+            <h4>Histórico de Retificações (historico_colaborador)</h4>
+            <table>
+              <thead>
+                <tr><th>Campo</th><th>Valor Anterior</th><th>Valor Novo</th><th>Responsável</th><th>Data / Hora</th></tr>
+              </thead>
+              <tbody>${histRows}</tbody>
+            </table>
+          </div>
+          <div class="box" style="margin-bottom: 14px;">
+            <h4>Log de Auditoria (ATUALIZAR_COLABORADOR)</h4>
+            <pre>${escapeHtml(JSON.stringify({
+              acao: d.logAuditoria?.acao,
+              responsavel: d.logAuditoria?.usuario_email,
+              perfil: d.logAuditoria?.usuario_perfil,
+              dataHora: d.logAuditoria?.data_hora,
+              detalhes: d.logAuditoria?.detalhes,
+            }, null, 2))}</pre>
+          </div>
+        `;
+      }
+
+      if (d.tipo === 'BLOQUEIOS_RETENCAO') {
+        const bRows = (d.bloqueios || []).map((b) => `
+          <tr>
+            <td><strong>${escapeHtml(b.regra)}</strong></td>
+            <td>${escapeHtml(b.titular)}</td>
+            <td><span class="badge badge-block">BLOQUEADO</span></td>
+            <td>${escapeHtml(b.erroBackend)}</td>
+          </tr>
+        `).join('');
+        return `
+          <div class="box" style="margin-bottom: 14px;">
+            <h4>Validação Real dos Bloqueios de Eliminação / Anonimização (RN-56 / RNF-55)</h4>
+            <table>
+              <thead>
+                <tr><th>Regra Validada</th><th>Cenário / Alvo</th><th>Status</th><th>Mensagem Real Retornada pelo Backend</th></tr>
+              </thead>
+              <tbody>${bRows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      if (d.tipo === 'ANONIMIZACAO_TERMO') {
+        const cats = d.avaliacaoRetencao?.categorias || {};
+        const catList = [cats.pessoaisEBancarios, cats.folhaEContrato, cats.saudeOcupacionalNR7].filter(Boolean);
+        const catRows = catList.map((cat) => `
+          <tr>
+            <td><strong>${escapeHtml(cat.nome)}</strong></td>
+            <td>${escapeHtml(cat.prazoAnos)} anos</td>
+            <td>${escapeHtml(cat.fundamentoLegal)}</td>
+            <td>${cat.vencido
+              ? '<span class="badge badge-pass">PRAZO EXPIRADO (ELIMINADO)</span>'
+              : '<span class="badge badge-block">RETIDO POR MAIOR PRAZO</span>'}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <div class="alert alert-ok">
+            <div>
+              <strong>Termo de Eliminação Emitido:</strong> <span class="mono">${escapeHtml(d.termo?.termoId)}</span>
+              | PDF <span class="mono">${escapeHtml(d.pdf?.cabecalho)}</span> (${escapeHtml(d.pdf?.tamanhoBytes)} bytes)
+            </div>
+            <a class="btn-link btn-pdf" href="${escapeHtml(d.pdf?.url)}" target="_blank" rel="noopener">Abrir Termo de Eliminação PDF</a>
+          </div>
+
+          <div class="box" style="margin-bottom: 14px;">
+            <h4>Aplicação da Regra do Maior Prazo de Retenção (RNF-29 — Referência 2026-10-01 / ${escapeHtml(d.avaliacaoRetencao?.anosPosDesligamento)} anos pós-desligamento)</h4>
+            <table>
+              <thead><tr><th>Categoria de Dados</th><th>Prazo Legal</th><th>Fundamento</th><th>Decisão</th></tr></thead>
+              <tbody>${catRows}</tbody>
+            </table>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <h4>Dados no SQLite Antes da Anonimização</h4>
+              <pre>${escapeHtml(JSON.stringify(d.antes, null, 2))}</pre>
+            </div>
+            <div class="box">
+              <h4>Dados no SQLite Após Anonimização (e Contadores)</h4>
+              <pre>${escapeHtml(JSON.stringify({ colaborador: d.depois, contadores: d.contadores }, null, 2))}</pre>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <h4>Termo de Eliminação Homologado (RN-56 / RNF-55)</h4>
+              <pre>${escapeHtml(JSON.stringify(d.termo, null, 2))}</pre>
+            </div>
+            <div class="box">
+              <h4>Log Imutável (ELIMINACAO_DADOS_LGPD)</h4>
+              <pre>${escapeHtml(JSON.stringify({
+                acao: d.logAuditoria?.acao,
+                responsavel: d.logAuditoria?.usuario_email,
+                dataHora: d.logAuditoria?.data_hora,
+                detalhes: d.logAuditoria?.detalhes,
+              }, null, 2))}</pre>
+            </div>
+          </div>
+        `;
+      }
+
+      return '';
+    }
+
+    function render() {
+      const total = state.metas.length;
+      const execs = Object.values(state.resultados);
+      const passou = execs.filter((r) => r.status === 'PASSOU').length;
+      const falhou = execs.filter((r) => r.status === 'FALHOU').length;
+
+      document.getElementById('kpi-grid').innerHTML = state.metas.map((m) => {
+        const r = state.resultados[m.id];
+        return `
+          <div class="kpi-card" onclick="selecionarFiltro(${m.id})">
+            <div class="kpi-top">
+              <span>${escapeHtml(m.codigo)}</span>
+              ${badgeStatus(r ? r.status : null)}
+            </div>
+            <div class="kpi-title">${escapeHtml(m.titulo)}</div>
+          </div>
+        `;
+      }).join('');
+
+      const summaryEl = document.getElementById('summary-text');
+      const badgeEl = document.getElementById('summary-badge');
+
+      if (state.bannerMsg) {
+        summaryEl.innerHTML = escapeHtml(state.bannerMsg);
+      } else if (execs.length === 0) {
+        summaryEl.innerHTML = 'Clique em <strong>Executar Todos os 4 Cenários</strong> ou execute um critério individualmente.';
+      } else {
+        summaryEl.innerHTML = `Resultado real: <strong>${passou}</strong> aprovado(s), <strong>${falhou}</strong> reprovado(s) de ${total} critério(s).`;
+      }
+
+      if (execs.length === 0) {
+        badgeEl.innerHTML = `<span class="badge badge-idle">0 / ${total} executados</span>`;
+      } else if (falhou > 0) {
+        badgeEl.innerHTML = `<span class="badge badge-fail">${passou} / ${total} APROVADOS (${falhou} FALHA)</span>`;
+      } else {
+        badgeEl.innerHTML = `<span class="badge badge-pass">${passou} / ${total} APROVADOS</span>`;
+      }
+
+      renderUsuarios();
+
+      const tabsEl = document.getElementById('tabs');
+      tabsEl.innerHTML =
+        `<button class="btn-tab ${state.filtro === 'all' ? 'active' : ''}" onclick="selecionarFiltro('all')">Todos (${total})</button>` +
+        state.metas.map((m) =>
+          `<button class="btn-tab ${state.filtro === m.id ? 'active' : ''}" onclick="selecionarFiltro(${m.id})">Critério ${m.id}</button>`
+        ).join('');
+
+      const visiveis = state.metas.filter((m) => state.filtro === 'all' || state.filtro === m.id);
+      document.getElementById('cards').innerHTML = visiveis.map((m) => {
+        const r = state.resultados[m.id];
+        const passosHtml = r
+          ? r.passos.map((p) => `
+              <div class="step-item ${p.resultado}">
+                <div class="step-top">
+                  <span>${escapeHtml(p.etapa)}</span>
+                  ${badgePasso(p.resultado)}
+                </div>
+                <div class="step-msg">${escapeHtml(p.mensagem)}</div>
+              </div>
+            `).join('')
+          : '<div class="empty-state">Aguardando execução deste critério.</div>';
+
+        const erroHtml = r && r.erroValidacao
+          ? `<div class="alert alert-fail"><strong>Falha real detectada no backend:</strong> ${escapeHtml(r.erroValidacao)}</div>`
+          : '';
+
+        const dbHtml = r
+          ? `<details><summary>Ver evidências brutas do banco SQLite isolado</summary><div class="box" style="margin-top:8px;"><pre>${escapeHtml(JSON.stringify(r.evidenciasDb, null, 2))}</pre></div></details>`
+          : '';
+
+        const footHtml = r
+          ? `<div class="meta-foot">Executado em ${escapeHtml(r.executadoEm)} (${r.duracaoMs} ms)</div>`
+          : '';
+
+        return `
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-code">${escapeHtml(m.codigo)}</div>
+                <h2 class="card-title">${escapeHtml(m.titulo)}</h2>
+                <p class="card-rule">${escapeHtml(m.regra)}</p>
+              </div>
+              <div class="card-actions">
+                ${badgeStatus(r ? r.status : null)}
+                <button class="btn-secondary" onclick="executarUm(${m.id})">Executar Cenário ${m.id}</button>
+              </div>
+            </div>
+            <div class="card-body">
+              ${erroHtml}
+              ${r ? renderDestaque(r) : ''}
+              <div class="steps-list">${passosHtml}</div>
+              ${dbHtml}
+              ${footHtml}
+            </div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    window.selecionarFiltro = function (filtro) {
+      state.filtro = filtro;
+      render();
+    };
+
+    window.executarUm = async function (id) {
+      state.bannerMsg = null;
+      const resp = await fetch(`/api/run/${id}`, { method: 'POST' });
+      const data = await resp.json();
+      if (resp.ok) {
+        state.resultados[data.id] = data;
+      } else {
+        alert(data.erro || 'Erro ao executar cenário');
+      }
+      render();
+    };
+
+    document.getElementById('btn-run-all').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-run-all');
+      btn.disabled = true;
+      btn.textContent = 'Executando...';
+      state.bannerMsg = null;
+      try {
+        const resp = await fetch('/api/run-all', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.erro || 'Erro ao executar cenários');
+        state.resultados = {};
+        for (const r of data.resultados) {
+          state.resultados[r.id] = r;
+        }
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Executar Todos os 4 Cenários';
+        render();
+      }
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', async () => {
+      const resp = await fetch('/api/reset', { method: 'POST' });
+      const data = await resp.json();
+      if (resp.ok) {
+        state.resultados = {};
+        state.filtro = 'all';
+        state.bannerMsg = data.mensagem;
+      }
+      render();
+    });
+
+    (async () => {
+      const resp = await fetch('/api/scenarios');
+      const data = await resp.json();
+      state.metas = data.cenarios || [];
+      state.usuarios = data.usuarios || [];
+      for (const r of data.resultados || []) {
+        state.resultados[r.id] = r;
+      }
+      render();
+    })();
+  </script>
+</body>
+</html>
