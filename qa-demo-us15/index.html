@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Demo US-15 — Validação Visual (SQLite Isolado)</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --border: #d8dee6;
+      --text: #1b2430;
+      --muted: #5a6675;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --pass-bg: #dcfce7;
+      --pass-fg: #166534;
+      --pass-bd: #86efac;
+      --fail-bg: #fee2e2;
+      --fail-fg: #991b1b;
+      --fail-bd: #fca5a5;
+      --block-bg: #fef3c7;
+      --block-fg: #92400e;
+      --block-bd: #fcd34d;
+      --code-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 16px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    header p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: #eef2f6; }
+    .btn-tab {
+      background: var(--surface);
+      color: var(--muted);
+      border-color: var(--border);
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+    .btn-tab.active {
+      background: #1e293b;
+      color: #fff;
+      border-color: #1e293b;
+    }
+    main {
+      max-width: 1180px;
+      margin: 20px auto;
+      padding: 0 20px 40px;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .summary-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .badge-pass { background: var(--pass-bg); color: var(--pass-fg); border-color: var(--pass-bd); }
+    .badge-fail { background: var(--fail-bg); color: var(--fail-fg); border-color: var(--fail-bd); }
+    .badge-block { background: var(--block-bg); color: var(--block-fg); border-color: var(--block-bd); }
+    .badge-idle { background: #e2e8f0; color: #334155; border-color: #cbd5e1; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .card-head {
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-code {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--primary);
+      letter-spacing: 0.04em;
+    }
+    .card-title {
+      margin: 2px 0 4px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .card-rule {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body {
+      padding: 16px 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--code-bg);
+    }
+    .box h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    pre {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #0f172a;
+    }
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .step-item {
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .step-item.OK { border-left-color: #16a34a; }
+    .step-item.BLOQUEADO { border-left-color: #d97706; background: #fffbeb; }
+    .step-item.ERRO { border-left-color: #dc2626; background: #fef2f2; }
+    .step-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .step-msg {
+      font-size: 13px;
+      color: #1e293b;
+      margin: 2px 0 6px;
+    }
+    .empty-state {
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .meta-foot {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>US-15 — Evidências Visuais (Funções Reais + SQLite Isolado)</h1>
+      <p>Atomicidade em lote, idempotência/anti-duplicidade e concorrência (RN-64, RN-65, RN-71, RNF-22 a RNF-25)</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn-primary" id="btn-run-all">Executar Todos os 7 Cenários</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="summary-bar">
+      <div id="summary-text">Clique em <strong>Executar Todos os 7 Cenários</strong> ou execute individualmente para gerar evidências reais.</div>
+      <div id="summary-badge"><span class="badge badge-idle">0 / 7 executados</span></div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="cards"></div>
+  </main>
+
+  <script>
+    const state = {
+      metas: [],
+      resultados: {},
+      filtro: 'all',
+    };
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function fmtJson(obj) {
+      return escapeHtml(JSON.stringify(obj, null, 2));
+    }
+
+    function renderSummary() {
+      const total = state.metas.length;
+      const executados = Object.values(state.resultados);
+      const passaram = executados.filter((r) => r.status === 'PASSOU').length;
+      const falharam = executados.filter((r) => r.status === 'FALHOU').length;
+      const badgeEl = document.getElementById('summary-badge');
+      const textEl = document.getElementById('summary-text');
+
+      if (executados.length === 0) {
+        badgeEl.innerHTML = '<span class="badge badge-idle">0 / ' + total + ' executados</span>';
+        return;
+      }
+
+      if (falharam > 0) {
+        badgeEl.innerHTML = `<span class="badge badge-fail">${passaram} PASSOU / ${falharam} FALHOU</span>`;
+      } else {
+        badgeEl.innerHTML = `<span class="badge badge-pass">${passaram} / ${total} PASSARAM</span>`;
+      }
+      textEl.innerHTML = `Execução real em banco SQLite isolado (<code>:memory:</code>) concluída para <strong>${executados.length}</strong> de ${total} cenários.`;
+    }
+
+    function renderTabs() {
+      const tabsEl = document.getElementById('tabs');
+      let html = `<button class="btn-tab ${state.filtro === 'all' ? 'active' : ''}" data-filter="all">Todos (7)</button>`;
+      for (const m of state.metas) {
+        const res = state.resultados[m.id];
+        const mark = res ? (res.status === 'PASSOU' ? '✓ ' : '✗ ') : '';
+        html += `<button class="btn-tab ${state.filtro === String(m.id) ? 'active' : ''}" data-filter="${m.id}">${mark}${escapeHtml(m.titulo)}</button>`;
+      }
+      tabsEl.innerHTML = html;
+      tabsEl.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.filtro = btn.dataset.filter;
+          renderTabs();
+          renderCards();
+        });
+      });
+    }
+
+    function renderCard(meta) {
+      const res = state.resultados[meta.id];
+      const badge = !res
+        ? '<span class="badge badge-idle">NÃO EXECUTADO</span>'
+        : res.status === 'PASSOU'
+          ? '<span class="badge badge-pass">PASSOU</span>'
+          : '<span class="badge badge-fail">FALHOU</span>';
+
+      let bodyHtml = '<div class="empty-state">Clique em "Executar Cenário" para rodar a função real do backend com SQLite isolado.</div>';
+      if (res) {
+        const passosHtml = res.passos.map((p) => {
+          const stepBadge = p.resultado === 'OK'
+            ? '<span class="badge badge-pass">OK</span>'
+            : p.resultado === 'BLOQUEADO'
+              ? '<span class="badge badge-block">BLOQUEADO (ESPERADO)</span>'
+              : '<span class="badge badge-fail">ERRO</span>';
+          return `
+            <div class="step-item ${p.resultado}">
+              <div class="step-top">
+                <span>${escapeHtml(p.etapa)}</span>
+                ${stepBadge}
+              </div>
+              <div class="step-msg"><strong>Mensagem real:</strong> ${escapeHtml(p.mensagem)}</div>
+              ${p.detalhes ? `<pre>${fmtJson(p.detalhes)}</pre>` : ''}
+            </div>
+          `;
+        }).join('');
+
+        bodyHtml = `
+          ${res.erroValidacao ? `<div class="step-item ERRO"><strong>Falha na asserção:</strong> ${escapeHtml(res.erroValidacao)}</div>` : ''}
+          <div class="grid-2">
+            <div class="box">
+              <h4>Antes (Estado Inicial no SQLite)</h4>
+              <pre>${fmtJson(res.antes)}</pre>
+            </div>
+            <div class="box">
+              <h4>Depois (Estado Final no SQLite)</h4>
+              <pre>${fmtJson(res.depois)}</pre>
+            </div>
+          </div>
+          <div class="box" style="margin-bottom: 14px; background: #fff;">
+            <h4>Execução Real no Backend (Passos e Mensagens)</h4>
+            <div class="steps-list" style="margin-bottom: 0;">${passosHtml}</div>
+          </div>
+          <div class="box">
+            <h4>Evidência Direta do Banco SQLite</h4>
+            <pre>${fmtJson(res.evidenciasDb)}</pre>
+          </div>
+          <div class="meta-foot">Executado em ${escapeHtml(res.executadoEm)} (${res.duracaoMs} ms)</div>
+        `;
+      }
+
+      return `
+        <section class="card" id="cenario-${meta.id}">
+          <div class="card-head">
+            <div>
+              <div class="card-code">${escapeHtml(res ? res.codigo : meta.codigo)}</div>
+              <h2 class="card-title">${escapeHtml(meta.titulo)}</h2>
+              ${res ? `<p class="card-rule">${escapeHtml(res.regra)}</p>` : ''}
+            </div>
+            <div class="card-actions">
+              ${badge}
+              <button class="btn-secondary" data-run-id="${meta.id}">Executar Cenário</button>
+            </div>
+          </div>
+          <div class="card-body">${bodyHtml}</div>
+        </section>
+      `;
+    }
+
+    function renderCards() {
+      const cardsEl = document.getElementById('cards');
+      const list = state.filtro === 'all'
+        ? state.metas
+        : state.metas.filter((m) => String(m.id) === state.filtro);
+      cardsEl.innerHTML = list.map(renderCard).join('');
+      cardsEl.querySelectorAll('[data-run-id]').forEach((btn) => {
+        btn.addEventListener('click', () => rodarUm(Number(btn.dataset.runId)));
+      });
+    }
+
+    async function rodarUm(id) {
+      const resp = await fetch(`/api/run/${id}`, { method: 'POST' });
+      const data = await resp.json();
+      if (resp.ok) {
+        state.resultados[id] = data;
+      }
+      renderSummary();
+      renderTabs();
+      renderCards();
+    }
+
+    async function rodarTodos() {
+      const btn = document.getElementById('btn-run-all');
+      btn.disabled = true;
+      btn.textContent = 'Executando...';
+      try {
+        const resp = await fetch('/api/run-all', { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && Array.isArray(data.resultados)) {
+          for (const r of data.resultados) {
+            state.resultados[r.id] = r;
+          }
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Executar Todos os 7 Cenários';
+        renderSummary();
+        renderTabs();
+        renderCards();
+      }
+    }
+
+    async function init() {
+      const resp = await fetch('/api/scenarios');
+      const data = await resp.json();
+      state.metas = data.cenarios || [];
+      renderSummary();
+      renderTabs();
+      renderCards();
+      document.getElementById('btn-run-all').addEventListener('click', rodarTodos);
+    }
+
+    init();
+  </script>
+</body>
+</html>
