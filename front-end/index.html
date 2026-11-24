@@ -780,7 +780,7 @@
         <!-- VIEW: SEGUNDO FATOR (2FA / TOTP) -->
         <section id="view-mfa" class="view" hidden>
           <p class="auth-card-eyebrow">Segurança Avançada</p>
-          <h2 id="mfa-title" class="auth-card-title">Verificação em Duas Etapas</h2>
+          <h2 id="mfa-title" class="auth-card-title">Autenticação em Dois Fatores (2FA)</h2>
           <p class="auth-card-subtitle">Abra seu aplicativo autenticador e digite o código de 6 dígitos gerado.</p>
 
           <form id="mfa-form" method="post" novalidate>
@@ -898,13 +898,13 @@
           <span>👥 Colaboradores</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-lancamentos" onclick="trocarAba('lancamentos')">
-          <span>⏱️ Lançamentos (Etapa 2)</span>
+          <span>⏱️ Lançamentos</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-folha" onclick="trocarAba('folha')">
-          <span>💰 Folha do Mês (Etapa 3)</span>
+          <span>💰 Folha do Mês</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-ferias" onclick="trocarAba('ferias')">
-          <span>🏖️ Férias e 13º (Etapa 4)</span>
+          <span>🏖️ Férias e 13º</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-contracheque" onclick="trocarAba('contracheque')">
           <span>🧾 Contracheque (PDF)</span>
@@ -920,7 +920,7 @@
           <span class="badge-pill" id="badge-alertas">0</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-memoria" onclick="trocarAba('memoria')">
-          <span>🧮 Memória Cálculo (US-03)</span>
+          <span>🧮 Memória de Cálculo</span>
         </button>
         <button class="sidebar-tab-btn" id="tab-btn-administracao" onclick="trocarAba('administracao')">
           <span>🛡️ Administração & Segurança</span>
@@ -1021,12 +1021,12 @@
           </div>
         </section>
 
-        <!-- 3. ABA LANÇAMENTOS (ETAPA 2) -->
+        <!-- 3. ABA LANÇAMENTOS -->
         <section id="module-lancamentos" class="module-card" hidden>
           <div class="module-header">
             <div>
-              <h2 class="module-title">Lançamento de Eventos e Ponto (Etapa 2)</h2>
-              <p class="module-subtitle">Horas extras (50%, 100%, CCT), faltas com perda de DSR, atrasos sem perda de DSR (RN-80), atestados com anexo, VT e verbas avulsas.</p>
+              <h2 class="module-title">Lançamento de Eventos e Ponto</h2>
+              <p class="module-subtitle">Horas extras (50%, 100%, CCT), faltas com perda de DSR, atrasos sem perda de DSR, atestados com anexo, VT e verbas avulsas.</p>
             </div>
           </div>
 
@@ -1043,7 +1043,7 @@
                   <option value="he_util">Horas Extras 50% (Dia Útil)</option>
                   <option value="he_domingo">Horas Extras 100% (Domingo / Feriado)</option>
                   <option value="falta">Falta Injustificada (com perda de DSR)</option>
-                  <option value="atraso">Atraso em Horas (RN-80: Sem perda de DSR)</option>
+                  <option value="atraso">Atraso em Horas (Sem perda de DSR)</option>
                   <option value="atestado">Atestado Médico (com anexo e CID)</option>
                   <option value="vt">Vale-Transporte (limitado a 6%)</option>
                   <option value="avulso">Verba Avulsa (Provento / Desconto)</option>
@@ -1096,16 +1096,16 @@
           </div>
         </section>
 
-        <!-- 4. ABA FOLHA DO MÊS (ETAPA 3) -->
+        <!-- 4. ABA FOLHA DO MÊS -->
         <section id="module-folha" class="module-card" hidden>
           <div class="module-header">
             <div>
-              <h2 class="module-title">Folha de Pagamento do Mês (Etapa 3)</h2>
+              <h2 class="module-title">Folha de Pagamento do Mês</h2>
               <p class="module-subtitle">Cálculo individual e em lote, conferência financeira de 5 eixos e fechamento seguro com hash SHA-256.</p>
             </div>
             <div class="module-actions">
               <button class="btn btn-solid-primary" id="btn-calcular-lote" onclick="calcularFolhaLote()">⚡ Calcular Folha em Lote</button>
-              <button class="btn btn-solid-green" id="btn-conferir-folha" onclick="carregarConferenciaFinanceira()">🔍 Conferência (RN-59)</button>
+              <button class="btn btn-solid-green" id="btn-conferir-folha" onclick="carregarConferenciaFinanceira()">🔍 Conferência Financeira</button>
               <button class="btn btn-outline" id="btn-fechar-folha" onclick="fecharCompetenciaSegura()">🔒 Fechar Competência</button>
               <button class="btn btn-outline" id="btn-reabrir-folha" onclick="abrirModalReabertura()">🔓 Reabrir</button>
             </div>
@@ -1131,10 +1131,10 @@
             </table>
           </div>
 
-          <!-- Caixa de Conferência Financeira 5 Eixos (RN-59) -->
+          <!-- Caixa de Conferência Financeira 5 Eixos -->
           <div id="box-conferencia" style="margin-top: 24px; padding: 20px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-              <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">Conferência Financeira Interna dos 5 Eixos (RN-59 / RNF-45)</h3>
+              <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">Conferência Financeira Interna dos 5 Eixos</h3>
               <span id="conf-status-tag" style="padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #bbf7d0; color: #14532d;">Tolerância R$ 0,00</span>
             </div>
             <div class="table-container">
@@ -1160,12 +1160,12 @@
           </div>
         </section>
 
-        <!-- 5. ABA FÉRIAS E 13º (ETAPA 4) -->
+        <!-- 5. ABA FÉRIAS E 13º -->
         <section id="module-ferias" class="module-card" hidden>
           <div class="module-header">
             <div>
-              <h2 class="module-title">Gestão de Férias e 13º Salário (Etapa 4)</h2>
-              <p class="module-subtitle">Programação de férias com fracionamento (14+8+8), abono pecuniário, dobro para vencidas (RN-79) e cálculo do 13º em 2 parcelas.</p>
+              <h2 class="module-title">Gestão de Férias e 13º Salário</h2>
+              <p class="module-subtitle">Programação de férias com fracionamento (14+8+8), abono pecuniário, pagamento em dobro para férias vencidas e cálculo do 13º em 2 parcelas.</p>
             </div>
           </div>
 
@@ -1179,10 +1179,10 @@
               </div>
               <div class="form-group" style="margin-bottom: 0;">
                 <label>Data de Início do Gozo</label>
-                <input type="date" id="ferias-inicio" class="form-control">
+                <input type="date" id="ferias-inicio" class="form-control" value="2026-11-16">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label>Dias de Gozo (RN-48)</label>
+                <label>Dias de Gozo</label>
                 <select id="ferias-dias" class="form-control">
                   <option value="30">30 dias integrais</option>
                   <option value="20">20 dias (+ 10 dias abono)</option>
@@ -1317,12 +1317,15 @@
             <div class="kpi-card">
               <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Relação Bancária para Pagamento</h3>
               <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Lista de contas e salários líquidos dos 15 colaboradores para envio aos bancos.</p>
-              <button class="btn btn-outline" onclick="gerarRelacaoBancaria()">Gerar Relação</button>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-solid-primary" onclick="gerarRelacaoBancaria('pdf')">Baixar em PDF</button>
+                <button class="btn btn-outline" onclick="gerarRelacaoBancaria('excel')">Exportar XLS</button>
+              </div>
             </div>
             <div class="kpi-card">
               <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Termo de Eliminação de Dados LGPD</h3>
               <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">Emissão formal do termo comprobatório de descarte seguro de dados após expiração de retenção.</p>
-              <button class="btn btn-outline" onclick="gerarTermoEliminacaoPDF()">Gerar Termo em PDF</button>
+              <button class="btn btn-solid-primary" onclick="gerarTermoEliminacaoPDF()">Gerar Termo em PDF</button>
             </div>
           </div>
         </section>
@@ -1385,7 +1388,7 @@
           <div class="module-header">
             <div>
               <h2 class="module-title">Central de Alertas e Prazos Legais</h2>
-              <p class="module-subtitle">Avisos automáticos de vencimento de ASO (NR-7), 13º salário (15 dias de antecedência) e períodos de férias a prescrever.</p>
+              <p class="module-subtitle">Avisos automáticos de vencimento de exames ocupacionais (ASO), 13º salário (15 dias de antecedência) e períodos de férias a prescrever.</p>
             </div>
             <div class="module-actions">
               <button class="btn btn-outline" onclick="carregarAlertas()">Recarregar Alertas</button>
@@ -1397,12 +1400,12 @@
           </div>
         </section>
 
-        <!-- 10. ABA MEMÓRIA DE CÁLCULO (US-03) -->
+        <!-- 10. ABA MEMÓRIA DE CÁLCULO -->
         <section id="module-memoria" class="module-card" hidden>
           <div class="module-header">
             <div>
-              <h2 class="module-title">Memória de Cálculo Detalhada (US-03)</h2>
-              <p class="module-subtitle">Explicação passo a passo da apuração de cada verba conforme exigência de conferência do cliente.</p>
+              <h2 class="module-title">Memória de Cálculo Detalhada</h2>
+              <p class="module-subtitle">Explicação passo a passo da apuração de cada verba conforme exigência de conferência.</p>
             </div>
             <div class="module-actions">
               <select id="memoria-colab-select" class="form-control" style="min-width: 240px;" onchange="exibirMemoriaCalculo(this.value)"></select>
@@ -1418,8 +1421,8 @@
         <section id="module-administracao" class="module-card" hidden>
           <div class="module-header">
             <div>
-              <h2 class="module-title">Administração, Auditoria e Segurança (US-18, US-19, LGPD)</h2>
-              <p class="module-subtitle">Controle de acessos, logs de auditoria imutáveis (RNF-03), gestão de incidentes de segurança (RN-77) e governança LGPD.</p>
+              <h2 class="module-title">Administração, Auditoria e Segurança</h2>
+              <p class="module-subtitle">Controle de acessos, logs de auditoria imutáveis, gestão de incidentes de segurança e governança LGPD.</p>
             </div>
             <div class="module-actions">
               <button class="btn btn-solid-primary" id="btn-novo-incidente" onclick="abrirModalNovoIncidente()">+ Registrar Incidente</button>
@@ -1427,9 +1430,9 @@
             </div>
           </div>
 
-          <!-- Gestão de Incidentes de Segurança (US-18 / RN-77) -->
+          <!-- Gestão de Incidentes de Segurança -->
           <div style="margin-bottom: 28px;">
-            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Incidentes de Segurança da Informação (RN-77)</h3>
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Incidentes de Segurança da Informação</h3>
             <div class="table-container">
               <table class="data-table">
                 <thead>
@@ -1450,7 +1453,7 @@
             </div>
           </div>
 
-          <!-- Trilha de Auditoria Imutável (RNF-03) -->
+          <!-- Trilha de Auditoria Imutável -->
           <div id="box-auditoria-logs">
             <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Trilha de Auditoria Imutável (Acesso Diretoria e Admin)</h3>
             <div class="table-container">
@@ -1930,7 +1933,7 @@
         boxExtras.style.display = 'none';
       } else if (tipo === 'atraso') {
         boxQtd.style.display = 'block';
-        lblQtd.textContent = 'Horas de Atraso (RN-80: Sem perda de DSR)';
+        lblQtd.textContent = 'Horas de Atraso (Sem perda de DSR)';
         boxExtras.style.display = 'none';
       } else if (tipo === 'atestado') {
         boxQtd.style.display = 'block';
@@ -2025,27 +2028,39 @@
         const tbody = document.getElementById('tbody-folha-resumo');
         if (!tbody || !rel.linhas) return;
 
-        tbody.innerHTML = rel.linhas.map(l => `
+        tbody.innerHTML = rel.linhas.map(l => {
+          const nome = l.nome || l.colaborador || 'Colaborador';
+          const cargo = l.cargo || 'Geral';
+          const filial = l.filial || 'Matriz';
+          const colabId = l.colaboradorId || l.colaborador_id || l.id;
+          const base = Number(l.salarioBase ?? l.salario_base ?? 0);
+          const prov = Number(l.totalProventos ?? l.proventos ?? 0);
+          const desc = Number(l.totalDescontos ?? l.descontos ?? 0);
+          const liq = Number(l.salarioLiquido ?? l.liquido ?? (prov - desc));
+          const fgts = Number(l.fgts ?? (base * 0.08));
+
+          return `
           <tr>
             <td>
-              <div style="font-weight: 600; color: #0f172a;">${l.nome}</div>
-              <div style="font-size: 12px; color: #64748b;">${l.cargo} • ${l.filial}</div>
+              <div style="font-weight: 600; color: #0f172a;">${nome}</div>
+              <div style="font-size: 12px; color: #64748b;">${cargo} • ${filial}</div>
             </td>
-            <td class="text-right">R$ ${Number(l.salarioBase).toFixed(2)}</td>
-            <td class="text-right text-green">R$ ${Number(l.totalProventos).toFixed(2)}</td>
-            <td class="text-right text-red">R$ ${Number(l.totalDescontos).toFixed(2)}</td>
-            <td class="text-right font-semibold" style="color: #4338ca;">R$ ${Number(l.salarioLiquido).toFixed(2)}</td>
-            <td class="text-right">R$ ${Number(l.fgts).toFixed(2)}</td>
+            <td class="text-right">R$ ${base.toFixed(2)}</td>
+            <td class="text-right text-green">R$ ${prov.toFixed(2)}</td>
+            <td class="text-right text-red">R$ ${desc.toFixed(2)}</td>
+            <td class="text-right font-semibold" style="color: #4338ca;">R$ ${liq.toFixed(2)}</td>
+            <td class="text-right">R$ ${fgts.toFixed(2)}</td>
             <td class="text-right">
-              <button class="btn btn-outline btn-sm" onclick="abrirMemoriaModal(${l.colaboradorId})">🧮 Memória</button>
+              <button class="btn btn-outline btn-sm" onclick="abrirMemoriaModal(${colabId})">🧮 Memória</button>
             </td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
       } catch (err) {
         const tbody = document.getElementById('tbody-folha-resumo');
         if (!tbody) return;
         tbody.innerHTML = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).map(c => {
-          const base = Number(c.salario_base || 2000);
+          const base = Number(c.salario_base || c.salarioBase || 2000);
           const inss = base * 0.09;
           const irrf = base > 2826 ? (base * 0.075 - 169.44) : 0;
           const desc = inss + Math.max(0, irrf);
@@ -2136,6 +2151,138 @@
       }
     }
 
+    // Férias e 13º Salário
+    let historicoDecimoTerceiro = [];
+
+    async function carregarHistoricoFerias() {
+      try {
+        const feriasList = await fetchAPI('/api/ferias');
+        const tbody = document.getElementById('tbody-ferias-historico');
+        if (!tbody) return;
+
+        const itens = [];
+
+        if (Array.isArray(feriasList)) {
+          feriasList.forEach(f => {
+            const valorTotalFerias = Number(f.valorFerias || 0) + Number(f.valorTerco || 0) + Number(f.valorAbonoTotal || 0);
+            const totalDesc = Number(f.inss || 0) + Number(f.irrf || 0);
+            itens.push({
+              colaborador: f.colaborador,
+              filial: f.filial,
+              tipo: 'FÉRIAS' + (f.emDobro ? ' (DOBRO)' : ''),
+              detalhe: `${f.dataInicio} até ${f.dataFim || f.dataInicio} (${f.diasGozo}d${f.diasAbono ? ' + ' + f.diasAbono + 'd abono' : ''})<br><small style="color:#64748b;">Limite Pgto: ${f.dataLimitePagamento || '-'}</small>`,
+              proventos: valorTotalFerias,
+              descontos: totalDesc,
+              liquido: Number(f.liquido || (valorTotalFerias - totalDesc))
+            });
+          });
+        }
+
+        historicoDecimoTerceiro.forEach(dt => {
+          itens.push({
+            colaborador: dt.colaboradorNome,
+            filial: dt.filial || 'Matriz',
+            tipo: `13º SALÁRIO (${dt.parcela}ª PARCELA)`,
+            detalhe: `Exercício ${dt.ano} • ${dt.mesesTrabalhados || 12} avos trabalhados`,
+            proventos: Number(dt.valorTotalDevido || dt.proventos || 0),
+            descontos: Number(dt.inss || 0) + Number(dt.irrf || 0) + Number(dt.descontoPrimeiraParcela || 0),
+            liquido: Number(dt.liquido || 0)
+          });
+        });
+
+        if (itens.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 24px;">Nenhuma programação de férias ou cálculo de 13º realizado até o momento.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = itens.map(item => `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: #0f172a;">${item.colaborador}</div>
+              <div style="font-size: 12px; color: #64748b;">${item.filial || ''}</div>
+            </td>
+            <td>
+              <span style="font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e0e7ff; color: #3730a3;">
+                ${item.tipo}
+              </span>
+            </td>
+            <td>${item.detalhe}</td>
+            <td class="text-right text-green">R$ ${item.proventos.toFixed(2)}</td>
+            <td class="text-right text-red">R$ ${item.descontos.toFixed(2)}</td>
+            <td class="text-right font-semibold" style="color: #4338ca;">R$ ${item.liquido.toFixed(2)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Erro ao carregar histórico de férias', err);
+      }
+    }
+
+    async function programarFerias() {
+      try {
+        const colabSelect = document.getElementById('ferias-colab');
+        const colaboradorId = Number(colabSelect?.value);
+        const dataInicio = document.getElementById('ferias-inicio')?.value;
+        const diasGozo = Number(document.getElementById('ferias-dias')?.value || 30);
+        const diasAbono = Number(document.getElementById('ferias-abono')?.value || 0) > 0 ? 10 : 0;
+
+        if (!colaboradorId) {
+          return notify('Selecione um colaborador para programar as férias.', 'error');
+        }
+        if (!dataInicio) {
+          return notify('Selecione a data de início do gozo das férias.', 'error');
+        }
+
+        const res = await fetchAPI('/api/ferias', {
+          method: 'POST',
+          body: JSON.stringify({
+            colaboradorId,
+            dataInicio,
+            diasGozo,
+            diasAbono,
+            justificativa: 'Programação regular de férias aprovada'
+          })
+        });
+
+        notify('Férias programadas e calculadas com sucesso! Valor Líquido: R$ ' + Number(res.liquido || 0).toFixed(2), 'success');
+        carregarHistoricoFerias();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function calcularDecimoTerceiro() {
+      try {
+        const colabSelect = document.getElementById('dt-colab');
+        const colaboradorId = Number(colabSelect?.value);
+        const parcela = Number(document.getElementById('dt-parcela')?.value || 1);
+
+        if (!colaboradorId) {
+          return notify('Selecione um colaborador para calcular o 13º salário.', 'error');
+        }
+
+        const res = await fetchAPI('/api/decimo-terceiro/calcular', {
+          method: 'POST',
+          body: JSON.stringify({
+            colaboradorId,
+            ano: 2026,
+            parcela
+          })
+        });
+
+        const colabObj = colaboradoresData.find(c => c.id === colaboradorId);
+        historicoDecimoTerceiro.unshift({
+          ...res,
+          colaboradorNome: colabObj?.nome || 'Colaborador #' + colaboradorId,
+          filial: colabObj?.filial_nome || 'Matriz'
+        });
+
+        notify(`13º Salário (${parcela}ª Parcela) calculado com sucesso! Líquido: R$ ${Number(res.liquido || 0).toFixed(2)}`, 'success');
+        carregarHistoricoFerias();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
     // Contracheque
     async function carregarContracheque(colabId) {
       if (!colabId) return;
@@ -2143,13 +2290,21 @@
         const estruturado = await fetchAPI('/api/relatorios/contracheque-estruturado/' + colabId + '?competenciaId=' + currentCompetenciaId);
         document.getElementById('contracheque-colab-select').value = colabId;
         document.getElementById('contracheque-banco-info').textContent = 
-          'Dados Bancários: Banco ' + (estruturado.dadosBancarios?.banco || '001') +
-          ' • Agência ' + (estruturado.dadosBancarios?.agencia || '1234') +
-          ' • Conta ' + (estruturado.dadosBancarios?.conta || '56789') +
-          ' • Filial: ' + (estruturado.colaborador?.filial || 'Matriz');
+          'Dados Bancários: Banco ' + (estruturado.dadosBancarios?.banco || estruturado.colaborador?.banco || '001') +
+          ' • Agência ' + (estruturado.dadosBancarios?.agencia || estruturado.colaborador?.agencia || '1234') +
+          ' • Conta ' + (estruturado.dadosBancarios?.conta || estruturado.colaborador?.conta || '56789') +
+          ' • Filial: ' + (estruturado.colaborador?.filial || estruturado.cabecalho?.filial || 'Matriz');
+
+        const itens = (estruturado.itens && estruturado.itens.length) ? estruturado.itens : (estruturado.verbas ? estruturado.verbas.map((v, idx) => ({
+          codigo: String(idx + 1).padStart(3, '0'),
+          descricao: v.descricao,
+          referencia: v.memoriaResumida || '-',
+          tipo: v.natureza,
+          valor: v.provento || v.desconto || 0
+        })) : []);
 
         const tbody = document.getElementById('tbody-contracheque-itens');
-        tbody.innerHTML = (estruturado.itens || []).map(i => `
+        tbody.innerHTML = itens.map(i => `
           <tr>
             <td style="font-weight: 600;">${i.codigo} - ${i.descricao}</td>
             <td style="color: #64748b;">${i.referencia || '-'}</td>
@@ -2161,7 +2316,7 @@
         document.getElementById('cc-total-prov').textContent = 'R$ ' + Number(estruturado.totais?.totalProventos || 0).toFixed(2);
         document.getElementById('cc-total-desc').textContent = 'R$ ' + Number(estruturado.totais?.totalDescontos || 0).toFixed(2);
         document.getElementById('cc-total-fgts').textContent = 'R$ ' + Number(estruturado.totais?.fgtsEmpresa || 0).toFixed(2);
-        document.getElementById('cc-total-liq').textContent = 'R$ ' + Number(estruturado.totais?.valorLiquido || 0).toFixed(2);
+        document.getElementById('cc-total-liq').textContent = 'R$ ' + Number(estruturado.totais?.liquido ?? estruturado.totais?.valorLiquido ?? 0).toFixed(2);
       } catch (err) {
         const colab = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).find(c => c.id === Number(colabId)) || DEMO_15_COLABORADORES[0];
         const base = Number(colab.salario_base || 2200);
@@ -2210,12 +2365,14 @@
       window.open(API_BASE + '/api/relatorios/folha?competenciaId=' + currentCompetenciaId + '&formato=' + formato + '&token=' + token, '_blank');
     }
 
-    function gerarRelacaoBancaria() {
-      notify('Relação bancária pronta para processamento eletrônico!', 'success');
+    function gerarRelacaoBancaria(formato = 'pdf') {
+      const token = sessionStorage.getItem('folha_token');
+      window.open(API_BASE + '/api/relatorios/pagamento?competenciaId=' + currentCompetenciaId + '&formato=' + formato + '&token=' + token, '_blank');
     }
 
     function gerarTermoEliminacaoPDF() {
-      notify('Termo de eliminação LGPD emitido conforme RNF-55.', 'success');
+      const token = sessionStorage.getItem('folha_token');
+      window.open(API_BASE + '/api/relatorios/termo-eliminacao?token=' + token, '_blank');
     }
 
     // Alertas
@@ -2230,7 +2387,7 @@
           listaResumo.innerHTML = alertas.slice(0, 3).map(a => `
             <div class="auth-badge-item" style="color: #1e293b; background: #fff; border: 1px solid #e2e8f0;">
               <span style="color: #d97706; font-weight: 700;">⚠️</span>
-              <span><b>${a.titulo}:</b> ${a.descricao}</span>
+              <span><b>${a.titulo}:</b> ${a.detalhes || a.descricao || ''}</span>
             </div>
           `).join('');
         }
@@ -2240,15 +2397,15 @@
           listaCompleta.innerHTML = alertas.map(a => `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #d97706; border-radius: 8px; padding: 14px;">
               <div style="font-weight: 700; color: #0f172a;">${a.titulo}</div>
-              <p style="font-size: 13.5px; color: #475569; margin-top: 4px;">${a.descricao}</p>
+              <p style="font-size: 13.5px; color: #475569; margin-top: 4px;">${a.detalhes || a.descricao || ''}</p>
             </div>
           `).join('');
         }
       } catch (err) {
         const fallbackAlertas = [
-          { id: 1, titulo: 'Férias Vencendo (RN-40)', descricao: '3 colaboradores aproximando-se do limite do período concessivo.' },
+          { id: 1, titulo: 'Férias a Vencer', descricao: '3 colaboradores aproximando-se do limite do período concessivo.' },
           { id: 2, titulo: 'Exames Médicos Ocupacionais (ASO)', descricao: 'Exames periódicos de 2 colaboradores da Filial 1 programados para este mês.' },
-          { id: 3, titulo: 'Conformidade Salário-Mínimo Estadual (RN-78)', descricao: 'Todos os 15 colaboradores possuem remuneração compatível ou superior a R$ 1.621,00.' }
+          { id: 3, titulo: 'Conformidade com Piso Salarial Estadual', descricao: 'Todos os 15 colaboradores possuem remuneração compatível ou superior a R$ 1.621,00.' }
         ];
         const badge = document.getElementById('badge-alertas');
         if (badge) badge.textContent = fallbackAlertas.length;
@@ -2273,7 +2430,7 @@
       }
     }
 
-    // Administração e Incidentes (US-18 / RN-77)
+    // Administração e Incidentes
     async function carregarAdministracao() {
       try {
         const incs = await fetchAPI('/api/incidentes');
@@ -2337,23 +2494,49 @@
       }
     }
 
-    // Memória de Cálculo US-03
+    // Memória de Cálculo
     function preencherSelectMemoria() {
       atualizarSelectsColaboradores();
-      if (colaboradoresData.length) {
-        exibirMemoriaCalculo(colaboradoresData[0].id);
+      const sel = document.getElementById('memoria-colab-select');
+      const id = sel?.value ? Number(sel.value) : (colaboradoresData[0]?.id || 1);
+      exibirMemoriaCalculo(id);
+    }
+
+    function abrirMemoriaModal(colabId) {
+      if (!colabId) return;
+      trocarAba('memoria');
+      const sel = document.getElementById('memoria-colab-select');
+      if (sel) {
+        sel.value = colabId;
       }
+      exibirMemoriaCalculo(colabId);
     }
 
     async function exibirMemoriaCalculo(colabId) {
       try {
         const est = await fetchAPI('/api/relatorios/contracheque-estruturado/' + colabId + '?competenciaId=' + currentCompetenciaId);
         const box = document.getElementById('box-memoria-detalhes');
+        if (!box) return;
+
+        const colab = est.colaborador || {};
+        const colabFallback = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).find(c => c.id === Number(colabId)) || {};
+        const nome = colab.nome || colabFallback.nome || 'Colaborador';
+        const salarioBase = Number(est.salarioBase || colab.salarioBase || colabFallback.salario_base || 0);
+        const salarioHora = salarioBase > 0 ? (salarioBase / 220).toFixed(4) : '0.0000';
+
+        const listaItens = (est.itens && est.itens.length) ? est.itens : (est.verbas ? est.verbas.map((v, idx) => ({
+          codigo: String(idx + 1).padStart(3, '0'),
+          descricao: v.descricao,
+          tipo: v.natureza,
+          valor: v.provento || v.desconto || 0,
+          referencia: v.memoriaResumida || (v.natureza === 'PROVENTO' ? 'Provento CLT' : 'Desconto CLT')
+        })) : []);
+
         box.innerHTML = `
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Memória Passo a Passo: ${est.colaborador?.nome}</h3>
-          <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px;">Salário Base: R$ ${Number(est.salarioBase || 0).toFixed(2)} | Jornada Mensal: 220 horas (Salário-Hora: R$ ${(Number(est.salarioBase)/220).toFixed(4)})</p>
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Memória Passo a Passo: ${nome}</h3>
+          <p style="font-size: 13.5px; color: #475569; margin-bottom: 16px;">Salário Base: R$ ${salarioBase.toFixed(2)} | Jornada Mensal: 220 horas (Salário-Hora: R$ ${salarioHora})</p>
           <div style="display: flex; flex-direction: column; gap: 12px;">
-            ${(est.itens || []).map(i => `
+            ${listaItens.map(i => `
               <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
                 <div style="display: flex; justify-content: space-between; font-weight: 600;">
                   <span>${i.codigo} - ${i.descricao}</span>
@@ -2407,7 +2590,7 @@
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
-              <h3>Registrar Incidente de Segurança (RN-77)</h3>
+              <h3>Registrar Incidente de Segurança</h3>
               <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
             </div>
             <div class="form-group">
@@ -2456,7 +2639,7 @@
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
-              <h3>Tratar Incidente e Deliberação ANPD (RN-77)</h3>
+              <h3>Tratar Incidente e Deliberação ANPD</h3>
               <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
             </div>
             <div class="form-group">
@@ -2555,7 +2738,7 @@
                 <input type="text" id="cad-cargo" class="form-control" placeholder="Atendente de Crédito" required>
               </div>
               <div class="form-group">
-                <label>Salário-Base (Mín. R$ 1.621,00 - RN-78)</label>
+                <label>Salário-Base (Piso Mínimo Estadual: R$ 1.621,00)</label>
                 <input type="number" step="0.01" id="cad-salario" class="form-control" placeholder="2200.00" required>
               </div>
               <div class="form-group">
@@ -2619,10 +2802,10 @@
     }
 
     async function inativarColaborador(id) {
-      if (!confirm('Deseja inativar (desligar) este colaborador conforme RN-12?')) return;
+      if (!confirm('Deseja inativar (desligar) este colaborador?')) return;
       try {
         await fetchAPI('/api/colaboradores/' + id, { method: 'DELETE' });
-        notify('Colaborador inativado com sucesso (RN-12).', 'success');
+        notify('Colaborador inativado com sucesso.', 'success');
         carregarColaboradores();
       } catch (err) {
         notify(err.message, 'error');
@@ -2636,7 +2819,7 @@
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
-              <h3>Transferir Colaborador de Filial (RN-13)</h3>
+              <h3>Transferir Colaborador de Filial</h3>
               <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
             </div>
             <div class="form-group">
@@ -2646,7 +2829,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Motivo da Transferência (RN-07)</label>
+              <label>Motivo da Transferência</label>
               <input type="text" id="transf-motivo" class="form-control" placeholder="Ex: Remanejamento operacional de atendimento" required>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
@@ -2666,7 +2849,7 @@
           method: 'PATCH',
           body: JSON.stringify({ filialId: filialDestinoId, motivoTransferencia: motivo })
         });
-        notify('Colaborador transferido com sucesso e registrado na trilha (RN-07)!', 'success');
+        notify('Colaborador transferido com sucesso e registrado na trilha de auditoria!', 'success');
         fecharModal();
         carregarColaboradores();
       } catch (err) {

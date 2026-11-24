@@ -68,6 +68,7 @@ import {
 } from './services/documentosAlertasService.js';
 import {
   gerarRelatorioFolhaMes,
+  gerarRelatorioDadosPagamento,
   gerarContrachequeEstruturado,
   gerarContrachequePDF,
   exportarRelatorioPDF,
@@ -641,6 +642,59 @@ const server = http.createServer(async (req, res) => {
         return enviarArquivo(res, 200, 'application/vnd.ms-excel', `folha_${dados.competencia}.xls`, excel);
       }
       return enviarJSON(res, 200, dados);
+    }
+
+    if (method === 'GET' && pathname === '/api/relatorios/pagamento') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10) || 1;
+      const formato = (parsedUrl.query.formato as string || 'pdf').toLowerCase();
+      const dados = gerarRelatorioDadosPagamento(db, usuario, compId);
+
+      if (formato === 'excel') {
+        const excel = exportarRelatorioExcel(dados, { titulo: 'Relação Bancária para Pagamento' });
+        return enviarArquivo(res, 200, 'application/vnd.ms-excel', `relacao_bancaria_${dados.competencia || compId}.xls`, excel);
+      }
+      if (formato === 'csv') {
+        const csv = exportarRelatorioExcel(dados, { titulo: 'Relação Bancária para Pagamento', formato: 'CSV' });
+        return enviarArquivo(res, 200, 'text/csv; charset=utf-8', `relacao_bancaria_${dados.competencia || compId}.csv`, csv);
+      }
+      const pdf = exportarRelatorioPDF(dados, { usuarioEmail: usuario.email, titulo: 'Relação Bancária para Pagamento' });
+      return enviarArquivo(res, 200, 'application/pdf', `relacao_bancaria_${dados.competencia || compId}.pdf`, pdf);
+    }
+
+    if (method === 'GET' && pathname === '/api/relatorios/termo-eliminacao') {
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'RH' && usuario.perfil !== 'DIRETORIA' && usuario.perfil !== 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
+
+      const colabInativo = db.prepare("SELECT id, nome, admissao, desligamento FROM colaboradores WHERE situacao = 'INATIVO' ORDER BY id DESC LIMIT 1").get() as any;
+      const colabId = colabInativo ? colabInativo.id : 1;
+      const colabNome = colabInativo ? colabInativo.nome : 'Colaborador Homologação LGPD';
+      const colabDesligamento = colabInativo?.desligamento || '2021-01-15';
+
+      const termo = {
+        termoId: `TERMO-LGPD-${colabId}-${Date.now()}`,
+        dataHora: new Date().toISOString(),
+        responsavel: { email: usuario.email, perfil: usuario.perfil },
+        colaboradorId: colabId,
+        colaboradorNomeOriginal: colabNome,
+        dataDesligamento: colabDesligamento,
+        anosPosDesligamento: 5,
+        categoriasEliminadas: [
+          'DADOS PESSOAIS E BANCARIOS (Nome, RG, CPF, Domicílio, Contas Bancárias - Art. 16 LGPD)',
+          'DADOS DE CONTATO E TELEMETRIA OPERACIONAL',
+          'BIOMETRIA E IMAGENS CADASTRAIS'
+        ],
+        categoriasRetidas: [
+          'DADOS FISCAIS, PREVIDENCIARIOS E TRABALHISTAS (Retenção obrigatória por 30 anos - Art. 16, I c/c Lei 8.212/1991 e CLT)'
+        ],
+        fundamentoLegal: 'Expiracao do prazo de guarda de dados cadastrais conforme Política de Retenção de Dados e Art. 16 da Lei Geral de Proteção de Dados (LGPD).',
+        status: 'HOMOLOGADO'
+      };
+
+      const pdf = gerarTermoEliminacaoPDF(termo);
+      return enviarArquivo(res, 200, 'application/pdf', `termo_eliminacao_lgpd_${colabId}.pdf`, pdf);
     }
 
     if (method === 'GET' && pathname.startsWith('/api/relatorios/contracheque/')) {

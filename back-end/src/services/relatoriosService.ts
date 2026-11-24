@@ -125,7 +125,9 @@ export function gerarContrachequeEstruturado(
         banco: colab?.banco,
         agencia: colab?.agencia,
         conta: colab?.conta,
+        salarioBase: new Dec(BigInt(colab?.salario_base_centavos || 0)).toNumber(),
       },
+      salarioBase: new Dec(BigInt(colab?.salario_base_centavos || 0)).toNumber(),
       verbas: verbasSnap.map((v: any) => ({
         descricao: v.descricao,
         natureza: v.natureza,
@@ -133,6 +135,13 @@ export function gerarContrachequeEstruturado(
         desconto: v.natureza === 'DESCONTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
         baseCalculo: new Dec(BigInt(v.base_calculo_centavos)).toNumber(),
         memoriaResumida: v.regra_aplicada,
+      })),
+      itens: verbasSnap.map((v: any, idx: number) => ({
+        codigo: String(idx + 1).padStart(3, '0'),
+        descricao: v.descricao,
+        tipo: v.natureza,
+        valor: new Dec(BigInt(v.valor_centavos)).toNumber(),
+        referencia: v.regra_aplicada || 'CLT',
       })),
       totais: {
         totalProventos: new Dec(BigInt(colabSnap.total_proventos_centavos)).toNumber(),
@@ -179,7 +188,9 @@ export function gerarContrachequeEstruturado(
       banco: colab.banco,
       agencia: colab.agencia,
       conta: colab.conta,
+      salarioBase: new Dec(BigInt(colab.salario_base_centavos || 0)).toNumber(),
     },
+    salarioBase: new Dec(BigInt(colab.salario_base_centavos || 0)).toNumber(),
     verbas: verbas.map((v) => ({
       descricao: v.descricao,
       natureza: v.natureza,
@@ -187,6 +198,13 @@ export function gerarContrachequeEstruturado(
       desconto: v.natureza === 'DESCONTO' ? new Dec(BigInt(v.valor_centavos)).toNumber() : 0,
       baseCalculo: new Dec(BigInt(v.base_calculo_centavos)).toNumber(),
       memoriaResumida: v.regra_aplicada,
+    })),
+    itens: verbas.map((v, idx) => ({
+      codigo: String(idx + 1).padStart(3, '0'),
+      descricao: v.descricao,
+      tipo: v.natureza,
+      valor: new Dec(BigInt(v.valor_centavos)).toNumber(),
+      referencia: v.regra_aplicada || 'CLT',
     })),
     totais: {
       totalProventos: new Dec(BigInt(folha.total_proventos_centavos)).toNumber(),
@@ -279,7 +297,7 @@ export function gerarRelatorioFolhaMes(
   }
 
   let sql = `
-    SELECT f.*, c.nome as colaborador_nome, fil.nome as filial_nome
+    SELECT f.*, c.nome as colaborador_nome, c.cargo, c.salario_base_centavos, fil.nome as filial_nome
     FROM folhas f
     JOIN colaboradores c ON c.id = f.colaborador_id
     JOIN filiais fil ON fil.id = c.filial_id
@@ -309,6 +327,7 @@ export function gerarRelatorioFolhaMes(
     const descDec = new Dec(BigInt(f.total_descontos_centavos));
     const liqDec = new Dec(BigInt(f.liquido_centavos));
     const fgtsDec = new Dec(BigInt(f.fgts_centavos));
+    const baseDec = new Dec(BigInt(f.salario_base_centavos || 0));
 
     somaProventos = somaProventos.add(provDec);
     somaDescontos = somaDescontos.add(descDec);
@@ -322,6 +341,13 @@ export function gerarRelatorioFolhaMes(
       descontos: descDec.toNumber(),
       liquido: liqDec.toNumber(),
       fgts: fgtsDec.toNumber(),
+      colaboradorId: f.colaborador_id,
+      nome: f.colaborador_nome,
+      cargo: f.cargo || '',
+      salarioBase: baseDec.toNumber(),
+      totalProventos: provDec.toNumber(),
+      totalDescontos: descDec.toNumber(),
+      salarioLiquido: liqDec.toNumber(),
     };
   });
 
@@ -339,6 +365,18 @@ export function gerarRelatorioFolhaMes(
       descontos: somaDescontos.toNumber(),
       liquido: somaLiquido.toNumber(),
       fgts: somaFGTS.toNumber(),
+      totalProventos: somaProventos.toNumber(),
+      totalDescontos: somaDescontos.toNumber(),
+      totalLiquido: somaLiquido.toNumber(),
+      totalFGTS: somaFGTS.toNumber(),
+      quantidadeColaboradores: linhas.length,
+    },
+    totais: {
+      totalProventos: somaProventos.toNumber(),
+      totalDescontos: somaDescontos.toNumber(),
+      totalLiquido: somaLiquido.toNumber(),
+      totalFGTS: somaFGTS.toNumber(),
+      quantidadeColaboradores: linhas.length,
     },
   };
 }

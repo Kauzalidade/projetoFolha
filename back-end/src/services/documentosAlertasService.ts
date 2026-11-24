@@ -70,6 +70,7 @@ export interface AlertaItem {
   tipo: 'DOCUMENTO_VENCENDO' | 'EXAME_VENCENDO' | 'FERIAS_CONCESSIVO' | 'PRAZO_PAGAMENTO_FOLHA' | 'DECIMO_TERCEIRO' | 'DADOS_FORA_PRAZO_GUARDA' | 'NOTIFICACAO_DIRETORIA_CONFERENCIA';
   titulo: string;
   detalhes: string;
+  descricao?: string;
   referenciaId?: number;
   diasRestantes?: number;
 }
@@ -236,7 +237,10 @@ export function consultarAlertas(
     // Coluna pode não existir em esquemas não migrados
   }
 
-  return alertas;
+  return alertas.map(a => ({
+    ...a,
+    descricao: a.detalhes,
+  }));
 }
 
 /**
