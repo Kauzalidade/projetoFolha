@@ -125,28 +125,44 @@ function parseJSONBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
+function obterOrigemPermitida(req?: http.IncomingMessage): string {
+  const allowed = process.env.ALLOWED_ORIGIN || process.env.CORS_ORIGIN;
+  if (!allowed) {
+    return 'http://localhost:5000';
+  }
+  if (allowed.trim() === '*') {
+    return '*';
+  }
+  const origins = allowed.split(',').map((o) => o.trim()).filter(Boolean);
+  const reqOrigin = req?.headers?.origin;
+  if (reqOrigin && origins.includes(reqOrigin)) {
+    return reqOrigin;
+  }
+  return origins[0] || 'http://localhost:5000';
+}
+
 function enviarJSON(res: http.ServerResponse, status: number, data: any) {
   const jsonStr = JSON.stringify(data, (_, value) => (typeof value === 'bigint' ? Number(value) : value));
   if (res.headersSent) {
     return res.end(jsonStr);
   }
+  const corsOrigin = (res as any).__corsOrigin || obterOrigemPermitida();
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Private-Network': 'true',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept',
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   });
   res.end(jsonStr);
 }
 
 function enviarArquivo(res: http.ServerResponse, status: number, mimeType: string, filename: string, buffer: Buffer) {
+  const corsOrigin = (res as any).__corsOrigin || obterOrigemPermitida();
   res.writeHead(status, {
     'Content-Type': mimeType,
     'Content-Disposition': `attachment; filename="${filename}"`,
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Private-Network': 'true',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept',
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   });
   res.end(buffer);
@@ -175,6 +191,9 @@ function autenticarRequisicao(req: http.IncomingMessage): { id: number; email: s
 }
 
 const server = http.createServer(async (req, res) => {
+  const corsOrigin = obterOrigemPermitida(req);
+  (res as any).__corsOrigin = corsOrigin;
+
   const parsedUrl = url.parse(req.url || '/', true);
   const pathname = parsedUrl.pathname || '/';
   const method = (req.method || 'GET').toUpperCase();
@@ -182,9 +201,8 @@ const server = http.createServer(async (req, res) => {
   // Tratamento de CORS Preflight
   if (method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Private-Network': 'true',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept',
+      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     });
     return res.end();
@@ -2467,7 +2485,7 @@ function renderizarInterfaceWebHTML(): string {
 </html>`;
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`[rh-folha-backend] Servidor HTTP operando com sucesso na porta ${PORT}`);
   console.log(`[rh-folha-backend] Portal de Testes e Homologação: http://localhost:${PORT}`);
   console.log(`[rh-folha-backend] API Health Check: http://localhost:${PORT}/api/health`);

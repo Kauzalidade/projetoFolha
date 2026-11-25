@@ -1529,9 +1529,20 @@
 
   <!-- SCRIPT PRINCIPAL DO SISTEMA -->
   <script>
-    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
-      ? (window.location.origin.includes(':5000') ? '' : 'http://localhost:5000')
-      : 'http://localhost:5000';
+    const RENDER_API = 'https://projetofolha.onrender.com';
+    const hostname = window.location.hostname || '';
+    const origin = window.location.origin || '';
+    const protocol = window.location.protocol || '';
+
+    const API_BASE = (() => {
+      if (hostname.endsWith('onrender.com') || origin.includes(':5000')) {
+        return '';
+      }
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
+        return 'http://localhost:5000';
+      }
+      return RENDER_API;
+    })();
     let currentUser = null;
     let currentCompetencia = '2026-10';
     let currentCompetenciaId = 1;
