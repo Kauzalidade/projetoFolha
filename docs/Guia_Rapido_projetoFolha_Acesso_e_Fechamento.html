@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>projetoFolha - Guia Rápido de Acesso e Fechamento de Folha</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm 12mm 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.38;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Topo: Tag de Identificação */
+    .top-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .top-pill {
+      width: 4px;
+      height: 14px;
+      background: #2563eb;
+      border-radius: 2px;
+    }
+
+    .top-text {
+      font-size: 8pt;
+      font-weight: 700;
+      color: #3b82f6;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Cabeçalho Principal */
+    .main-title {
+      font-size: 24pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 2px;
+    }
+
+    .sub-title {
+      font-size: 10pt;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    /* Bloco 1: Dados para Entrar */
+    .access-card {
+      background: #f0f7ff;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-tag-blue {
+      font-size: 8.8pt;
+      font-weight: 800;
+      color: #1d4ed8;
+      letter-spacing: 0.05em;
+      margin-bottom: 9px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .access-grid {
+      display: grid;
+      grid-template-columns: 85px 1fr;
+      row-gap: 6px;
+      font-size: 8.8pt;
+    }
+
+    .access-label {
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .access-value {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .access-value a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    .access-extra {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #bfdbfe;
+      display: flex;
+      gap: 16px;
+      font-size: 7.8pt;
+      color: #475569;
+    }
+
+    .access-extra-item strong {
+      color: #1e293b;
+    }
+
+    /* Bloco 2: Como Fechar a Folha */
+    .section-title-dark {
+      font-size: 10.5pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+      margin-bottom: 2px;
+    }
+
+    .section-desc {
+      font-size: 8.4pt;
+      color: #64748b;
+      margin-bottom: 11px;
+    }
+
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .step-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      background: #1d4ed8;
+      color: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 7.8pt;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-content {
+      font-size: 8.5pt;
+      color: #334155;
+      line-height: 1.35;
+    }
+
+    .step-content strong {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    /* Bloco de Alerta: Antes de Confirmar */
+    .alert-card {
+      background: #fffbeb;
+      border: 1px solid #fef08a;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 13px;
+    }
+
+    .alert-title {
+      font-size: 8.2pt;
+      font-weight: 800;
+      color: #92400e;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .alert-text {
+      font-size: 7.9pt;
+      color: #78350f;
+      line-height: 1.35;
+    }
+
+    .alert-text strong {
+      color: #451a03;
+    }
+
+    /* Rodapé Discreto */
+    .footer-note {
+      text-align: right;
+      font-size: 7pt;
+      color: #94a3b8;
+      margin-top: 10px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Topo -->
+    <div class="top-tag">
+      <div class="top-pill"></div>
+      <div class="top-text">GUIA RÁPIDO &bull; AMBIENTE DE DEMONSTRAÇÃO</div>
+    </div>
+
+    <!-- Título Principal -->
+    <h1 class="main-title">projetoFolha</h1>
+    <div class="sub-title">Como entrar no sistema e fechar uma folha de pagamento</div>
+
+    <!-- 1. Dados para Entrar -->
+    <div class="access-card">
+      <div class="section-tag-blue">1 &bull; DADOS PARA ENTRAR</div>
+      <div class="access-grid">
+        <div class="access-label">Endereço</div>
+        <div class="access-value">
+          <a href="https://projetofolha.onrender.com" target="_blank">https://projetofolha.onrender.com</a> 
+          <span style="font-weight: 400; color: #64748b; font-size: 8pt;">(ou http://localhost:5000)</span>
+        </div>
+
+        <div class="access-label">E-mail</div>
+        <div class="access-value">rh@empresa.com</div>
+
+        <div class="access-label">Senha</div>
+        <div class="access-value" style="font-family: monospace; letter-spacing: 0.03em; font-size: 9pt; color: #1e293b;">RhOperacional2026!</div>
+      </div>
+
+      <div class="access-extra">
+        <div class="access-extra-item"><strong>Diretoria:</strong> diretoria@empresa.com (DiretoriaExec2026!)</div>
+        <div class="access-extra-item"><strong>Admin:</strong> admin@empresa.com (AdminSeguro2026!)</div>
+      </div>
+    </div>
+
+    <!-- 2. Como Fechar a Folha -->
+    <div class="section-title-dark">2 &bull; COMO FECHAR A FOLHA</div>
+    <div class="section-desc">Siga na ordem. “Competência” significa o mês ao qual a folha se refere.</div>
+
+    <div class="steps-list">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong>Entrar no sistema.</strong> Abra o endereço acima, digite o e-mail e a senha do RH e clique em <strong>Entrar com Segurança</strong>.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>Escolher o mês.</strong> No topo da tela, selecione a <strong>Competência</strong> ativa. Exemplo: <strong>10/2026 (Outubro)</strong> ou a competência desejada.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong>Conferir os colaboradores.</strong> Na aba <strong>Colaboradores</strong>, verifique os 15 profissionais distribuídos entre a Matriz (São Paulo) e Filiais (Campinas e Santos).
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <strong>Verificar o que aconteceu no mês.</strong> Em <strong>Lançamentos</strong>, confira horas extras (50% e 100%), faltas injustificadas, atestados com CID e verbas avulsas.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <strong>Calcular a folha.</strong> Abra a aba <strong>Folha do Mês</strong> e clique em <strong>Calcular Folha em Lote</strong>. O sistema processará proventos, descontos, INSS, IRRF (Lei 15.270/2025) e FGTS.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <strong>Conferir os valores.</strong> Clique em <strong>Conferência Financeira</strong> e valide os 5 eixos (líquidos, proventos vs descontos, filiais e ausência de divergência de R$ 0,01). Clique em <strong>Conferir</strong>.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <strong>Fechar a folha.</strong> Com a conferência sem erros, clique em <strong>Fechar Competência</strong>. Confira o resumo, digite a justificativa obrigatória e clique em <strong>Confirmar Fechamento</strong>.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">8</div>
+        <div class="step-content">
+          <strong>Verificar se deu certo.</strong> Procure o status <strong>FECHADA</strong> com hash SHA-256 no cabeçalho. Para emitir comprovantes e conciliação, acesse <strong>Contracheque (PDF)</strong> e <strong>Relatórios (Excel/PDF)</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- Antes de Confirmar -->
+    <div class="alert-card">
+      <div class="alert-title">ANTES DE CONFIRMAR</div>
+      <div class="alert-text">
+        Se tiver dúvida ou encontrar qualquer divergência nos 5 eixos, <strong>não feche</strong>: utilize <strong>Devolver Folha</strong> para ajuste. Depois de fechada, a folha só pode ser alterada pelo RH via <strong>Reabrir Folha</strong> com justificativa registrada no log de auditoria imutável. <strong>Este ambiente é demonstrativo</strong>: não realiza pagamentos bancários reais nem envia informações ao eSocial.
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div class="footer-note">
+      Uso autorizado para treinamento &bull; Contém credenciais de acesso &bull; projetoFolha v1.7
+    </div>
+
+  </div>
+</body>
+</html>

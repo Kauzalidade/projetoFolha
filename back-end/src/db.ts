@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   perfil TEXT NOT NULL CHECK(perfil IN ('RH', 'DIRETORIA', 'ADMIN')),
   ativo INTEGER NOT NULL DEFAULT 1,
   segundo_fator_ativo INTEGER NOT NULL DEFAULT 0,
+  deve_trocar_senha INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
 );
@@ -369,6 +370,7 @@ export function inicializarBanco(caminhoArquivo?: string): DatabaseSync {
   try { db.exec('ALTER TABLE competencias ADD COLUMN em_processamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE competencias ADD COLUMN lancado_em TEXT NULL'); } catch (_) {}
   try { db.exec('ALTER TABLE usuarios ADD COLUMN segundo_fator_ativo INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE usuarios ADD COLUMN deve_trocar_senha INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE competencias ADD COLUMN justificativa_conferencia TEXT NULL'); } catch (_) {}
   try {
     db.exec(`

@@ -10,7 +10,19 @@ import url from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import { obterBanco, inicializarBanco } from './db.js';
-import { autenticarUsuario, criarUsuario, inativarUsuario } from './services/usuarioService.js';
+import {
+  autenticarUsuario,
+  confirmarSegundoFator,
+  criarUsuario,
+  inativarUsuario,
+  redefinirSenha,
+  configurarSegundoFator,
+  listarUsuarios,
+  garantirUsuariosInstitucionais,
+  solicitarRecuperacaoSenha,
+  redefinirSenhaComToken,
+  alterarSenhaPrimeiroAcesso,
+} from './services/usuarioService.js';
 import { criarFilial, listarFiliais } from './services/filialService.js';
 import {
   criarColaborador,
@@ -77,7 +89,7 @@ import {
   obterFichaColaboradorLGPD,
   gerarTermoEliminacaoPDF,
 } from './services/relatoriosService.js';
-import { validarSessao } from './security.js';
+import { validarSessao, encerrarSessao } from './security.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 
@@ -85,30 +97,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 const db = inicializarBanco();
 inicializarFeriadosEParametros(db);
 
-// Garante usuários padrão para testes do cliente e auditoria
-const adminFake = { id: 0, email: 'sistema@sistema.local', perfil: 'ADMIN' };
-try {
-  criarUsuario(db, adminFake as any, {
-    nome: 'Administrador Master',
-    email: 'admin@empresa.com',
-    senha: 'AdminMaster123',
-    perfil: 'ADMIN',
-  });
-  criarUsuario(db, adminFake as any, {
-    nome: 'Analista de RH Principal',
-    email: 'rh@empresa.com',
-    senha: 'SenhaForte123',
-    perfil: 'RH',
-  });
-  criarUsuario(db, adminFake as any, {
-    nome: 'Diretoria Executiva',
-    email: 'diretoria@empresa.com',
-    senha: 'SenhaDiretoria123',
-    perfil: 'DIRETORIA',
-  });
-} catch {
-  // Usuários já cadastrados
-}
+// Garante as 3 contas institucionais oficiais com senhas fortes e auditoria (Seção 4 / US-12)
+garantirUsuariosInstitucionais(db);
 
 function parseJSONBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -168,7 +158,7 @@ function enviarArquivo(res: http.ServerResponse, status: number, mimeType: strin
   res.end(buffer);
 }
 
-function autenticarRequisicao(req: http.IncomingMessage): { id: number; email: string; perfil: string } {
+function autenticarRequisicao(req: http.IncomingMessage): { id: number; email: string; perfil: string; token: string } {
   let token = '';
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -187,7 +177,7 @@ function autenticarRequisicao(req: http.IncomingMessage): { id: number; email: s
   if (!sessao) {
     throw new Error('Sessão expirada ou inválida. Faça login novamente.');
   }
-  return { id: sessao.usuarioId, email: sessao.email, perfil: sessao.perfil };
+  return { id: sessao.usuarioId, email: sessao.email, perfil: sessao.perfil, token };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -276,6 +266,54 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJSONBody(req);
       const resultado = autenticarUsuario(db, body.email, body.senha);
       return enviarJSON(res, 200, resultado);
+    }
+
+    // Confirmação de Segundo Fator (2FA)
+    if (method === 'POST' && pathname === '/api/auth/2fa/confirmar') {
+      const body = await parseJSONBody(req);
+      const resultado = confirmarSegundoFator(db, {
+        desafioToken: body.desafioToken,
+        codigo: body.codigo,
+      });
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // Solicitação de Recuperação de Senha ("Esqueci a Senha")
+    if (method === 'POST' && pathname === '/api/auth/recuperar-senha') {
+      const body = await parseJSONBody(req);
+      const resultado = solicitarRecuperacaoSenha(db, body.email);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // Redefinição de Senha (via Token ou autenticado)
+    if (method === 'POST' && pathname === '/api/auth/redefinir-senha') {
+      const body = await parseJSONBody(req);
+      if (body.token) {
+        const resultado = redefinirSenhaComToken(db, body.token, body.novaSenha);
+        return enviarJSON(res, 200, resultado);
+      }
+      const usuario = autenticarRequisicao(req);
+      const resultado = redefinirSenha(db, usuario, usuario.id, body.novaSenha);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // Troca Obrigatória de Senha no Primeiro Acesso
+    if (method === 'POST' && pathname === '/api/auth/primeiro-acesso') {
+      const usuario = autenticarRequisicao(req);
+      const body = await parseJSONBody(req);
+      const resultado = alterarSenhaPrimeiroAcesso(db, usuario.id, body.senhaAtual, body.novaSenha);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    // Logout Seguro (Invalidação da Sessão)
+    if (method === 'POST' && pathname === '/api/auth/logout') {
+      try {
+        const usuario = autenticarRequisicao(req);
+        if (usuario.token) {
+          encerrarSessao(usuario.token);
+        }
+      } catch {}
+      return enviarJSON(res, 200, { sucesso: true, mensagem: 'Sessão encerrada com sucesso.' });
     }
 
     // Validar Me (Sessão Atual)
@@ -389,6 +427,9 @@ const server = http.createServer(async (req, res) => {
     // Colaboradores (GET e POST)
     if (pathname === '/api/colaboradores') {
       const usuario = autenticarRequisicao(req);
+      if (usuario.perfil === 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       if (method === 'GET') {
         const rows = db.prepare(`
           SELECT c.*, f.nome as filial_nome
@@ -410,6 +451,9 @@ const server = http.createServer(async (req, res) => {
     if (matchColab) {
       const colabId = parseInt(matchColab[1], 10);
       const usuario = autenticarRequisicao(req);
+      if (usuario.perfil === 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
 
       if (method === 'GET') {
         const dados = consultarColaborador(db, usuario, colabId);
@@ -500,6 +544,9 @@ const server = http.createServer(async (req, res) => {
     // Folha: Calcular, Conferência, Fechar, Registrar Pagamento, Versões
     if (method === 'POST' && pathname === '/api/folha/calcular') {
       const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'RH') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       const body = await parseJSONBody(req);
 
       if (body.todosColaboradores && body.competenciaId) {
@@ -517,7 +564,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && pathname === '/api/folha/conferencia') {
-      autenticarRequisicao(req);
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil === 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
       const conferencia = executarConferenciaFinanceira(db, compId);
       return enviarJSON(res, 200, conferencia);
@@ -558,7 +608,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && pathname === '/api/folha/versoes') {
-      autenticarRequisicao(req);
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil === 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
       const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
       const versoes = consultarVersoesFolha(db, compId);
       return enviarJSON(res, 200, versoes);
@@ -799,7 +852,7 @@ const server = http.createServer(async (req, res) => {
         return enviarJSON(res, 403, { erro: 'Acesso restrito ao Administrador.' });
       }
       if (method === 'GET') {
-        const users = db.prepare('SELECT id, nome, email, perfil, ativo, criado_em, atualizado_em FROM usuarios ORDER BY id ASC').all();
+        const users = db.prepare('SELECT id, nome, email, perfil, ativo, segundo_fator_ativo, criado_em, atualizado_em FROM usuarios ORDER BY id ASC').all();
         return enviarJSON(res, 200, users);
       }
       if (method === 'POST') {
@@ -814,6 +867,28 @@ const server = http.createServer(async (req, res) => {
       const userId = parseInt(pathname.split('/')[3], 10);
       inativarUsuario(db, usuario, userId);
       return enviarJSON(res, 200, { status: 'USUARIO_INATIVADO', id: userId });
+    }
+
+    if (method === 'POST' && pathname.startsWith('/api/usuarios/') && pathname.endsWith('/redefinir-senha')) {
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
+      const userId = parseInt(pathname.split('/')[3], 10);
+      const body = await parseJSONBody(req);
+      const resultado = redefinirSenha(db, usuario, userId, body.novaSenha);
+      return enviarJSON(res, 200, resultado);
+    }
+
+    if (method === 'PATCH' && pathname.startsWith('/api/usuarios/') && pathname.endsWith('/2fa')) {
+      const usuario = autenticarRequisicao(req);
+      if (usuario.perfil !== 'ADMIN') {
+        return enviarJSON(res, 403, { erro: 'Você não tem permissão para esta ação.' });
+      }
+      const userId = parseInt(pathname.split('/')[3], 10);
+      const body = await parseJSONBody(req);
+      const resultado = configurarSegundoFator(db, usuario, userId, Boolean(body.ativo));
+      return enviarJSON(res, 200, resultado);
     }
 
     // Parâmetros Legais e Vigências (RN-01 / Seção 6)

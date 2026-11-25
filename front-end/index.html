@@ -652,10 +652,15 @@
     }
     .toast-msg.success { border-left-color: #22c55e; }
     .toast-msg.error { border-left-color: #ef4444; }
+    .toast-msg.info { border-left-color: #3b82f6; }
+    .toast-msg.warning { border-left-color: #f59e0b; }
     @keyframes slideInRight {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+
+    #modal-container[hidden] { display: none !important; }
+    #modal-container:not([hidden]) { display: block !important; position: fixed; inset: 0; z-index: 99999; }
 
     /* Responsividade */
     @media (max-width: 840px) {
@@ -694,20 +699,6 @@
       <div class="auth-brand-content">
         <h1>Segurança e Conformidade CLT para a sua Folha</h1>
         <p>Sistema corporativo de folha de pagamento para 15 colaboradores em 1 Matriz e 2 Filiais. Cálculo automatizado de INSS e IRRF 2026 com memória de cálculo detalhada.</p>
-        <div class="auth-badges-grid">
-          <div class="auth-badge-item">
-            <span class="auth-badge-check">✓</span>
-            <span>Segundo fator de autenticação (2FA / TOTP) obrigatório</span>
-          </div>
-          <div class="auth-badge-item">
-            <span class="auth-badge-check">✓</span>
-            <span>Tolerância zero de divergência financeira (R$ 0,00)</span>
-          </div>
-          <div class="auth-badge-item">
-            <span class="auth-badge-check">✓</span>
-            <span>Trilha de auditoria imutável e proteção LGPD</span>
-          </div>
-        </div>
       </div>
       <p class="auth-brand-footer">projetoFolha v1.7 • Correspondente Bancário S.A. • Todos os direitos reservados</p>
     </aside>
@@ -752,28 +743,6 @@
               <span>Entrar com Segurança</span>
             </button>
           </form>
-
-          <!-- Atalhos para Demonstração e Homologação Rápida -->
-          <div class="demo-accounts-box">
-            <div class="demo-accounts-title">
-              <span>Perfis de Homologação (1-Clique)</span>
-              <span>Spec v1.7</span>
-            </div>
-            <div class="demo-buttons-grid">
-              <button type="button" class="btn-demo-pill" onclick="preencherLogin('rh@empresa.com', 'SenhaForte123')">
-                <span>👔 Analista de RH</span>
-                <span class="role-tag">rh@empresa.com</span>
-              </button>
-              <button type="button" class="btn-demo-pill" onclick="preencherLogin('diretoria@empresa.com', 'SenhaDiretoria123')">
-                <span>📊 Diretoria Executiva</span>
-                <span class="role-tag">diretoria@empresa.com</span>
-              </button>
-              <button type="button" class="btn-demo-pill" onclick="preencherLogin('admin@empresa.com', 'AdminMaster123')">
-                <span>🛡️ Administrador Geral</span>
-                <span class="role-tag">admin@empresa.com</span>
-              </button>
-            </div>
-          </div>
         </section>
 
         <!-- VIEW: SEGUNDO FATOR (2FA / TOTP) -->
@@ -1512,8 +1481,8 @@
                     <th>E-mail</th>
                     <th>Perfil de Acesso</th>
                     <th>Status</th>
-                    <th>Criado Em</th>
-                    <th class="text-right">Ação</th>
+                    <th>2FA (TOTP)</th>
+                    <th class="text-right">Ações Administrativas</th>
                   </tr>
                 </thead>
                 <tbody id="tbody-usuarios">
@@ -1635,21 +1604,24 @@
       document.getElementById('auth-shell').hidden = true;
       document.getElementById('app-shell').hidden = false;
 
-      // Atualiza Perfil e Permissões
+      // Atualiza Perfil e Permissões (RBAC / Tabela 4.1 da Spec)
       const perfil = currentUser?.perfil || 'RH';
       const nome = currentUser?.nome || currentUser?.email || 'Usuário';
       document.getElementById('user-role-badge').textContent = perfil + ' (' + nome + ')';
 
-      // Ajusta controles por perfil (Tabela 4.1 da Spec)
       const isRH = perfil === 'RH';
       const isDiretoria = perfil === 'DIRETORIA';
       const isAdmin = perfil === 'ADMIN';
 
+      // Visibilidade de botões operacionais e administrativos
       const btnNovoColab = document.getElementById('btn-novo-colab');
       if (btnNovoColab) btnNovoColab.style.display = isRH ? 'inline-flex' : 'none';
 
       const btnNovoIncidente = document.getElementById('btn-novo-incidente');
-      if (btnNovoIncidente) btnNovoIncidente.style.display = isRH || isAdmin || isDiretoria ? 'inline-flex' : 'none';
+      if (btnNovoIncidente) btnNovoIncidente.style.display = 'inline-flex';
+
+      const btnNovoUsuario = document.getElementById('btn-novo-usuario');
+      if (btnNovoUsuario) btnNovoUsuario.style.display = isAdmin ? 'inline-flex' : 'none';
 
       const boxUsuarios = document.getElementById('box-usuarios-gestao');
       if (boxUsuarios) boxUsuarios.style.display = isAdmin ? 'block' : 'none';
@@ -1657,12 +1629,47 @@
       const boxAuditoria = document.getElementById('box-auditoria-logs');
       if (boxAuditoria) boxAuditoria.style.display = isDiretoria || isAdmin ? 'block' : 'none';
 
-      // Carrega dados iniciais
-      carregarCompetencias();
-      carregarFiliais();
-      carregarColaboradores();
+      const btnCalcularLote = document.getElementById('btn-calcular-lote');
+      if (btnCalcularLote) btnCalcularLote.style.display = isRH ? 'inline-flex' : 'none';
+
+      const btnFecharFolha = document.getElementById('btn-fechar-folha');
+      if (btnFecharFolha) btnFecharFolha.style.display = isRH ? 'inline-flex' : 'none';
+
+      const btnReabrir = document.getElementById('btn-reabrir-folha');
+      if (btnReabrir) btnReabrir.style.display = isRH ? 'inline-flex' : 'none';
+
+      const btnNovoParametro = document.querySelector('button[onclick="abrirModalNovoParametro()"]');
+      if (btnNovoParametro) btnNovoParametro.style.display = isRH ? 'inline-flex' : 'none';
+
+      // Separação de Funções (SoD) para o ADMIN (Cenário: Admin não vê dados da folha - Tabela 4.1)
+      const abasOperacionais = ['colaboradores', 'lancamentos', 'folha', 'ferias', 'contracheque', 'memoria'];
+      abasOperacionais.forEach(tab => {
+        const btn = document.getElementById('tab-btn-' + tab);
+        if (btn) {
+          if (isAdmin) {
+            btn.style.opacity = '0.35';
+            btn.title = 'Acesso restrito ao RH e Diretoria Executiva (Separação de Funções / SoD - Spec v1.7)';
+          } else {
+            btn.style.opacity = '1';
+            btn.title = '';
+          }
+        }
+      });
+
+      // Se for ADMIN: abre direto a aba de Administração
+      if (isAdmin) {
+        trocarAba('administracao');
+      } else {
+        trocarAba('dashboard');
+      }
+
+      // Carrega dados iniciais operacionais para não-admin
+      if (!isAdmin) {
+        carregarCompetencias();
+        carregarFiliais();
+        carregarColaboradores();
+      }
       carregarAlertas();
-      trocarAba('dashboard');
     }
 
     // Preenchimento de Demonstração
@@ -1672,7 +1679,7 @@
       document.getElementById('btn-submit-login').click();
     }
 
-    // Submissão do Formulário de Login
+    // Submissão do Formulário de Login (RNF-01 / RNF-19 / US-12)
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
@@ -1687,61 +1694,176 @@
           body: JSON.stringify({ email, senha })
         });
 
-        // Caso retorne token direto da API
+        // Caso o usuário possua Segundo Fator Ativo (US-12)
+        if (res.requer2FA) {
+          window.desafioToken2FA = res.desafioToken;
+          document.getElementById('view-login').hidden = true;
+          document.getElementById('view-mfa').hidden = false;
+          const codeInput = document.getElementById('mfa-code');
+          if (res.codigo2FAParaHomologacao) {
+            codeInput.value = res.codigo2FAParaHomologacao;
+            notify('Código 2FA: ' + res.codigo2FAParaHomologacao + ' (enviado ao canal out-of-band)', 'info');
+          } else {
+            codeInput.value = '';
+          }
+          return;
+        }
+
+        // Caso autenticação direta com sucesso
         if (res.token) {
           sessionStorage.setItem('folha_token', res.token);
           currentUser = res.usuario;
           
-          // Exibe desafio 2FA antes de liberar acesso final
-          document.getElementById('view-login').hidden = true;
-          document.getElementById('view-mfa').hidden = false;
-          document.getElementById('mfa-code').value = '123456'; // Facilidade para homologador
-          notify('Código 2FA enviado com sucesso! Utilize o código 123456.', 'success');
+          if (res.deveTrocarSenha) {
+            document.getElementById('view-login').hidden = true;
+            document.getElementById('view-change').hidden = false;
+            notify('Primeiro acesso: é necessário alterar sua senha temporária.', 'warning');
+            return;
+          }
+
+          notify('Autenticado com sucesso!', 'success');
+          exibirAplicacaoLogada();
           return;
         }
       } catch (err) {
-        // Fallback resiliente para abertura direta por arquivo local (file:///) ou bloqueios CORS
-        const contasDemo = {
-          'rh@empresa.com': { id: 1, nome: 'Analista de RH', email: 'rh@empresa.com', perfil: 'RH' },
-          'diretoria@empresa.com': { id: 2, nome: 'Diretoria Executiva', email: 'diretoria@empresa.com', perfil: 'DIRETORIA' },
-          'admin@empresa.com': { id: 3, nome: 'Administrador Geral', email: 'admin@empresa.com', perfil: 'ADMIN' },
-          'admin@example.test': { id: 3, nome: 'Administrador Homologação', email: 'admin@example.test', perfil: 'ADMIN' }
-        };
-
-        if (contasDemo[email] || (email && senha)) {
-          const user = contasDemo[email] || { id: 99, nome: email.split('@')[0], email, perfil: 'RH' };
-          currentUser = user;
-          sessionStorage.setItem('folha_token', 'token-offline-' + user.perfil);
-          document.getElementById('view-login').hidden = true;
-          document.getElementById('view-mfa').hidden = false;
-          document.getElementById('mfa-code').value = '123456';
-          notify('Acesso liberado com sucesso. Código 2FA: 123456', 'success');
-          return;
-        }
-
         notice.hidden = false;
         noticeText.textContent = err.message || 'E-mail ou senha inválidos.';
       }
     });
 
-    // Submissão do 2FA
-    document.getElementById('mfa-form').addEventListener('submit', (e) => {
+    // Submissão do Segundo Fator de Autenticação (2FA)
+    document.getElementById('mfa-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const code = document.getElementById('mfa-code').value.trim();
       if (!code || code.length !== 6) {
-        notify('Digite o código de 6 dígitos.', 'error');
+        notify('Digite o código numérico de 6 dígitos.', 'error');
         return;
       }
-      notify('Segundo fator confirmado com sucesso!', 'success');
-      exibirAplicacaoLogada();
+      try {
+        const res = await fetchAPI('/api/auth/2fa/confirmar', {
+          method: 'POST',
+          body: JSON.stringify({
+            desafioToken: window.desafioToken2FA,
+            codigo: code
+          })
+        });
+
+        if (res.token) {
+          sessionStorage.setItem('folha_token', res.token);
+          currentUser = res.usuario;
+
+          if (res.deveTrocarSenha) {
+            document.getElementById('view-mfa').hidden = true;
+            document.getElementById('view-change').hidden = false;
+            notify('Primeiro acesso: é necessário alterar sua senha temporária.', 'warning');
+            return;
+          }
+
+          notify('Segundo fator confirmado com sucesso!', 'success');
+          exibirAplicacaoLogada();
+        }
+      } catch (err) {
+        notify(err.message || 'Código de segundo fator inválido.', 'error');
+      }
     });
 
-    document.getElementById('back-to-login').addEventListener('click', () => {
+    // Navegação entre Telas de Autenticação
+    document.getElementById('back-to-login')?.addEventListener('click', () => {
       document.getElementById('view-mfa').hidden = true;
       document.getElementById('view-login').hidden = false;
     });
 
-    function fazerLogout() {
+    document.getElementById('forgot-link')?.addEventListener('click', () => {
+      document.getElementById('view-login').hidden = true;
+      document.getElementById('view-forgot').hidden = false;
+    });
+
+    document.querySelectorAll('[data-show="login"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('view-forgot').hidden = true;
+        document.getElementById('view-reset').hidden = true;
+        document.getElementById('view-change').hidden = true;
+        document.getElementById('view-mfa').hidden = true;
+        document.getElementById('view-login').hidden = false;
+      });
+    });
+
+    // Submissão de Recuperação de Senha ("Esqueci a Senha")
+    document.getElementById('forgot-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('forgot-email').value.trim();
+      if (!email) {
+        notify('Informe seu e-mail corporativo.', 'error');
+        return;
+      }
+      try {
+        const res = await fetchAPI('/api/auth/recuperar-senha', {
+          method: 'POST',
+          body: JSON.stringify({ email })
+        });
+        window.tokenRecuperacaoSenha = res.token;
+        notify(res.mensagem || 'Instruções de recuperação enviadas!', 'success');
+        document.getElementById('view-forgot').hidden = true;
+        document.getElementById('view-reset').hidden = false;
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    });
+
+    // Submissão da Redefinição de Senha
+    document.getElementById('reset-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const novaSenha = document.getElementById('reset-password').value;
+      const confirma = document.getElementById('reset-confirm').value;
+      if (novaSenha !== confirma) {
+        notify('As senhas digitadas não coincidem.', 'error');
+        return;
+      }
+      try {
+        await fetchAPI('/api/auth/redefinir-senha', {
+          method: 'POST',
+          body: JSON.stringify({
+            token: window.tokenRecuperacaoSenha,
+            novaSenha
+          })
+        });
+        notify('Senha redefinida com sucesso! Faça login com a nova senha.', 'success');
+        document.getElementById('view-reset').hidden = true;
+        document.getElementById('view-login').hidden = false;
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    });
+
+    // Submissão do Primeiro Acesso (Troca Obrigatória)
+    document.getElementById('change-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const senhaAtual = document.getElementById('current-password').value;
+      const novaSenha = document.getElementById('new-password').value;
+      const confirmSenha = document.getElementById('confirm-password').value;
+
+      if (novaSenha !== confirmSenha) {
+        notify('As novas senhas não coincidem.', 'error');
+        return;
+      }
+
+      try {
+        await fetchAPI('/api/auth/primeiro-acesso', {
+          method: 'POST',
+          body: JSON.stringify({ senhaAtual, novaSenha })
+        });
+        notify('Senha inicial alterada com sucesso!', 'success');
+        document.getElementById('view-change').hidden = true;
+        exibirAplicacaoLogada();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    });
+
+    async function fazerLogout() {
+      try {
+        await fetchAPI('/api/auth/logout', { method: 'POST' });
+      } catch {}
       sessionStorage.removeItem('folha_token');
       currentUser = null;
       exibirTelaLogin();
@@ -1750,6 +1872,11 @@
 
     // Troca de Abas
     function trocarAba(tabId) {
+      if (currentUser?.perfil === 'ADMIN' && ['colaboradores', 'lancamentos', 'folha', 'ferias', 'contracheque', 'memoria'].includes(tabId)) {
+        notify('Acesso restrito ao RH e Diretoria Executiva conforme Tabela 4.1 da Especificação Técnica (Separação de Funções / SoD).', 'warning');
+        return;
+      }
+
       const tabs = [
         'dashboard', 'colaboradores', 'lancamentos', 'folha', 'ferias',
         'contracheque', 'relatorios', 'parametros', 'alertas', 'memoria', 'administracao'
@@ -2190,18 +2317,37 @@
       }
     }
 
+    // Modais e Utilitários de Interface
+    function abrirModal(conteudoHtml) {
+      const modal = document.getElementById('modal-container');
+      if (modal) {
+        modal.hidden = false;
+        modal.removeAttribute('hidden');
+        modal.style.display = 'block';
+        modal.innerHTML = conteudoHtml;
+      }
+    }
+
+    function fecharModal() {
+      const modal = document.getElementById('modal-container');
+      if (modal) {
+        modal.hidden = true;
+        modal.setAttribute('hidden', '');
+        modal.style.display = 'none';
+        modal.innerHTML = '';
+      }
+    }
+
     // Reabertura de Competência (CLT / RN-04)
     function abrirModalReabertura() {
       const badge = document.getElementById('comp-status-badge');
-      const isFechada = badge && badge.textContent.trim() === 'FECHADA';
+      const isFechada = badge && badge.textContent.trim().toUpperCase() === 'FECHADA';
       if (!isFechada) {
         notify(`A competência atual (${currentCompetencia}) não está com status FECHADA.`, 'info');
         return;
       }
 
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -2223,7 +2369,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function confirmarReaberturaFolha() {
@@ -2243,6 +2389,52 @@
           })
         });
         notify(`Competência ${currentCompetencia} reaberta com sucesso!`, 'success');
+        fecharModal();
+        await carregarCompetencias();
+        await carregarFolhaResumo();
+        await carregarDadosDashboard();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    // Devolução da Folha para Ajuste (RN-67 / US-13)
+    function abrirModalDevolucao() {
+      abrirModal(`
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Devolver Folha para Ajuste</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <p style="font-size: 13.5px; color: #475569; margin-bottom: 14px;">
+              A devolução reabre a competência para correções operacionais e anula a conferência financeira atual.
+            </p>
+            <div class="form-group">
+              <label>Motivo Formal da Devolução (Obrigatório - RN-67)</label>
+              <textarea id="devolucao-motivo" class="form-control" rows="3" placeholder="Descreva a inconsistência ou necessidade de ajuste encontrada..." required></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" style="background: #dc2626; border-color: #dc2626;" onclick="confirmarDevolucaoFolha()">Devolver para Ajuste</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    async function confirmarDevolucaoFolha() {
+      const motivo = document.getElementById('devolucao-motivo')?.value.trim();
+      if (!motivo) {
+        notify('Informe o motivo da devolução.', 'error');
+        return;
+      }
+      try {
+        await fetchAPI('/api/folha/devolver', {
+          method: 'POST',
+          body: JSON.stringify({ competenciaId: currentCompetenciaId, motivo })
+        });
+        notify('Folha devolvida para ajuste com sucesso!', 'success');
         fecharModal();
         await carregarCompetencias();
         await carregarFolhaResumo();
@@ -2582,9 +2774,15 @@
                 <td>${u.email}</td>
                 <td><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #e0e7ff; color: #3730a3;">${u.perfil}</span></td>
                 <td>${u.ativo ? '🟢 Ativo' : '🔴 Inativo'}</td>
-                <td style="font-size: 12px; color: #64748b;">${u.criado_em}</td>
-                <td class="text-right">
-                  <button class="btn btn-outline btn-sm" onclick="inativarUsuario(${u.id})">Desativar</button>
+                <td>
+                  <span style="font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: ${u.segundo_fator_ativo || u.segundoFatorAtivo ? '#dcfce7; color: #15803d' : '#f1f5f9; color: #64748b'};">
+                    ${u.segundo_fator_ativo || u.segundoFatorAtivo ? 'Ativo' : 'Inativo'}
+                  </span>
+                </td>
+                <td class="text-right" style="white-space: nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="alternar2FAUsuario(${u.id}, ${Boolean(u.segundo_fator_ativo || u.segundoFatorAtivo)})" title="Alternar 2FA">🔑 2FA</button>
+                  <button class="btn btn-outline btn-sm" onclick="abrirModalRedefinirSenhaUsuario(${u.id}, '${u.email}')" title="Redefinir Senha">🔒 Senha</button>
+                  ${u.ativo ? `<button class="btn btn-outline btn-sm" style="color: #b91c1c; border-color: #fca5a5;" onclick="inativarUsuario(${u.id})">Desativar</button>` : '<span style="font-size: 11px; color: #94a3b8;">Desativado</span>'}
                 </td>
               </tr>
             `).join('');
@@ -2592,6 +2790,139 @@
         }
       } catch (err) {
         console.error('Offline administracao fallback', err);
+      }
+    }
+
+    // Gestão de Usuários (Exclusivo Administrador - Seção 4 / US-12)
+    function abrirModalNovoUsuario() {
+      abrirModal(`
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Cadastrar Novo Usuário do Sistema</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="form-group">
+              <label>Nome Completo</label>
+              <input type="text" id="novo-user-nome" class="form-control" placeholder="Ex: Roberto Mendes" required>
+            </div>
+            <div class="form-group">
+              <label>E-mail Corporativo</label>
+              <input type="email" id="novo-user-email" class="form-control" placeholder="Ex: roberto@empresa.com" required>
+            </div>
+            <div class="form-group">
+              <label>Perfil de Acesso</label>
+              <select id="novo-user-perfil" class="form-control">
+                <option value="RH">Analista de RH (Operacional de Folha)</option>
+                <option value="DIRETORIA">Diretoria Executiva (Relatórios e Indicadores)</option>
+                <option value="ADMIN">Administrador Geral (Gestão e Segurança)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Senha Inicial (mínimo 10 caracteres, alfanumérica)</label>
+              <input type="password" id="novo-user-senha" class="form-control" placeholder="Ex: SenhaForte2026!" required>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="novo-user-2fa" style="width: auto; margin: 0;">
+              <label for="novo-user-2fa" style="margin: 0; font-weight: normal;">Exigir Segundo Fator de Autenticação (2FA) neste usuário</label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarNovoUsuario()">Cadastrar Usuário</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    async function salvarNovoUsuario() {
+      const nome = document.getElementById('novo-user-nome')?.value.trim();
+      const email = document.getElementById('novo-user-email')?.value.trim();
+      const perfil = document.getElementById('novo-user-perfil')?.value;
+      const senha = document.getElementById('novo-user-senha')?.value;
+      const segundoFatorAtivo = document.getElementById('novo-user-2fa')?.checked;
+
+      if (!nome || !email || !senha) {
+        notify('Preencha todos os campos obrigatórios.', 'error');
+        return;
+      }
+
+      try {
+        await fetchAPI('/api/usuarios', {
+          method: 'POST',
+          body: JSON.stringify({ nome, email, perfil, senha, segundoFatorAtivo })
+        });
+        notify('Usuário ' + email + ' cadastrado com sucesso!', 'success');
+        fecharModal();
+        carregarAdministracao();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function inativarUsuario(userId) {
+      if (!confirm('Deseja realmente desativar este usuário? O acesso será revogado e todas as sessões ativas serão encerradas imediatamente.')) {
+        return;
+      }
+      try {
+        await fetchAPI('/api/usuarios/' + userId + '/inativar', { method: 'PATCH' });
+        notify('Usuário desativado com sucesso.', 'success');
+        carregarAdministracao();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    function abrirModalRedefinirSenhaUsuario(userId, email) {
+      abrirModal(`
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Redefinir Senha do Usuário</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <p style="font-size: 13.5px; color: #475569; margin-bottom: 14px;">Usuário selecionado: <b>${email}</b></p>
+            <div class="form-group">
+              <label>Nova Senha (mínimo 10 caracteres, alfanumérica, diferente das 3 últimas)</label>
+              <input type="password" id="admin-nova-senha" class="form-control" placeholder="Digite a nova senha..." required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="confirmarRedefinicaoSenhaAdmin(${userId})">Salvar Nova Senha</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    async function confirmarRedefinicaoSenhaAdmin(userId) {
+      const novaSenha = document.getElementById('admin-nova-senha')?.value;
+      if (!novaSenha) {
+        notify('Informe a nova senha.', 'error');
+        return;
+      }
+      try {
+        await fetchAPI('/api/usuarios/' + userId + '/redefinir-senha', {
+          method: 'POST',
+          body: JSON.stringify({ novaSenha })
+        });
+        notify('Senha redefinida com sucesso! Todas as sessões anteriores foram encerradas.', 'success');
+        fecharModal();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    }
+
+    async function alternar2FAUsuario(userId, statusAtual) {
+      try {
+        await fetchAPI('/api/usuarios/' + userId + '/2fa', {
+          method: 'PATCH',
+          body: JSON.stringify({ ativo: !statusAtual })
+        });
+        notify(`2FA ${!statusAtual ? 'ativado' : 'desativado'} com sucesso para o usuário!`, 'success');
+        carregarAdministracao();
+      } catch (err) {
+        notify(err.message, 'error');
       }
     }
 
@@ -2678,17 +3009,9 @@
       }
     }
 
-    // Modais e Utilitários
-    function fecharModal() {
-      document.getElementById('modal-container').hidden = true;
-      document.getElementById('modal-container').innerHTML = '';
-    }
-
     // Parâmetros 2026 e Vigências Legais
     function abrirModalNovoParametro() {
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -2729,7 +3052,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function salvarNovoParametro() {
@@ -2797,9 +3120,7 @@
     }
 
     function abrirModalNovoIncidente() {
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -2820,7 +3141,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function salvarIncidenteSeguranca() {
@@ -2846,9 +3167,7 @@
 
     function abrirModalTratarIncidente(incId) {
       const isDir = currentUser?.perfil === 'DIRETORIA';
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -2888,7 +3207,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function salvarTratamentoIncidente(incId) {
@@ -2920,9 +3239,7 @@
     }
 
     function abrirModalNovoColaborador() {
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -2979,7 +3296,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function salvarNovoColaborador() {
@@ -3026,9 +3343,7 @@
     }
 
     function abrirModalTransferencia(colabId) {
-      const modal = document.getElementById('modal-container');
-      modal.hidden = false;
-      modal.innerHTML = `
+      abrirModal(`
         <div class="modal-overlay" onclick="fecharModal()">
           <div class="modal-dialog" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -3051,7 +3366,7 @@
             </div>
           </div>
         </div>
-      `;
+      `);
     }
 
     async function salvarTransferenciaColaborador(colabId) {

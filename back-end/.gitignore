@@ -3,3 +3,6 @@ dist/
 instance/
 *.db
 .env
+.env*
+*.credentials*
+.credenciais_iniciais.json

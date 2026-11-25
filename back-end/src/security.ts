@@ -18,7 +18,7 @@ export interface TentativaFalha {
 const tentativasPorEmail = new Map<string, TentativaFalha>();
 
 /**
- * Valida a força da senha conforme RNF-19:
+ * Valida a força da senha conforme RNF-19 e Requisitos de Segurança:
  * Mínimo de 10 caracteres, com pelo menos uma letra e pelo menos um número.
  */
 export function validarForcaSenha(senha: string): { valido: boolean; motivo?: string } {
@@ -33,6 +33,41 @@ export function validarForcaSenha(senha: string): { valido: boolean; motivo?: st
   }
 
   return { valido: true };
+}
+
+/**
+ * Gera uma senha aleatória, exclusiva e de alta entropia (mínimo 12 caracteres, padrão 16).
+ * Atende aos requisitos da Seção 5: maiúsculas, minúsculas, números e caracteres especiais.
+ */
+export function gerarSenhaForteAleatoria(tamanho: number = 16): string {
+  const tam = Math.max(12, tamanho);
+  const maiusculas = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const minusculas = 'abcdefghijkmnopqrstuvwxyz';
+  const numeros = '23456789';
+  const especiais = '!@#$%&*_-';
+  const todos = maiusculas + minusculas + numeros + especiais;
+
+  // Garante ao menos um caractere de cada grupo obrigatório
+  const obrigatorios = [
+    maiusculas[crypto.randomInt(0, maiusculas.length)],
+    minusculas[crypto.randomInt(0, minusculas.length)],
+    numeros[crypto.randomInt(0, numeros.length)],
+    especiais[crypto.randomInt(0, especiais.length)],
+  ];
+
+  const restantes: string[] = [];
+  for (let i = obrigatorios.length; i < tam; i++) {
+    restantes.push(todos[crypto.randomInt(0, todos.length)]);
+  }
+
+  // Embaralha com Fisher-Yates
+  const caracteres = [...obrigatorios, ...restantes];
+  for (let i = caracteres.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [caracteres[i], caracteres[j]] = [caracteres[j], caracteres[i]];
+  }
+
+  return caracteres.join('');
 }
 
 /**
@@ -248,8 +283,42 @@ export function limparOutbox2FA(): void {
   outbox2FA.clear();
 }
 
+/**
+ * Gestão de Tokens de Recuperação de Senha (15 minutos de validade)
+ */
+interface ItemRecuperacaoSenha {
+  email: string;
+  expiraEm: number;
+}
+const tokensRecuperacaoSenha = new Map<string, ItemRecuperacaoSenha>();
+
+export function solicitarTokenRecuperacao(email: string): { token: string; expiraEm: number } {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiraEm = Date.now() + 15 * 60 * 1000; // 15 minutos
+  tokensRecuperacaoSenha.set(token, {
+    email: email.trim().toLowerCase(),
+    expiraEm,
+  });
+  return { token, expiraEm };
+}
+
+export function consumirTokenRecuperacao(token: string): string | null {
+  if (!token) return null;
+  const item = tokensRecuperacaoSenha.get(token);
+  if (!item) return null;
+
+  if (Date.now() > item.expiraEm) {
+    tokensRecuperacaoSenha.delete(token);
+    return null;
+  }
+
+  tokensRecuperacaoSenha.delete(token);
+  return item.email;
+}
+
 export function limparTodasSessoes(): void {
   sessoesAtivas.clear();
   tentativasPorEmail.clear();
   limparOutbox2FA();
+  tokensRecuperacaoSenha.clear();
 }

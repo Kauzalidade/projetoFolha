@@ -7,7 +7,12 @@
  */
 
 import { inicializarBanco } from './db.js';
-import { criarUsuario } from './services/usuarioService.js';
+import {
+  criarUsuario,
+  garantirUsuariosInstitucionais,
+  recuperarCredenciaisIniciais,
+  redefinirSenha,
+} from './services/usuarioService.js';
 import { criarFilial } from './services/filialService.js';
 import { criarColaborador } from './services/colaboradorService.js';
 import { inicializarFeriadosEParametros } from './services/parametroFeriadoService.js';
@@ -82,6 +87,43 @@ function main() {
     });
     console.log(`Colaborador demo cadastrado: ${colabAna.nome} (CPF: ${colabAna.cpf})`);
     console.log('Seed demo concluído com sucesso!');
+  } else if (comando === 'garantir-usuarios') {
+    const creds = garantirUsuariosInstitucionais(db);
+    console.log('Contas institucionais verificadas e garantidas com sucesso:');
+    console.table(creds);
+  } else if (comando === 'credenciais-iniciais') {
+    const creds = recuperarCredenciaisIniciais();
+    if (!creds || Object.keys(creds).length === 0) {
+      console.log('Nenhuma credencial gerada encontrada. Executando provisionamento inicial...');
+      const novas = garantirUsuariosInstitucionais(db);
+      console.log('Credenciais provisionadas:');
+      console.table(novas);
+    } else {
+      console.log('===============================================================');
+      console.log('Credenciais Iniciais do Sistema (Geradas com Alta Entropia):');
+      console.log('===============================================================');
+      for (const [email, info] of Object.entries(creds)) {
+        console.log(`\nPerfil: ${info.perfil} (${info.nome})`);
+        console.log(`E-mail: ${email}`);
+        console.log(`Senha:  ${info.senha}`);
+      }
+      console.log('\n===============================================================');
+      console.log('Nota de Segurança: Guarde essas credenciais com segurança.');
+    }
+  } else if (comando === 'resetar-senha') {
+    const params = parseArgs(args.slice(1));
+    if (!params.email || !params.senha) {
+      console.error('Uso: npx tsx src/manage.ts resetar-senha --email "admin@empresa.com" --senha "NovaSenhaForte123"');
+      process.exit(1);
+    }
+    const user = db.prepare('SELECT id, email, perfil FROM usuarios WHERE email = ?').get(params.email.trim().toLowerCase()) as any;
+    if (!user) {
+      console.error(`Usuário com e-mail "${params.email}" não encontrado.`);
+      process.exit(1);
+    }
+    const adminFake = { id: 0, email: 'cli@sistema.local', perfil: 'ADMIN' };
+    redefinirSenha(db, adminFake, user.id, params.senha);
+    console.log(`Senha do usuário ${user.email} (${user.perfil}) redefinida com sucesso via CLI!`);
   } else {
     console.error(`Comando desconhecido: "${comando}"`);
     process.exit(1);

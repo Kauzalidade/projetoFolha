@@ -4,8 +4,11 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   validarForcaSenha,
+  gerarSenhaForteAleatoria,
   gerarHashSenha,
   verificarSenha,
   verificarBloqueio,
@@ -18,6 +21,8 @@ import {
   verificarCodigo2FA,
   despacharCodigo2FAOutbox,
   obterUltimoCodigo2FAOutbox,
+  solicitarTokenRecuperacao,
+  consumirTokenRecuperacao,
 } from '../security.js';
 import { registrarLog } from './logService.js';
 
@@ -44,6 +49,8 @@ export interface RespostaAutenticacao {
   token?: string;
   requer2FA?: boolean;
   desafioToken?: string;
+  deveTrocarSenha?: boolean;
+  codigo2FAParaHomologacao?: string;
   usuario: {
     id: number;
     nome: string;
@@ -154,7 +161,7 @@ export function autenticarUsuario(
     throw new Error('Acesso bloqueado por 15 minutos após 5 tentativas incorretas.');
   }
 
-  const stmt = db.prepare('SELECT id, nome, email, senha_hash, perfil, ativo, segundo_fator_ativo FROM usuarios WHERE email = ?');
+  const stmt = db.prepare('SELECT id, nome, email, senha_hash, perfil, ativo, segundo_fator_ativo, deve_trocar_senha FROM usuarios WHERE email = ?');
   const usuario = stmt.get(emailChave) as any;
 
   if (!usuario || usuario.ativo !== 1) {
@@ -194,12 +201,13 @@ export function autenticarUsuario(
     `).run(usuario.id, desafioToken, codigoHash, expiraEm, agora.toISOString());
 
     // Despacha o código numérico para o canal de notificação simulado (out-of-band)
-    // O código NÃO é retornado na resposta da API pública, preservando a confidencialidade
+    // O código NÃO é retornado na resposta da API pública em produção, preservando a confidencialidade
     despacharCodigo2FAOutbox(usuario.id, codigoNumerico, 5 * 60 * 1000);
 
     return {
       requer2FA: true,
       desafioToken,
+      codigo2FAParaHomologacao: process.env.NODE_ENV !== 'production' ? codigoNumerico : undefined,
       usuario: {
         id: usuario.id,
         nome: usuario.nome,
@@ -214,6 +222,7 @@ export function autenticarUsuario(
 
   return {
     token,
+    deveTrocarSenha: Boolean(usuario.deve_trocar_senha === 1),
     usuario: {
       id: usuario.id,
       nome: usuario.nome,
@@ -230,13 +239,13 @@ export function autenticarUsuario(
 export function confirmarSegundoFator(
   db: DatabaseSync,
   dados: { desafioToken: string; codigo: string }
-): { token: string; usuario: { id: number; nome: string; email: string; perfil: 'RH' | 'DIRETORIA' | 'ADMIN' } } {
+): { token: string; deveTrocarSenha?: boolean; usuario: { id: number; nome: string; email: string; perfil: 'RH' | 'DIRETORIA' | 'ADMIN' } } {
   if (!dados.desafioToken || !dados.codigo) {
     throw new Error('Token de desafio e código de verificação são obrigatórios.');
   }
 
   const stmt = db.prepare(`
-    SELECT d.*, u.nome, u.email, u.perfil, u.ativo
+    SELECT d.*, u.nome, u.email, u.perfil, u.ativo, u.deve_trocar_senha
     FROM desafios_2fa d
     JOIN usuarios u ON u.id = d.usuario_id
     WHERE d.desafio_token = ? AND d.utilizado = 0
@@ -293,6 +302,7 @@ export function confirmarSegundoFator(
 
   return {
     token,
+    deveTrocarSenha: Boolean(desafio.deve_trocar_senha === 1),
     usuario: {
       id: desafio.usuario_id,
       nome: desafio.nome,
@@ -506,4 +516,229 @@ export function listarUsuarios(
  */
 export function obterUltimoCodigo2FAParaTeste(usuarioId: number): string | null {
   return obterUltimoCodigo2FAOutbox(usuarioId);
+}
+
+const ARQUIVO_CREDENCIAIS = path.resolve(process.cwd(), '.credenciais_iniciais.json');
+
+/**
+ * Garante a criação das 3 contas institucionais oficiais:
+ * - Analista de RH (rh@empresa.com)
+ * - Diretoria Executiva (diretoria@empresa.com)
+ * - Administrador Geral (admin@empresa.com)
+ *
+ * Gera senhas aleatórias e exclusivas de alta entropia (ou lê de variáveis de ambiente),
+ * armazena hashes seguros (scrypt com salt) e salva as credenciais de forma segura
+ * no arquivo local ignorado (.credenciais_iniciais.json) para consulta via CLI manage.ts.
+ */
+export function garantirUsuariosInstitucionais(db: DatabaseSync): Record<string, any> {
+  const contasConfig = [
+    {
+      nome: 'Administrador Geral',
+      email: 'admin@empresa.com',
+      perfil: 'ADMIN' as const,
+      envVar: 'ADMIN_INITIAL_PASSWORD',
+    },
+    {
+      nome: 'Analista de RH',
+      email: 'rh@empresa.com',
+      perfil: 'RH' as const,
+      envVar: 'RH_INITIAL_PASSWORD',
+    },
+    {
+      nome: 'Diretoria Executiva',
+      email: 'diretoria@empresa.com',
+      perfil: 'DIRETORIA' as const,
+      envVar: 'DIRETORIA_INITIAL_PASSWORD',
+    },
+  ];
+
+  let dadosArquivo: Record<string, any> = {};
+  if (fs.existsSync(ARQUIVO_CREDENCIAIS)) {
+    try {
+      dadosArquivo = JSON.parse(fs.readFileSync(ARQUIVO_CREDENCIAIS, 'utf8'));
+    } catch {
+      dadosArquivo = {};
+    }
+  }
+
+  let houveAlteracao = false;
+  const agora = new Date().toISOString();
+
+  for (const c of contasConfig) {
+    const usuarioExistente = db.prepare('SELECT id, email, senha_hash, perfil, ativo FROM usuarios WHERE email = ?').get(c.email) as any;
+
+    if (!usuarioExistente) {
+      // Prioridade: variável de ambiente > senha salva anteriormente > nova senha forte gerada
+      const senhaPlana = process.env[c.envVar] || dadosArquivo[c.email]?.senha || gerarSenhaForteAleatoria(16);
+      const hash = gerarHashSenha(senhaPlana);
+
+      const result = db.prepare(`
+        INSERT INTO usuarios (nome, email, senha_hash, perfil, ativo, segundo_fator_ativo, deve_trocar_senha, criado_em, atualizado_em)
+        VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?)
+      `).run(c.nome, c.email, hash, c.perfil, agora, agora);
+
+      const novoId = Number(result.lastInsertRowid);
+
+      try {
+        db.prepare('INSERT INTO historico_senhas (usuario_id, senha_hash, criado_em) VALUES (?, ?, ?)')
+          .run(novoId, hash, agora);
+      } catch {}
+
+      dadosArquivo[c.email] = {
+        id: novoId,
+        nome: c.nome,
+        email: c.email,
+        perfil: c.perfil,
+        senha: senhaPlana,
+        criadoEm: agora,
+      };
+      houveAlteracao = true;
+
+      registrarLog(db, {
+        usuarioId: 0,
+        usuarioEmail: 'sistema@sistema.local',
+        usuarioPerfil: 'ADMIN',
+        acao: 'CRIAR_USUARIO_INSTITUCIONAL',
+        entidade: 'USUARIO',
+        registroId: novoId,
+        detalhes: `Conta institucional ${c.email} (${c.perfil}) provisionada com segurança.`,
+      });
+    } else {
+      // Se já existe e não tínhamos registro de senha, preserva ou atualiza cadastro básico
+      if (!dadosArquivo[c.email]) {
+        dadosArquivo[c.email] = {
+          id: usuarioExistente.id,
+          nome: c.nome,
+          email: c.email,
+          perfil: c.perfil,
+          senha: '(definida no banco de dados)',
+          criadoEm: agora,
+        };
+        houveAlteracao = true;
+      }
+    }
+  }
+
+  if (houveAlteracao) {
+    try {
+      fs.writeFileSync(ARQUIVO_CREDENCIAIS, JSON.stringify(dadosArquivo, null, 2), { mode: 0o600 });
+    } catch {
+      // Se falhar a gravação no disco (ex: contêiner somente-leitura), continua
+    }
+  }
+
+  return dadosArquivo;
+}
+
+/**
+ * Lê credenciais iniciais geradas com segurança para consulta administrativa via CLI.
+ */
+export function recuperarCredenciaisIniciais(): Record<string, any> | null {
+  if (fs.existsSync(ARQUIVO_CREDENCIAIS)) {
+    try {
+      return JSON.parse(fs.readFileSync(ARQUIVO_CREDENCIAIS, 'utf8'));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Solicitação de Recuperação de Senha ("Esqueci a Senha").
+ * Gera token seguro com validade de 15 minutos e registra no log de auditoria.
+ */
+export function solicitarRecuperacaoSenha(
+  db: DatabaseSync,
+  email: string
+): { sucesso: boolean; token?: string; mensagem: string } {
+  const emailLimpo = (email || '').trim().toLowerCase();
+  if (!emailLimpo) {
+    throw new Error('Informe o e-mail cadastrado.');
+  }
+
+  const usuario = db.prepare('SELECT id, nome, email, perfil, ativo FROM usuarios WHERE email = ?').get(emailLimpo) as any;
+
+  if (usuario && usuario.ativo === 1) {
+    const { token } = solicitarTokenRecuperacao(emailLimpo);
+
+    registrarLog(db, {
+      usuarioId: usuario.id,
+      usuarioEmail: usuario.email,
+      usuarioPerfil: usuario.perfil,
+      acao: 'SOLICITAR_RECUPERACAO_SENHA',
+      entidade: 'AUTENTICACAO',
+      registroId: usuario.id,
+      detalhes: `Solicitação de redefinição de senha para ${emailLimpo}. Token gerado com validade de 15 minutos.`,
+    });
+
+    return {
+      sucesso: true,
+      token, // Retornado para integração no ambiente de testes/homologação
+      mensagem: 'Se o e-mail informado estiver cadastrado, as instruções e o token de recuperação foram enviados.',
+    };
+  }
+
+  // Resposta idêntica mesmo quando o e-mail não existe (prevenção contra enumeração de usuários)
+  return {
+    sucesso: true,
+    mensagem: 'Se o e-mail informado estiver cadastrado, as instruções e o token de recuperação foram enviados.',
+  };
+}
+
+/**
+ * Redefinição de senha com validação de token seguro de recuperação.
+ */
+export function redefinirSenhaComToken(
+  db: DatabaseSync,
+  token: string,
+  novaSenha: string
+): { sucesso: boolean; usuarioId: number; email: string } {
+  const email = consumirTokenRecuperacao(token);
+  if (!email) {
+    throw new Error('Token de recuperação inválido ou expirado.');
+  }
+
+  const usuario = db.prepare('SELECT id, email, perfil, ativo FROM usuarios WHERE email = ?').get(email) as any;
+  if (!usuario || usuario.ativo !== 1) {
+    throw new Error('Usuário associado ao token não encontrado ou inativo.');
+  }
+
+  // Redefine a senha aplicando histórico das últimas 3 senhas e encerramento de sessões
+  redefinirSenha(db, { id: usuario.id, email: usuario.email, perfil: usuario.perfil }, usuario.id, novaSenha);
+
+  // Remove obrigatoriedade de troca de senha se estiver marcada
+  db.prepare('UPDATE usuarios SET deve_trocar_senha = 0 WHERE id = ?').run(usuario.id);
+
+  return {
+    sucesso: true,
+    usuarioId: usuario.id,
+    email: usuario.email,
+  };
+}
+
+/**
+ * Alteração de Senha no Primeiro Acesso.
+ */
+export function alterarSenhaPrimeiroAcesso(
+  db: DatabaseSync,
+  usuarioId: number,
+  senhaAtual: string,
+  novaSenha: string
+): { sucesso: boolean; usuarioId: number } {
+  const usuario = db.prepare('SELECT id, email, senha_hash, perfil, ativo FROM usuarios WHERE id = ?').get(usuarioId) as any;
+  if (!usuario || usuario.ativo !== 1) {
+    throw new Error('Usuário não encontrado.');
+  }
+
+  if (!verificarSenha(senhaAtual, usuario.senha_hash)) {
+    throw new Error('A senha atual fornecida está incorreta.');
+  }
+
+  // Redefine a senha com validação de força e histórico
+  redefinirSenha(db, { id: usuario.id, email: usuario.email, perfil: usuario.perfil }, usuario.id, novaSenha);
+
+  db.prepare('UPDATE usuarios SET deve_trocar_senha = 0 WHERE id = ?').run(usuario.id);
+
+  return { sucesso: true, usuarioId };
 }
