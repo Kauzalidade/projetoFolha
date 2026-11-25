@@ -51,6 +51,7 @@ import {
   lancarValeTransporte,
   lancarVerbaAvulsa,
   listarEventosCompetencia,
+  listarEventos,
 } from './services/eventoService.js';
 import {
   calcularFolhaColaborador,
@@ -99,6 +100,91 @@ inicializarFeriadosEParametros(db);
 
 // Garante as 3 contas institucionais oficiais com senhas fortes e auditoria (Seção 4 / US-12)
 garantirUsuariosInstitucionais(db);
+
+/**
+ * Garante o ecossistema inicial de filiais, competências e 15 colaboradores CLT oficiais (Spec v1.7)
+ * para que o sistema esteja 100% operacional no primeiro acesso em qualquer ambiente (nuvem ou local).
+ */
+function garantirAmbienteOperacionalInicial(database: any): void {
+  try {
+    const usuarioSistema = { id: 1, email: 'sistema@sistema.local', perfil: 'RH' };
+
+    // 1. Filiais (1 Matriz + 2 Filiais conforme Spec v1.7)
+    let matriz = database.prepare("SELECT id FROM filiais WHERE tipo = 'MATRIZ' LIMIT 1").get() as any;
+    if (!matriz) {
+      matriz = criarFilial(database, usuarioSistema, { nome: 'Matriz - São Paulo', tipo: 'MATRIZ' });
+    }
+    let filial1 = database.prepare("SELECT id FROM filiais WHERE nome LIKE '%Campinas%' LIMIT 1").get() as any;
+    if (!filial1) {
+      filial1 = criarFilial(database, usuarioSistema, { nome: 'Filial 1 - Campinas', tipo: 'FILIAL' });
+    }
+    let filial2 = database.prepare("SELECT id FROM filiais WHERE nome LIKE '%Santos%' LIMIT 1").get() as any;
+    if (!filial2) {
+      filial2 = criarFilial(database, usuarioSistema, { nome: 'Filial 2 - Santos', tipo: 'FILIAL' });
+    }
+
+    // 2. Competências padrão (2026-10, 2026-11, 2026-12)
+    for (const mes of ['2026-10', '2026-11', '2026-12']) {
+      const compExistente = database.prepare('SELECT id FROM competencias WHERE mes_ano = ?').get(mes);
+      if (!compExistente) {
+        database.prepare(`
+          INSERT INTO competencias (mes_ano, situacao, criado_em)
+          VALUES (?, 'ABERTA', ?)
+        `).run(mes, new Date().toISOString());
+      }
+    }
+
+    const comp10 = database.prepare("SELECT id FROM competencias WHERE mes_ano = '2026-10'").get() as any;
+
+    // 3. 15 Colaboradores CLT oficiais (Spec v1.7)
+    const existentes = database.prepare('SELECT cpf FROM colaboradores').all() as any[];
+    const cpfsExistentes = new Set(existentes.map((e: any) => e.cpf));
+
+    const demos = [
+      // Matriz - São Paulo (7)
+      { filialId: matriz.id, nome: 'Ana Souza', cpf: '52998224725', nascimento: '1995-04-10', admissao: '2023-03-10', cargo: 'Atendente de Crédito', setor: 'Atendimento', salarioBase: '2200.00', banco: '001', agencia: '1234', conta: '56789', titularConta: 'Ana Souza', email: 'ana.souza@empresa.com' },
+      { filialId: matriz.id, nome: 'Carlos Eduardo Silva', cpf: '72581853301', nascimento: '1990-08-22', admissao: '2022-01-15', cargo: 'Analista Financeiro Pleno', setor: 'Financeiro', salarioBase: '3500.00', banco: '237', agencia: '4321', conta: '98765', titularConta: 'Carlos Eduardo Silva', email: 'carlos.silva@empresa.com' },
+      { filialId: matriz.id, nome: 'Beatriz Lima Mendes', cpf: '89599242610', nascimento: '1988-11-30', admissao: '2021-06-01', cargo: 'Gerente Operacional', setor: 'Operações', salarioBase: '6200.00', banco: '341', agencia: '0987', conta: '12345', titularConta: 'Beatriz Lima Mendes', email: 'beatriz.mendes@empresa.com' },
+      { filialId: matriz.id, nome: 'Daniel Oliveira Rocha', cpf: '12345000198', nascimento: '1996-07-14', admissao: '2024-02-01', cargo: 'Assistente Administrativo', setor: 'Administrativo', salarioBase: '2100.00', banco: '104', agencia: '1122', conta: '33445', titularConta: 'Daniel Oliveira Rocha', email: 'daniel.rocha@empresa.com' },
+      { filialId: matriz.id, nome: 'Fernanda Cristina Alves', cpf: '12345000279', nascimento: '1991-03-25', admissao: '2022-07-20', cargo: 'Especialista em Crédito', setor: 'Crédito', salarioBase: '4200.00', banco: '033', agencia: '3344', conta: '55667', titularConta: 'Fernanda Cristina Alves', email: 'fernanda.alves@empresa.com' },
+      { filialId: matriz.id, nome: 'Gabriel Santos Monteiro', cpf: '12345000350', nascimento: '1999-12-05', admissao: '2024-05-10', cargo: 'Operador de Atendimento', setor: 'Atendimento', salarioBase: '1800.00', banco: '001', agencia: '5566', conta: '77889', titularConta: 'Gabriel Santos Monteiro', email: 'gabriel.monteiro@empresa.com' },
+      { filialId: matriz.id, nome: 'Helena Ribeiro Costa', cpf: '12345000430', nascimento: '1989-09-18', admissao: '2021-11-01', cargo: 'Supervisora de Atendimento', setor: 'Atendimento', salarioBase: '4800.00', banco: '237', agencia: '7788', conta: '99001', titularConta: 'Helena Ribeiro Costa', email: 'helena.costa@empresa.com' },
+
+      // Filial 1 - Campinas (4)
+      { filialId: filial1.id, nome: 'Igor Ferreira Martins', cpf: '12345000511', nascimento: '1987-05-30', admissao: '2022-04-12', cargo: 'Gerente de Filial', setor: 'Comercial', salarioBase: '5800.00', banco: '341', agencia: '1212', conta: '34345', titularConta: 'Igor Ferreira Martins', email: 'igor.martins@empresa.com' },
+      { filialId: filial1.id, nome: 'Juliana Paes Nogueira', cpf: '12345000600', nascimento: '1994-10-12', admissao: '2023-08-01', cargo: 'Consultora de Empréstimos', setor: 'Comercial', salarioBase: '2400.00', banco: '104', agencia: '3434', conta: '56567', titularConta: 'Juliana Paes Nogueira', email: 'juliana.nogueira@empresa.com' },
+      { filialId: filial1.id, nome: 'Lucas Barbosa Duarte', cpf: '12345000783', nascimento: '1997-01-20', admissao: '2024-01-15', cargo: 'Agente Comercial', setor: 'Comercial', salarioBase: '2200.00', banco: '001', agencia: '5656', conta: '78789', titularConta: 'Lucas Barbosa Duarte', email: 'lucas.duarte@empresa.com' },
+      { filialId: filial1.id, nome: 'Mariana Azevedo Ramos', cpf: '12345000864', nascimento: '2000-04-08', admissao: '2024-06-01', cargo: 'Auxiliar de Operações', setor: 'Operações', salarioBase: '1900.00', banco: '033', agencia: '7878', conta: '90901', titularConta: 'Mariana Azevedo Ramos', email: 'mariana.ramos@empresa.com' },
+
+      // Filial 2 - Santos (4)
+      { filialId: filial2.id, nome: 'Nilson Prado Vieira', cpf: '12345000945', nascimento: '1986-02-17', admissao: '2022-09-01', cargo: 'Gerente de Filial', setor: 'Comercial', salarioBase: '5800.00', banco: '341', agencia: '9090', conta: '12123', titularConta: 'Nilson Prado Vieira', email: 'nilson.vieira@empresa.com' },
+      { filialId: filial2.id, nome: 'Patricia Gomes Farias', cpf: '12345001089', nascimento: '1993-08-04', admissao: '2023-10-15', cargo: 'Consultora de Crédito', setor: 'Comercial', salarioBase: '2400.00', banco: '237', agencia: '1313', conta: '35357', titularConta: 'Patricia Gomes Farias', email: 'patricia.farias@empresa.com' },
+      { filialId: filial2.id, nome: 'Rodrigo Silveira Leite', cpf: '12345001160', nascimento: '1998-11-29', admissao: '2024-03-20', cargo: 'Agente Comercial', setor: 'Comercial', salarioBase: '2200.00', banco: '104', agencia: '3535', conta: '57579', titularConta: 'Rodrigo Silveira Leite', email: 'rodrigo.leite@empresa.com' },
+      { filialId: filial2.id, nome: 'Vanessa Moreira Castro', cpf: '12345001240', nascimento: '2001-07-02', admissao: '2024-08-01', cargo: 'Caixa e Atendente', setor: 'Atendimento', salarioBase: '1950.00', banco: '001', agencia: '5757', conta: '79791', titularConta: 'Vanessa Moreira Castro', email: 'vanessa.castro@empresa.com' },
+    ];
+
+    for (const demo of demos) {
+      if (!cpfsExistentes.has(demo.cpf)) {
+        criarColaborador(database, usuarioSistema, demo);
+      }
+    }
+
+    // 4. Lança horas extras demonstrativas na 2026-10 para a colaboradora Ana Souza
+    if (comp10) {
+      const ana = database.prepare("SELECT id FROM colaboradores WHERE cpf = '52998224725'").get() as any;
+      if (ana) {
+        const heExist = database.prepare("SELECT id FROM eventos_folha WHERE colaborador_id = ? AND codigo = '010'").get(ana.id);
+        if (!heExist) {
+          lancarHorasExtras(database, usuarioSistema, { colaboradorId: ana.id, competenciaId: comp10.id, tipo: 'UTIL', quantidadeHoras: 10 });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Aviso ao inicializar ambiente operacional:', err);
+  }
+}
+
+garantirAmbienteOperacionalInicial(db);
 
 function parseJSONBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -539,6 +625,14 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJSONBody(req);
       const resAvulso = lancarVerbaAvulsa(db, usuario, body);
       return enviarJSON(res, 201, resAvulso);
+    }
+
+    if (method === 'GET' && pathname === '/api/eventos') {
+      const usuario = autenticarRequisicao(req);
+      const compId = parseInt(parsedUrl.query.competenciaId as string, 10);
+      const colabId = parsedUrl.query.colaboradorId ? parseInt(parsedUrl.query.colaboradorId as string, 10) : undefined;
+      const eventos = listarEventos(db, usuario, { competenciaId: compId, colaboradorId: colabId });
+      return enviarJSON(res, 200, eventos);
     }
 
     // Folha: Calcular, Conferência, Fechar, Registrar Pagamento, Versões

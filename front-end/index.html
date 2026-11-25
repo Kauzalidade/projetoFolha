@@ -849,6 +849,7 @@
           <option value="2026-12">12/2026 (Dezembro)</option>
         </select>
         <span id="comp-status-badge" class="badge-status aberta">ABERTA</span>
+        <button class="btn-header-action" id="btn-nova-comp" onclick="abrirModalNovaCompetencia()" title="Abrir nova competência mensal">📅 + Nova Competência</button>
         <span class="profile-info">Perfil: <b style="color:#fde68a" id="user-role-badge">Analista de RH</b></span>
         <button class="btn-header-action" id="btn-seed-demo" onclick="semearDadosDemo()" title="Gera os 15 colaboradores nas filiais">⚡ Semear 15 Colaboradores</button>
         <button class="btn-logout" onclick="fazerLogout()">Sair</button>
@@ -1890,6 +1891,7 @@
 
       if (tabId === 'dashboard') carregarDadosDashboard();
       if (tabId === 'colaboradores') carregarColaboradores();
+      if (tabId === 'lancamentos') carregarEventosCompetencia();
       if (tabId === 'folha') carregarFolhaResumo();
       if (tabId === 'ferias') carregarHistoricoFerias();
       if (tabId === 'contracheque') carregarContracheque(colaboradoresData[0]?.id);
@@ -1902,32 +1904,131 @@
     // Competências
     async function carregarCompetencias() {
       try {
-        const comps = await fetchAPI('/api/competencias');
-        const comp = comps.find(c => c.mes_ano === currentCompetencia) || comps[0];
+        let comps = await fetchAPI('/api/competencias');
+        if (!comps || comps.length === 0) {
+          try {
+            await fetchAPI('/api/competencias', {
+              method: 'POST',
+              body: JSON.stringify({ mesAno: '2026-10' })
+            });
+            comps = await fetchAPI('/api/competencias');
+          } catch {}
+        }
+
+        const select = document.getElementById('comp-select');
+        if (select && comps && comps.length) {
+          const mesesNomes = { '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril', '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto', '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' };
+          select.innerHTML = comps.map(c => {
+            const [ano, mes] = c.mes_ano.split('-');
+            const label = `${mes}/${ano} (${mesesNomes[mes] || mes})`;
+            return `<option value="${c.mes_ano}" ${c.mes_ano === currentCompetencia ? 'selected' : ''}>${label}</option>`;
+          }).join('');
+        }
+
+        const comp = (comps && comps.length) ? (comps.find(c => c.mes_ano === currentCompetencia) || comps[0]) : null;
         if (comp) {
           currentCompetencia = comp.mes_ano;
           currentCompetenciaId = comp.id;
-          document.getElementById('comp-select').value = comp.mes_ano;
+          if (select) select.value = comp.mes_ano;
           const badge = document.getElementById('comp-status-badge');
-          const aberta = comp.situacao === 'ABERTA';
-          badge.textContent = comp.situacao;
-          badge.className = 'badge-status ' + (aberta ? 'aberta' : 'fechada');
+          if (badge) {
+            const aberta = comp.situacao === 'ABERTA';
+            badge.textContent = comp.situacao;
+            badge.className = 'badge-status ' + (aberta ? 'aberta' : 'fechada');
+          }
         }
       } catch (err) {
-        document.getElementById('comp-select').value = '2026-10';
-        const badge = document.getElementById('comp-status-badge');
-        if (badge) {
-          badge.textContent = 'ABERTA';
-          badge.className = 'badge-status aberta';
-        }
+        console.error('Erro ao carregar competências:', err);
       }
     }
 
-    function mudarCompetencia(mesAno) {
+    async function mudarCompetencia(mesAno) {
       currentCompetencia = mesAno;
-      carregarCompetencias();
-      carregarDadosDashboard();
-      notify('Competência alterada para ' + mesAno);
+      try {
+        let comps = await fetchAPI('/api/competencias');
+        let comp = comps ? comps.find(c => c.mes_ano === mesAno) : null;
+        if (!comp) {
+          await fetchAPI('/api/competencias', {
+            method: 'POST',
+            body: JSON.stringify({ mesAno })
+          });
+          comps = await fetchAPI('/api/competencias');
+          comp = comps ? comps.find(c => c.mes_ano === mesAno) : null;
+        }
+        if (comp) {
+          currentCompetenciaId = comp.id;
+          const badge = document.getElementById('comp-status-badge');
+          if (badge) {
+            const aberta = comp.situacao === 'ABERTA';
+            badge.textContent = comp.situacao;
+            badge.className = 'badge-status ' + (aberta ? 'aberta' : 'fechada');
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao mudar competência:', err);
+      }
+      notify('Competência ativa: ' + mesAno, 'info');
+      await carregarDadosDashboard();
+      const modFolha = document.getElementById('module-folha');
+      if (modFolha && !modFolha.hidden) {
+        await carregarFolhaResumo();
+      }
+      const modLanc = document.getElementById('module-lancamentos');
+      if (modLanc && !modLanc.hidden) {
+        await carregarEventosCompetencia();
+      }
+    }
+
+    function abrirModalNovaCompetencia() {
+      const hoje = new Date();
+      const proximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+      const mesPadrao = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, '0')}`;
+
+      abrirModal(`
+        <div class="modal-overlay" onclick="fecharModal()">
+          <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3>📅 Abrir Nova Competência Mensal</h3>
+              <button class="modal-close-btn" onclick="fecharModal()">&times;</button>
+            </div>
+            <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+              <p style="font-size: 13px; color: #3730a3; margin: 0; line-height: 1.45;">
+                Informe o mês e ano da nova folha de pagamento. A competência será aberta no status <b>ABERTA</b>, pronta para lançamentos de ponto, horas extras, verbas avulsas e apuração em lote.
+              </p>
+            </div>
+            <div class="form-group">
+              <label>Mês / Ano da Competência</label>
+              <input type="month" id="nova-comp-mes" class="form-control" value="${mesPadrao}" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+              <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+              <button class="btn btn-solid-primary" onclick="salvarNovaCompetencia()">Criar / Abrir Competência</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    async function salvarNovaCompetencia() {
+      const input = document.getElementById('nova-comp-mes');
+      const mesAno = input ? input.value.trim() : '';
+      if (!mesAno || !/^\d{4}-\d{2}$/.test(mesAno)) {
+        notify('Selecione uma competência válida no formato AAAA-MM.', 'error');
+        return;
+      }
+      try {
+        await fetchAPI('/api/competencias', {
+          method: 'POST',
+          body: JSON.stringify({ mesAno })
+        });
+        notify(`Competência ${mesAno} aberta com sucesso!`, 'success');
+        fecharModal();
+        currentCompetencia = mesAno;
+        await carregarCompetencias();
+        await mudarCompetencia(mesAno);
+      } catch (err) {
+        notify(err.message, 'error');
+      }
     }
 
     // Semear Demonstração
@@ -2119,6 +2220,9 @@
       const data = document.getElementById('lanc-data').value;
 
       try {
+        if (!currentCompetenciaId) {
+          await carregarCompetencias();
+        }
         if (tipo === 'he_util' || tipo === 'he_domingo') {
           await fetchAPI('/api/eventos/horas-extras', {
             method: 'POST',
@@ -2164,15 +2268,49 @@
           });
         }
         notify('Evento registrado com sucesso!', 'success');
-        carregarDadosDashboard();
+        await carregarEventosCompetencia();
+        await carregarDadosDashboard();
       } catch (err) {
         notify(err.message, 'error');
+      }
+    }
+
+    async function carregarEventosCompetencia() {
+      const tbody = document.getElementById('tbody-eventos');
+      if (!tbody) return;
+      try {
+        if (!currentCompetenciaId) await carregarCompetencias();
+        const eventos = await fetchAPI('/api/eventos?competenciaId=' + currentCompetenciaId);
+        if (!eventos || !eventos.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: #94a3b8; padding: 20px;">Nenhum evento lançado para a competência ${currentCompetencia}.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = eventos.map(ev => {
+          return `
+            <tr>
+              <td style="font-weight: 600; color: #0f172a;">${ev.colaborador_nome || 'Colaborador ' + ev.colaborador_id}</td>
+              <td><span class="role-tag" style="font-size: 11px;">${ev.tipo || ev.codigo || 'EVENTO'}</span> ${ev.descricao || ''}</td>
+              <td>${ev.quantidade_horas ? ev.quantidade_horas + 'h' : (ev.dias_falta ? ev.dias_falta + ' dias' : (ev.dias_afastamento ? ev.dias_afastamento + ' dias' : '1'))}</td>
+              <td class="text-right">R$ ${Number(ev.valor_calculado || 0).toFixed(2)}</td>
+              <td>${ev.data_ocorrencia || (ev.criado_em ? ev.criado_em.split('T')[0] : '-')}</td>
+              <td class="text-right">
+                <span style="font-size: 11px; color: #16a34a; font-weight: 600;">Registrado</span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: #94a3b8; padding: 20px;">Nenhum evento registrado nesta competência.</td></tr>`;
       }
     }
 
     // Folha de Pagamento e Lote
     async function calcularFolhaLote() {
       try {
+        if (!currentCompetenciaId) {
+          await carregarCompetencias();
+        }
+        notify('Processando cálculo em lote da competência ' + currentCompetencia + '...', 'info');
         const res = await fetchAPI('/api/folha/calcular', {
           method: 'POST',
           body: JSON.stringify({
@@ -2181,8 +2319,8 @@
           })
         });
         notify(res.mensagem || 'Folha calculada em lote com sucesso!', 'success');
-        carregarFolhaResumo();
-        carregarDadosDashboard();
+        await carregarFolhaResumo();
+        await carregarDadosDashboard();
       } catch (err) {
         notify(err.message, 'error');
       }
@@ -2190,6 +2328,9 @@
 
     async function carregarFolhaResumo() {
       try {
+        if (!currentCompetenciaId) {
+          await carregarCompetencias();
+        }
         const rel = await fetchAPI('/api/relatorios/folha?competenciaId=' + currentCompetenciaId);
         const tbody = document.getElementById('tbody-folha-resumo');
         if (!tbody || !rel.linhas) return;
@@ -2225,13 +2366,9 @@
       } catch (err) {
         const tbody = document.getElementById('tbody-folha-resumo');
         if (!tbody) return;
-        tbody.innerHTML = (colaboradoresData.length ? colaboradoresData : DEMO_15_COLABORADORES).map(c => {
+        const lista = (colaboradoresData && colaboradoresData.length) ? colaboradoresData : DEMO_15_COLABORADORES;
+        tbody.innerHTML = lista.map(c => {
           const base = Number(c.salario_base || c.salarioBase || 2000);
-          const inss = base * 0.09;
-          const irrf = base > 2826 ? (base * 0.075 - 169.44) : 0;
-          const desc = inss + Math.max(0, irrf);
-          const liq = base - desc;
-          const fgts = base * 0.08;
           return `
             <tr>
               <td>
@@ -2239,12 +2376,12 @@
                 <div style="font-size: 12px; color: #64748b;">${c.cargo} • ${c.filial_nome || 'Matriz'}</div>
               </td>
               <td class="text-right">R$ ${base.toFixed(2)}</td>
-              <td class="text-right text-green">R$ ${base.toFixed(2)}</td>
-              <td class="text-right text-red">R$ ${desc.toFixed(2)}</td>
-              <td class="text-right font-semibold" style="color: #4338ca;">R$ ${liq.toFixed(2)}</td>
-              <td class="text-right">R$ ${fgts.toFixed(2)}</td>
+              <td class="text-right" style="color: #64748b; font-style: italic;">Aguardando cálculo</td>
+              <td class="text-right" style="color: #64748b; font-style: italic;">Aguardando cálculo</td>
+              <td class="text-right" style="color: #64748b; font-style: italic;">Aguardando cálculo</td>
+              <td class="text-right">R$ ${(base * 0.08).toFixed(2)}</td>
               <td class="text-right">
-                <button class="btn btn-outline btn-sm" onclick="abrirMemoriaModal(${c.id})">🧮 Memória</button>
+                <span style="font-size: 11px; color: #94a3b8;">Clique em Calcular Folha</span>
               </td>
             </tr>
           `;
@@ -2254,10 +2391,13 @@
 
     async function carregarConferenciaFinanceira() {
       try {
+        if (!currentCompetenciaId) {
+          await carregarCompetencias();
+        }
         const conf = await fetchAPI('/api/folha/conferencia?competenciaId=' + currentCompetenciaId);
         const box = document.getElementById('box-conferencia');
         const tbody = document.getElementById('tbody-conferencia-eixos');
-        box.style.display = 'block';
+        if (box) box.style.display = 'block';
 
         const eixos = [
           { nome: '1. Salários Base Contratuais', calc: conf.somaSalariosBase, esp: conf.somaSalariosBaseContratos },
@@ -2267,51 +2407,45 @@
           { nome: '5. Encargo Patronal FGTS (8%)', calc: conf.totalFgtsCalculado, esp: conf.totalFgtsEsperado }
         ];
 
-        tbody.innerHTML = eixos.map(e => {
-          const diff = Math.abs(Number(e.calc || 0) - Number(e.esp || 0));
-          const ok = diff < 0.005;
-          return `
-            <tr>
-              <td style="font-weight: 600;">${e.nome}</td>
-              <td>R$ ${Number(e.calc || 0).toFixed(2)}</td>
-              <td>R$ ${Number(e.esp || 0).toFixed(2)}</td>
-              <td class="${ok ? 'text-green' : 'text-red'}">R$ ${diff.toFixed(2)}</td>
-              <td>
-                <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${ok ? '#bbf7d0' : '#fecaca'}; color: ${ok ? '#14532d' : '#991b1b'};">
-                  ${ok ? 'BATIMENTO EXATO (R$ 0,00)' : 'DIVERGÊNCIA'}
-                </span>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } catch (err) {
-        notify(err.message, 'error');
-      }
-    }
-
-    async function confirmarConferenciaFolha() {
-      try {
-        await fetchAPI('/api/folha/conferencia/confirmar', {
-          method: 'POST',
-          body: JSON.stringify({ competenciaId: currentCompetenciaId })
-        });
-        notify('Conferência financeira confirmada com sucesso!', 'success');
-        carregarCompetencias();
+        if (tbody) {
+          tbody.innerHTML = eixos.map(e => {
+            const diff = Math.abs(Number(e.calc || 0) - Number(e.esp || 0));
+            const ok = diff < 0.005;
+            return `
+              <tr>
+                <td style="font-weight: 600;">${e.nome}</td>
+                <td>R$ ${Number(e.calc || 0).toFixed(2)}</td>
+                <td>R$ ${Number(e.esp || 0).toFixed(2)}</td>
+                <td class="${ok ? 'text-green' : 'text-red'}">R$ ${diff.toFixed(2)}</td>
+                <td>
+                  <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${ok ? '#bbf7d0' : '#fecaca'}; color: ${ok ? '#14532d' : '#991b1b'};">
+                    ${ok ? 'BATIMENTO EXATO (R$ 0,00)' : 'DIVERGÊNCIA'}
+                  </span>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+        notify('Conferência financeira dos 5 eixos carregada com sucesso!', 'info');
       } catch (err) {
         notify(err.message, 'error');
       }
     }
 
     async function fecharCompetenciaSegura() {
-      if (!confirm('Deseja realmente fechar a competência e gerar o Hash SHA-256 de integridade?')) return;
+      if (!currentCompetenciaId) {
+        await carregarCompetencias();
+      }
+      if (!confirm(`Deseja realmente fechar a competência ${currentCompetencia} e gerar a assinatura com Hash SHA-256?`)) return;
       try {
         const res = await fetchAPI('/api/folha/fechar', {
           method: 'POST',
           body: JSON.stringify({ competenciaId: currentCompetenciaId })
         });
-        notify('Folha fechada com sucesso! Hash SHA-256 gerado e arquivado.', 'success');
-        carregarCompetencias();
-        carregarDadosDashboard();
+        notify(`Folha fechada com sucesso! Hash SHA-256 gerado: ${(res.hashSha256 || 'Gerado').substring(0, 16)}...`, 'success');
+        await carregarCompetencias();
+        await carregarFolhaResumo();
+        await carregarDadosDashboard();
       } catch (err) {
         notify(err.message, 'error');
       }
@@ -2343,7 +2477,7 @@
       const badge = document.getElementById('comp-status-badge');
       const isFechada = badge && badge.textContent.trim().toUpperCase() === 'FECHADA';
       if (!isFechada) {
-        notify(`A competência atual (${currentCompetencia}) não está com status FECHADA.`, 'info');
+        notify(`A competência atual (${currentCompetencia}) já está ABERTA para novos lançamentos e cálculos.`, 'info');
         return;
       }
 
@@ -2360,7 +2494,7 @@
               </p>
             </div>
             <div class="form-group">
-              <label>Justificativa Formal Obrigatória</label>
+              <label>Justificativa Formal Obrigatória (RN-24)</label>
               <textarea id="reabertura-justificativa" class="form-control" rows="3" placeholder="Descreva a razão formal da reabertura (ex: Correção de horas extras ou lançamento de verbas complementares)..." required></textarea>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
