@@ -173,7 +173,7 @@ function garantirAmbienteOperacionalInicial(database: any): void {
     if (comp10) {
       const ana = database.prepare("SELECT id FROM colaboradores WHERE cpf = '52998224725'").get() as any;
       if (ana) {
-        const heExist = database.prepare("SELECT id FROM eventos_folha WHERE colaborador_id = ? AND codigo = '010'").get(ana.id);
+        const heExist = database.prepare("SELECT id FROM eventos WHERE colaborador_id = ? AND competencia_id = ? AND tipo = 'HORA_EXTRA_UTIL'").get(ana.id, comp10.id);
         if (!heExist) {
           lancarHorasExtras(database, usuarioSistema, { colaboradorId: ana.id, competenciaId: comp10.id, tipo: 'UTIL', quantidadeHoras: 10 });
         }
