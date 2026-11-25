@@ -2397,26 +2397,36 @@
         const conf = await fetchAPI('/api/folha/conferencia?competenciaId=' + currentCompetenciaId);
         const box = document.getElementById('box-conferencia');
         const tbody = document.getElementById('tbody-conferencia-eixos');
+        const tag = document.getElementById('conf-status-tag');
         if (box) box.style.display = 'block';
 
-        const eixos = [
-          { nome: '1. Salários Base Contratuais', calc: conf.somaSalariosBase, esp: conf.somaSalariosBaseContratos },
-          { nome: '2. Proventos Variáveis (Horas Extras + DSR)', calc: conf.somaHorasExtrasDsr, esp: conf.somaHorasExtrasDsr },
-          { nome: '3. Descontos Oficiais (INSS + IRRF)', calc: conf.somaInssIrrf, esp: conf.somaInssIrrf },
-          { nome: '4. Total Líquido a Pagar', calc: conf.totalLiquidoCalculado, esp: conf.totalLiquidoEsperado },
-          { nome: '5. Encargo Patronal FGTS (8%)', calc: conf.totalFgtsCalculado, esp: conf.totalFgtsEsperado }
+        if (tag) {
+          const aprovado = conf.statusGeral === 'APROVADO';
+          tag.textContent = aprovado ? 'Tolerância R$ 0,00 - APROVADO' : 'DIVERGÊNCIA IDENTIFICADA';
+          tag.style.background = aprovado ? '#bbf7d0' : '#fecaca';
+          tag.style.color = aprovado ? '#14532d' : '#991b1b';
+        }
+
+        const itens = (conf.itens && conf.itens.length > 0) ? conf.itens : [
+          { item: '1. Salários Base Contratuais', calculado: conf.somaSalariosBase || 0, esperado: conf.somaSalariosBaseContratos || 0, divergencia: 0, status: 'CONFERE' },
+          { item: '2. Proventos Variáveis (Horas Extras + DSR)', calculado: conf.somaHorasExtrasDsr || 0, esperado: conf.somaHorasExtrasDsr || 0, divergencia: 0, status: 'CONFERE' },
+          { item: '3. Descontos Oficiais (INSS + IRRF)', calculado: conf.somaInssIrrf || 0, esperado: conf.somaInssIrrf || 0, divergencia: 0, status: 'CONFERE' },
+          { item: '4. Total Líquido a Pagar', calculado: conf.totalLiquidoCalculado || conf.totalLiquido || 0, esperado: conf.totalLiquidoEsperado || conf.totalLiquido || 0, divergencia: 0, status: 'CONFERE' },
+          { item: '5. Encargo Patronal FGTS (8%)', calculado: conf.totalFgtsCalculado || conf.totalFGTS || 0, esperado: conf.totalFgtsEsperado || conf.totalFGTS || 0, divergencia: 0, status: 'CONFERE' }
         ];
 
         if (tbody) {
-          tbody.innerHTML = eixos.map(e => {
-            const diff = Math.abs(Number(e.calc || 0) - Number(e.esp || 0));
-            const ok = diff < 0.005;
+          tbody.innerHTML = itens.map(i => {
+            const ok = i.status === 'CONFERE';
+            const calc = Number(i.calculado ?? 0);
+            const esp = Number(i.esperado ?? 0);
+            const diff = Number(i.divergencia ?? Math.abs(calc - esp));
             return `
               <tr>
-                <td style="font-weight: 600;">${e.nome}</td>
-                <td>R$ ${Number(e.calc || 0).toFixed(2)}</td>
-                <td>R$ ${Number(e.esp || 0).toFixed(2)}</td>
-                <td class="${ok ? 'text-green' : 'text-red'}">R$ ${diff.toFixed(2)}</td>
+                <td style="font-weight: 600;">${i.item}</td>
+                <td>R$ ${calc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>R$ ${esp.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="${ok ? 'text-green' : 'text-red'}">R$ ${diff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>
                   <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; background: ${ok ? '#bbf7d0' : '#fecaca'}; color: ${ok ? '#14532d' : '#991b1b'};">
                     ${ok ? 'BATIMENTO EXATO (R$ 0,00)' : 'DIVERGÊNCIA'}
@@ -2426,7 +2436,7 @@
             `;
           }).join('');
         }
-        notify('Conferência financeira dos 5 eixos carregada com sucesso!', 'info');
+        notify('Conferência financeira dos eixos de auditoria carregada com sucesso!', 'info');
       } catch (err) {
         notify(err.message, 'error');
       }

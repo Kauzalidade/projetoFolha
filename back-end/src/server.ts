@@ -643,7 +643,7 @@ const server = http.createServer(async (req, res) => {
       }
       const body = await parseJSONBody(req);
 
-      if (body.todosColaboradores && body.competenciaId) {
+      if ((body.todosColaboradores || !body.colaboradorId) && body.competenciaId) {
         const resultadoLote = calcularFolhaCompetenciaLote(db, usuario, {
           competenciaId: body.competenciaId,
           diasUteisMes: body.diasUteisMes,
