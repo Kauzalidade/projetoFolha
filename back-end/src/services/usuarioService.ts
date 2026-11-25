@@ -537,18 +537,21 @@ export function garantirUsuariosInstitucionais(db: DatabaseSync): Record<string,
       email: 'admin@empresa.com',
       perfil: 'ADMIN' as const,
       envVar: 'ADMIN_INITIAL_PASSWORD',
+      senhaPadrao: 'AdminSeguro2026!',
     },
     {
       nome: 'Analista de RH',
       email: 'rh@empresa.com',
       perfil: 'RH' as const,
       envVar: 'RH_INITIAL_PASSWORD',
+      senhaPadrao: 'RhOperacional2026!',
     },
     {
       nome: 'Diretoria Executiva',
       email: 'diretoria@empresa.com',
       perfil: 'DIRETORIA' as const,
       envVar: 'DIRETORIA_INITIAL_PASSWORD',
+      senhaPadrao: 'DiretoriaExec2026!',
     },
   ];
 
@@ -565,13 +568,16 @@ export function garantirUsuariosInstitucionais(db: DatabaseSync): Record<string,
   const agora = new Date().toISOString();
 
   for (const c of contasConfig) {
+    // Desbloqueia eventuais falhas em memória no boot
+    limparFalhasLogin(c.email);
+
+    // Prioridade: variável de ambiente > senha salva no arquivo local > senha padrão institucional
+    const senhaPlana = process.env[c.envVar] || dadosArquivo[c.email]?.senha || c.senhaPadrao;
+    const hash = gerarHashSenha(senhaPlana);
+
     const usuarioExistente = db.prepare('SELECT id, email, senha_hash, perfil, ativo FROM usuarios WHERE email = ?').get(c.email) as any;
 
     if (!usuarioExistente) {
-      // Prioridade: variável de ambiente > senha salva anteriormente > nova senha forte gerada
-      const senhaPlana = process.env[c.envVar] || dadosArquivo[c.email]?.senha || gerarSenhaForteAleatoria(16);
-      const hash = gerarHashSenha(senhaPlana);
-
       const result = db.prepare(`
         INSERT INTO usuarios (nome, email, senha_hash, perfil, ativo, segundo_fator_ativo, deve_trocar_senha, criado_em, atualizado_em)
         VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?)
@@ -604,18 +610,32 @@ export function garantirUsuariosInstitucionais(db: DatabaseSync): Record<string,
         detalhes: `Conta institucional ${c.email} (${c.perfil}) provisionada com segurança.`,
       });
     } else {
-      // Se já existe e não tínhamos registro de senha, preserva ou atualiza cadastro básico
-      if (!dadosArquivo[c.email]) {
-        dadosArquivo[c.email] = {
-          id: usuarioExistente.id,
-          nome: c.nome,
-          email: c.email,
-          perfil: c.perfil,
-          senha: '(definida no banco de dados)',
-          criadoEm: agora,
-        };
+      // Se o usuário já existe mas a senha atual não confere com a credencial oficial configurada
+      // (ex: gerada aleatoriamente em deploy anterior no Render ou em banco legado),
+      // sincroniza para garantir acesso pleno às credenciais institucionais
+      if (!verificarSenha(senhaPlana, usuarioExistente.senha_hash)) {
+        db.prepare(`
+          UPDATE usuarios 
+          SET senha_hash = ?, ativo = 1, segundo_fator_ativo = 0, deve_trocar_senha = 0, atualizado_em = ?
+          WHERE id = ?
+        `).run(hash, agora, usuarioExistente.id);
+
+        try {
+          db.prepare('INSERT INTO historico_senhas (usuario_id, senha_hash, criado_em) VALUES (?, ?, ?)')
+            .run(usuarioExistente.id, hash, agora);
+        } catch {}
+
         houveAlteracao = true;
       }
+
+      dadosArquivo[c.email] = {
+        id: usuarioExistente.id,
+        nome: c.nome,
+        email: c.email,
+        perfil: c.perfil,
+        senha: senhaPlana,
+        criadoEm: agora,
+      };
     }
   }
 
